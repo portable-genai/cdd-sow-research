@@ -40,7 +40,7 @@ dependencies = [
 [project.optional-dependencies]
 # Pinned per mid-2026 research. ADK 2.0 was a breaking release => pin exactly.
 gcp = [
-  "google-adk==2.3.0",
+  "google-adk==2.7.1",
   "google-genai>=1.21",
   "google-cloud-aiplatform[agent_engines,adk,evaluation]>=1.158.0",
   "google-cloud-documentai>=2.31",
@@ -80,7 +80,7 @@ dev = [
   "pillow>=10.0",
   # Pinned exactly: ruff's formatter output changes between releases, so an unpinned
   # version drifts from CI and fails `ruff format --check`. Bump deliberately.
-  "ruff==0.15.18",
+  "ruff==0.16.3",
   "mypy>=1.10",
   "types-PyYAML",
   "respx>=0.21",
