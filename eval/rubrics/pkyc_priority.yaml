@@ -1,0 +1,52 @@
+# Perpetual-KYC queue-placement rubric - Hrz4 AI Quality and Model-Risk gate (P-08).
+#
+# "Perpetual-KYC priority" measures whether the deterministic monitoring engine puts a
+# CHANGED relationship in the queue place the golden set independently says it belongs in,
+# and moves the risk score in the direction the golden set expects.
+#
+# The oracle is deliberately external to the product: each golden case declares the change
+# to simulate (perpetual_kyc.change) plus the queue priority and re-score direction that
+# change must produce (expected_priority, expected_delta_direction). The scorer replays the
+# change through the real engine and compares. It never re-reads the engine's own opinion
+# of its own output, which is what stops the metric from being falsely green: a mis-tuned
+# or broken engine disagrees with the dataset and the score drops.
+#
+# Offline/CI scorer: eval/run_eval.py::score_perpetual_kyc.
+# Falsification proof: tests/unit/test_eval_perpetual_kyc_can_go_red.py drives the metric
+# red per change kind with agent_eval_kit.assert_each_can_go_red.
+
+metric: pkyc_priority
+description: >
+  Per-case agreement between the engine's computed review-queue priority plus re-score
+  direction and the golden set's declared expectation for the simulated change. Averaged
+  over the dataset.
+threshold: 0.90          # report fails if score is below 0.90
+direction: maximize
+applies_to:
+  - PerpetualKycAssessment.queue_item.priority
+  - PerpetualKycAssessment.score_delta
+
+criteria:
+  - id: queue_priority_matches_expectation
+    description: >
+      The computed queue priority equals the golden case's expected_priority for the
+      declared change (a new sanctions hit is urgent, a new adverse-media finding is high,
+      an ownership change is standard, no change stays low).
+    weight: 0.5
+  - id: rescore_moves_in_the_expected_direction
+    description: >
+      The re-score moves up, down or stays flat exactly as the golden case declares.
+      Priority alone is too coarse: an engine that queues correctly but never moves the
+      score is broken, and this criterion is what catches it.
+    weight: 0.5
+
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"
+
+notes: >
+  This metric scores the DETERMINISTIC engine, not a model. No LLM output is judged here,
+  because no LLM output is consequential in the perpetual-KYC path: the model only writes
+  the narrative paragraph over figures the engine already fixed. A regression in the policy
+  weights, the fingerprinting, the baseline diff or the priority thresholds all surface as
+  a disagreement with the golden set.

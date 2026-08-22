@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@source "../app/**/*.{ts,tsx}";
+@source "../components/**/*.{ts,tsx}";
+@source "../lib/**/*.{ts,tsx}";
+
+@theme {
+  --color-ink-50: #f5f7fa;
+  --color-ink-100: #e6ebf2;
+  --color-ink-200: #cdd7e4;
+  --color-ink-300: #a6b6cc;
+  --color-ink-400: #7790ae;
+  --color-ink-500: #546b8b;
+  --color-ink-600: #3f5470;
+  --color-ink-700: #33445b;
+  --color-ink-800: #1f2a3a;
+  --color-ink-900: #131b27;
+  --color-ink-950: #0b101a;
+  --color-regblue-50: #eef4ff;
+  --color-regblue-100: #dbe7ff;
+  --color-regblue-200: #bdd2ff;
+  --color-regblue-300: #90b2ff;
+  --color-regblue-400: #5d87fb;
+  --color-regblue-500: #3a60f0;
+  --color-regblue-600: #2945d6;
+  --color-regblue-700: #2237ad;
+  --color-regblue-800: #23318a;
+  --color-regblue-900: #222f6d;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --shadow-panel: 0 1px 2px rgba(11,16,26,0.06), 0 8px 24px rgba(11,16,26,0.06);
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-ink-50 text-ink-900 antialiased;
+}
+
+input,
+select,
+textarea {
+  max-width: 100%;
+  min-width: 0;
+}
+
+html,
+body {
+  overflow-x: hidden;
+}

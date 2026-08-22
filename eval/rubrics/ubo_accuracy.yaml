@@ -1,0 +1,66 @@
+# UBO-graph resolution rubric - Hrz4 AI Quality and Model-Risk gate (P-08).
+#
+# "UBO accuracy" measures whether the deterministic ownership engine, given a declared
+# corporate structure, reaches the beneficial owners, the effective percentages, the
+# control basis and the structural indicators that the golden set independently says that
+# structure must produce.
+#
+# The oracle is deliberately external to the product: each golden case declares BOTH the
+# registry layers to replay (ubo.layers) AND the answer they must produce
+# (ubo.expected_owners, ubo.expected_control_basis, ubo.expected_flags). The scorer
+# replays the declared layers through the real engine and compares. It never re-reads the
+# engine's own opinion of its own output, which is what stops the metric from being falsely
+# green: an engine that stops walking at the first layer, multiplies the chain wrongly, or
+# mis-orders the control ladder disagrees with the dataset and the score drops.
+#
+# Offline/CI scorer: eval/run_eval.py::score_ubo_graph.
+# Falsification proof: tests/unit/test_eval_ubo_graph_can_go_red.py drives the metric red
+# per chain type with agent_eval_kit.assert_each_can_go_red.
+
+metric: ubo_accuracy
+description: >
+  Per-case agreement between the engine's computed beneficial owners (with their effective
+  percentages), control basis and indicator kinds, and the golden case's declared
+  expectation for the same structure. Averaged over the dataset.
+threshold: 0.90          # report fails if score is below 0.90
+direction: maximize
+applies_to:
+  - UboResolution.beneficial_owners
+  - UboResolution.control_basis
+  - UboResolution.flags
+
+criteria:
+  - id: effective_ownership_is_the_product_along_the_chain
+    description: >
+      Each natural person at or above the policy threshold is found, and their effective
+      percentage equals the sum over simple paths of the product of the shareholdings on
+      each path. This is the criterion a flat one-hop reader fails: it reports the holding
+      company rather than the person two layers above it.
+    weight: 0.4
+  - id: control_basis_is_the_first_rung_that_holds
+    description: >
+      The control basis equals the rung the golden case declares (effective majority,
+      voting majority, board majority, contractual, or the senior-managing-official
+      fallback), which also proves the ladder is tried in order and that an intermediate
+      holding company is looked through rather than named as the controller.
+    weight: 0.35
+  - id: indicators_match_the_declared_structure
+    description: >
+      The nominee, shell, circular-holding, truncation, unresolved-layer and secrecy
+      jurisdiction indicators raised equal the kinds the golden case declares. Owners alone
+      would pass an engine that finds the right people and misses that the chain is
+      circular or that a layer was never resolved.
+    weight: 0.25
+
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"
+
+notes: >
+  This metric scores the DETERMINISTIC engine, not a model. No LLM output is judged here,
+  because no LLM output is consequential in the ownership path: the model only writes the
+  narrative paragraph over a structure the engine already resolved, and it never emits a
+  node, an edge or a percentage. A regression in the traversal, the path arithmetic, the
+  ladder order, the indicator rules or the policy thresholds all surface as a disagreement
+  with the golden set. The indicators are indicators: this metric scores whether they were
+  RAISED as declared, never whether a structure is illegitimate.

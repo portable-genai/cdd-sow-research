@@ -1,0 +1,83 @@
+{
+  "version": "2026-03-01-fixture-v1",
+  "note": "FICTIONAL sample watchlist for offline/local screening. Not real designations. Replace via scripts/sync_sanctions.py.",
+  "entries": [
+    {
+      "uid": "SDN-10001",
+      "source": "ofac_sdn",
+      "name": "Tan Wei Ming",
+      "entity_type": "individual",
+      "aliases": ["Tan Wei-Ming", "W. M. Tan"],
+      "dob": "1968-04-12",
+      "countries": ["SG"],
+      "programs": ["FICTIONAL-SDN"],
+      "remark": "Synthetic test designation matching the demo UBO."
+    },
+    {
+      "uid": "SDN-10002",
+      "source": "ofac_sdn",
+      "name": "Ivan Petrov",
+      "entity_type": "individual",
+      "aliases": ["Ivan Petroff"],
+      "dob": "1975-09-30",
+      "countries": ["RU"],
+      "programs": ["FICTIONAL-RUSSIA"],
+      "remark": "Synthetic."
+    },
+    {
+      "uid": "CONS-20001",
+      "source": "ofac_consolidated",
+      "name": "Northwind Trading FZE",
+      "entity_type": "entity",
+      "aliases": ["Northwind Trading Free Zone Establishment"],
+      "dob": null,
+      "countries": ["AE"],
+      "programs": ["FICTIONAL-NS-ISA"],
+      "remark": "Synthetic non-SDN consolidated entry."
+    },
+    {
+      "uid": "UN-30001",
+      "source": "un",
+      "name": "Abdul Rahman Khan",
+      "entity_type": "individual",
+      "aliases": ["Abd al-Rahman Khan"],
+      "dob": "1980-01-01",
+      "countries": ["AF"],
+      "programs": ["FICTIONAL-UNSC-1267"],
+      "remark": "Synthetic UN consolidated entry."
+    },
+    {
+      "uid": "EU-40001",
+      "source": "eu",
+      "name": "Helios Maritime Ltd",
+      "entity_type": "entity",
+      "aliases": [],
+      "dob": null,
+      "countries": ["CY"],
+      "programs": ["FICTIONAL-EU-RESTRICTIVE"],
+      "remark": "Synthetic EU listing."
+    },
+    {
+      "uid": "UK-50001",
+      "source": "uk_hmt",
+      "name": "Maria Goncalves",
+      "entity_type": "individual",
+      "aliases": ["Maria Gonsalves"],
+      "dob": "1972-07-19",
+      "countries": ["BR"],
+      "programs": ["FICTIONAL-UK-GLOBAL"],
+      "remark": "Synthetic UK HMT listing."
+    },
+    {
+      "uid": "PEP-60001",
+      "source": "pep",
+      "name": "Lim Mei Ling",
+      "entity_type": "individual",
+      "aliases": ["Mei Ling Lim"],
+      "dob": "1979-11-02",
+      "countries": ["SG"],
+      "programs": ["DOMESTIC-PEP"],
+      "remark": "Synthetic PEP register entry (former office-holder)."
+    }
+  ]
+}

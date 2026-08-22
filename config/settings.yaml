@@ -1,0 +1,494 @@
+# CDD + Source-of-Wealth Agent (B1) — runtime configuration.
+#
+# Switch the entire managed stack to on-prem by setting CDD_PROFILE=onprem
+# (or profile: onprem below). Nothing in src/cdd_sow_research/domain changes.
+# CDD_PROFILE=local runs the whole pipeline offline (SQLite FTS5 + deterministic LLM),
+# with NO Google Cloud SDK and NO emulators required.
+
+project_id: ${GOOGLE_CLOUD_PROJECT:-your-gcp-project}
+region: ${GCP_REGION:-us-central1}     # selected at deploy; must match the Terraform region
+profile: ${CDD_PROFILE}                # local (SDK-free) | live | gcp | platform | onprem. Deliberately has NO :-local fallback: an unset CDD_PROFILE must stay unset rather than materialising here as a written-down choice, because "nobody chose" and "chose local" get different postures. Prod deploys set CDD_PROFILE=gcp explicitly (Dockerfile).
+kms_key: ${CDD_KMS_KEY:-}              # regional Cloud KMS key for CMEK
+grounding_enabled: ${CDD_GROUNDING_ENABLED:-true}
+
+# Model ids are pinned, never floating. They are env-overridable because model
+# availability is regional: a model that is GA in one region 404s in another, and a
+# deployment must be able to pin the id its own region actually serves without a fork.
+models:
+  reasoning: ${CDD_REASONING_MODEL:-gemini-3.5-flash}      # GA — SoW + risk reasoning (thinking=high)
+  triage: ${CDD_TRIAGE_MODEL:-gemini-3.1-flash-lite}       # GA — routing / triage / grounded research
+  hard_reasoning: ${CDD_HARD_REASONING_MODEL:-gemini-3.1-pro}  # Preview — OFF unless use_hard_reasoning=true
+  use_hard_reasoning: false
+
+document_ai:
+  processor_id: ${CDD_DOCAI_PROCESSOR:-}
+  location: ${GCP_REGION:-us-central1}   # tracks the deploy region
+  processor_version: rc
+
+knowledge_base:
+  base_url_env: HRZ_KB_URL             # A2 Enterprise KB (B1's governed RAG store)
+  data_store_id: ${CDD_KB_DATA_STORE:-cdd-case-kb}   # only used by the standalone GCP adapter
+  location: ${GCP_REGION:-us-central1}   # tracks the deploy region
+  top_k: 10
+  # Discovery Engine path segments (standalone GCP adapter). The API defaults fit most
+  # projects; enterprises with named collections/branches override per deployment.
+  collection_id: ${CDD_KB_COLLECTION:-default_collection}
+  branch_id: ${CDD_KB_BRANCH:-default_branch}
+  serving_config_id: ${CDD_KB_SERVING_CONFIG:-default_search}
+
+model_armor:
+  template_id: ${CDD_MODEL_ARMOR_TEMPLATE:-cdd-sow-guardrail}   # terraform output model_armor_template
+  host: modelarmor.${GCP_REGION:-us-central1}.rep.googleapis.com   # regional endpoint tracks the deploy region
+
+dlp:
+  inspect_template: ${CDD_DLP_INSPECT_TEMPLATE:-}
+  deidentify_template: ${CDD_DLP_DEIDENTIFY_TEMPLATE:-}
+
+logging:
+  log_name: ${CDD_LOG_NAME:-cdd-sow-research-audit}   # terraform output audit_log_name
+  bucket: ${CDD_LOG_BUCKET:-cdd-sow-agent-worm}    # terraform output log_bucket
+  retention_days: ${CDD_AUDIT_RETENTION_DAYS:-180}  # six months; lock is irreversible in prod
+
+agent_engine:
+  resource_name: ${CDD_AGENT_ENGINE:-}
+  display_name: cdd-sow-research
+
+# Local profile stores (SDK-free). Empty paths default under ~/.cdd_sow_research/;
+# tests use ":memory:" for ephemeral, deterministic SQLite. No Google Cloud here.
+local:
+  db_path: ${CDD_LOCAL_DB:-}           # SQLite FTS5 case-evidence index
+  audit_path: ${CDD_LOCAL_AUDIT:-}     # append-only local audit (WORM stand-in)
+  sanctions_path: ${CDD_LOCAL_SANCTIONS:-}  # watchlist snapshot JSON ("" => bundled fixture)
+  documents_path: ${CDD_LOCAL_DOCUMENTS:-}  # uploaded-document blobs ("" => ~/.cdd_sow_research/documents.db)
+  # Required when the local isolated and standalone processes share citation/grant
+  # state. Both processes must select the exact same reviewed durable path.
+  browser_flow_path: ${CDD_BROWSER_FLOW_DB:-}
+  client_assertion_replay_path: ${CDD_CLIENT_ASSERTION_REPLAY_DB:-}
+
+# The `live` profile's local model server: real inference on the operator's own machine,
+# so uploaded customer documents are read and reasoned over without leaving it. Point
+# CDD_LIVE_LLM_URL at the FULL chat-completions endpoint (MLX serves /chat/completions,
+# Ollama and vLLM serve /v1/chat/completions).
+live:
+  llm_url: ${CDD_LIVE_LLM_URL:-http://127.0.0.1:8001/chat/completions}
+  llm_model: ${CDD_LIVE_LLM_MODEL:-mlx-community/gemma-4-26b-a4b-it-8bit}
+  vision_model: ${CDD_LIVE_VISION_MODEL:-}   # "" => reuse llm_model (Gemma is multimodal)
+  timeout_seconds: ${CDD_LIVE_TIMEOUT:-240}
+  max_output_tokens: ${CDD_LIVE_MAX_TOKENS:-2048}
+  ocr_enabled: ${CDD_LIVE_OCR:-true}   # transcribe pages with no text layer (scans)
+  max_ocr_pages: ${CDD_LIVE_MAX_OCR_PAGES:-10}   # per-document transcription budget
+  render_dpi: ${CDD_LIVE_RENDER_DPI:-150}
+
+# Custody of the case documents a user uploads. `bucket`/`prefix` are the gcp profile's
+# regional CMEK object store; the limits apply to every profile and are enforced at the
+# API boundary (one upload is one document, so this is a per-document ceiling).
+document_store:
+  bucket: ${CDD_DOCUMENT_BUCKET:-cdd-sow-research-documents}
+  prefix: ${CDD_DOCUMENT_PREFIX:-case-documents/}
+  max_upload_bytes: ${CDD_MAX_UPLOAD_BYTES:-26214400}   # 25 MiB
+  max_bundle_bytes: ${CDD_MAX_BUNDLE_BYTES:-536870912}               # 512 MiB on the wire
+  max_bundle_uncompressed_bytes: ${CDD_MAX_BUNDLE_UNZIPPED:-536870912}  # 512 MiB expanded
+  max_bundle_documents: ${CDD_MAX_BUNDLE_DOCUMENTS:-500}
+  allowed_mime_types:
+    - application/pdf
+    - image/png
+    - image/jpeg
+    - image/webp
+    - text/plain
+    - text/csv
+    - text/markdown
+
+sanctions:
+  bucket: ${CDD_SANCTIONS_BUCKET:-cdd-sow-research-sanctions}   # regional CMEK, synced
+  object_name: ${CDD_SANCTIONS_OBJECT:-snapshot/current.json}
+  match_threshold: 0.85                # OFAC-style fuzzy threshold to raise an alert
+
+# Jurisdiction-driven PII redaction (compliance packs). The local redactor and the eval
+# gate detect the national identifiers for these jurisdictions (plus universal email/phone),
+# so a non-SG fork changes this list, NOT code, and its pii_safety gate exercises its own
+# identifiers. Supported today: SG, IN, GB, HK, ID, MY, AU (src/cdd_sow_research/domain/pii_patterns.py).
+pii:
+  jurisdictions: [SG]
+
+# Managed SoW case store (Firestore Native), used by the gcp/platform profiles. A project
+# holds one immutable (default) database plus optional named databases; prefer a named
+# non-default database if the target project may already have a (default) one.
+case_store:
+  collection: ${CDD_CASE_COLLECTION:-sow_cases}
+  database: ${CDD_FIRESTORE_DB:-(default)}
+
+# Managed perpetual-KYC store (Firestore Native), used by the gcp/platform profiles: the
+# last accepted baseline per subject plus the current queued assessment. An empty
+# `database` reuses the case store's database (the usual single-database deployment).
+monitoring:
+  database: ${CDD_PKYC_FIRESTORE_DB:-}
+  baselines_collection: ${CDD_PKYC_BASELINE_COLLECTION:-pkyc_baselines}
+  assessments_collection: ${CDD_PKYC_ASSESSMENT_COLLECTION:-pkyc_assessments}
+
+# Shared, multi-replica browser-flow state and private_key_jwt replay. Managed profiles
+# bind these collections in the same regional, CMEK-protected Firestore database as the
+# case store. The records and replay collections have server-side TTL policies in Terraform.
+browser_flow_store:
+  database: ${CDD_BROWSER_FLOW_FIRESTORE_DB:-sow-cases}
+  records_collection: ${CDD_BROWSER_FLOW_COLLECTION:-browser_flows}
+  aliases_collection: ${CDD_BROWSER_FLOW_ALIAS_COLLECTION:-browser_flow_aliases}
+  outbox_collection: ${CDD_BROWSER_FLOW_OUTBOX_COLLECTION:-browser_flow_outbox}
+  citations_collection: ${CDD_CITATION_LEDGER_COLLECTION:-cdd_citation_ledger}
+  replay_collection: ${CDD_CLIENT_ASSERTION_REPLAY_COLLECTION:-client_assertion_replay}
+  rate_limits_collection: ${CDD_EMBED_RATE_LIMIT_COLLECTION:-embed_rate_limits}
+  rate_limit_max_attempts: ${CDD_EMBED_SHARED_RATE_LIMIT_MAX:-600}
+  rate_limit_window_seconds: ${CDD_EMBED_SHARED_RATE_LIMIT_WINDOW:-60}
+
+# Legacy control-ownership switch, not a browser-channel profile. Current code uses true
+# to mount this repo's /auth routes and false when a fronting platform owns identity and
+# shared controls. The corrected design deprecates this conflated boolean: identity.mode
+# will own auth routing, channel.mode will own framing, adapter bindings will own services,
+# and infrastructure inputs will own provisioning. See embedding-implementation-plan.md
+# Phase 1. Immutable in current infrastructure because the locked WORM bucket blocks a
+# true->false toggle; see docs/runbook.md.
+deployment:
+  standalone: ${CDD_STANDALONE:-true}
+  production: ${CDD_PRODUCTION:-false}
+  replica_count: ${CDD_REPLICA_COUNT:-1}
+
+# In-process edge backstops. Environment overrides are absorbed by Settings.load once;
+# request middleware never re-derives identity/security posture from ambient variables.
+web:
+  cors_origins: []
+  frame_ancestors: ["'self'"]
+  max_body_bytes: ${CDD_MAX_BODY_BYTES:-0}          # 0 = runtime-derived 2/32 MiB default
+  rate_limit_per_minute: ${CDD_RATE_LIMIT_PER_MINUTE:--1}  # -1 = identity-derived default
+
+# Mode 6 "launch in new tab" OIDC redirect login
+# (docs/embedding-and-identity.md Section 4.4) resolves identity against this trusted-issuer
+# list. Future Mode 4 access-token verification will use a distinct token verifier and may
+# reuse only reviewed issuer/JWKS configuration. No secrets here: only the
+# NAME of the env var holding each secret; the values are read at adapter-construction time
+# and never logged. Empty by default — Mode 6 is disabled until at least one issuer is
+# configured (the /auth/* routes 501 with no trusted issuer).
+identity:
+  # Authentication is independent of the runtime adapter profile. Empty retains the
+  # one-release compatibility defaults (local -> local-persona, gcp/platform -> iap,
+  # onprem -> onprem); live always requires an explicit value.
+  mode: ${CDD_IDENTITY_PROFILE:-}
+  session_signing_key_env: CDD_SESSION_SIGNING_KEY   # HMAC key for the agent's own session JWT
+  # Env var NAMES holding retired-but-still-accepted keys (the rotation window). To rotate
+  # with zero downtime: point session_signing_key_env at the NEW key, list the previous
+  # var here, and drop it once every session minted under it has expired.
+  session_accepted_key_envs: []        # e.g. [CDD_SESSION_SIGNING_KEY_PREV]
+  session_ttl_seconds: 3600
+  allowed_return_to_hosts: []          # empty = same-origin only (open-redirect allowlist)
+  trusted_issuers: []                  # OIDC issuers MUST be https (localhost allowed for dev)
+  # Example single-tenant issuer for Mode 6. The Mode 4 contract adds explicit resource,
+  # client, scope, and claim-mapping policy rather than treating an ID token as an access token:
+  # trusted_issuers:
+  #   - issuer: https://idp.client.example.com
+  #     audience: cdd-sow-research
+  #     tenant: demo-bank
+  #     client_id: ${CDD_OIDC_CLIENT_ID:-}
+  #     client_secret_env: CDD_OIDC_CLIENT_SECRET
+  # RFC 9068 policies for Mode 4. Empty keeps the mode disabled even though its exact
+  # adapter binding exists. Each policy names server-owned issuer/JWKS/audience/tenant,
+  # clients, scopes, claim mappings, and bounded token lifetime.
+  access_token_issuers: []
+  # Immutable issuer-qualified actor links for citation continuation. Never use email:
+  # citation_subject_links:
+  #   "issub:<embedded issuer+sub encoding>": "issub:<Mode 6 issuer+sub encoding>"
+  citation_subject_links: {}
+  # Mode 5 has three distinct policy groups and is disabled while any is absent:
+  # institutional subject-token policies (broker audience), BFF private_key_jwt
+  # clients/keys (canonical grant-endpoint audience), and dedicated Doc1 token keys
+  # (Doc1 resource audience). See tests for a fully synthetic configuration.
+  # Each installation names the ONE subject token type it accepts. The default is the
+  # RFC 9068 access-token profile; an installation that sets
+  # subject_token_type: urn:ietf:params:oauth:token-type:id_token resolves its subject
+  # policy from id_token_subject_issuers instead, whose audience is an OAuth client id
+  # rather than a broker URL. Widening the request schema never widens a deployment.
+  embedded_grant:
+    subject_token_issuers: []
+    # - policy_id: your-institution-google-subject
+    #   issuer: https://accounts.google.com
+    #   jwks_uri: https://www.googleapis.com/oauth2/v3/certs
+    #   audience: <dedicated Google OAuth client id>
+    #   authorized_party: <the same dedicated client id>
+    #   hosted_domain: your-institution.example
+    #   tenant: demo-bank
+    id_token_subject_issuers: []
+    installations: []
+    token: {}
+  # access_token_issuers:
+  #   - policy_id: demo-bank-direct
+  #     issuer: https://idp.demo-bank.example
+  #     jwks_uri: https://idp.demo-bank.example/.well-known/jwks.json
+  #     resource_audience: https://doc1.example/api
+  #     tenant: demo-bank
+  #     algorithms: [RS256]
+  #     allowed_clients: [demo-bank-portal]
+  #     required_scopes: [cdd.read, cdd.write]
+  #     installation_claim: installation_id
+  #     max_lifetime_seconds: 300
+  #     clock_skew_seconds: 30
+  bindings:
+    local-persona: cdd_sow_research.adapters.local.identity:LocalPersonaIdentityAdapter
+    iap: cdd_sow_research.adapters.gcp.iap_identity:IapIdentityAdapter
+    oidc-session: cdd_sow_research.adapters.oidc.session_identity:OidcSessionIdentityAdapter
+    oauth-access-token: cdd_sow_research.adapters.oidc.access_token_identity:OAuthAccessTokenAuthenticationAdapter
+    embedded-grant: cdd_sow_research.adapters.oidc.configured_embed_identity:ConfiguredEmbeddedGrantAuthenticationAdapter
+    onprem: cdd_sow_research.adapters.onprem.identity:OnPremIdentityAdapter
+
+# Browser delivery is independent of identity and runtime. The fixed /agent public mount
+# is the byte-identical artifact contract. Local Mode 3 retains a one-release standalone
+# default; secure deployments must select their channel explicitly.
+channel:
+  mode: ${CDD_CHANNEL_PROFILE:-}
+  public_origin: ${CDD_PUBLIC_ORIGIN:-}
+  public_mount_path: /agent
+  installation_manifest: ${CDD_INSTALLATION_MANIFEST:-}
+  manifest_version: ${CDD_INSTALLATION_MANIFEST_VERSION:-}
+  # Mode 4 derives the structural manifest binding from access_token_issuers. Mode 5
+  # supplies explicit structural policies here; its broker subject-token audience is a
+  # separate P4 verifier input and is never inferred from resource_audience.
+  verifier_policies: []
+
+# ----------------------------------------------------------------------------- #
+# Bank-owned risk policy. Every value a compliance function tunes lives here, NOT in
+# code (see src/cdd_sow_research/domain/policy.py); the values below are the reference
+# defaults, override per institution / jurisdiction, and omitted keys keep their defaults.
+# Wiring: `escalation` is applied on the one-shot dossier path (api/deps.py threads it into
+# CddService). `gap` / `scorecard` / `source_of_funds` / `monitoring` / `country_risk` are
+# applied on the long-running SoW-case path via each service's `from_policy` constructor
+# (SowCaseService.from_policy + the scenario builders read Settings.load().policy). The
+# managed API path is wired through the Firestore CaseStorePort for gcp/platform; local
+# and live use the in-process store.
+# ----------------------------------------------------------------------------- #
+policy:
+  gap:                                  # SoW reconciliation + gap engine
+    delta_tolerance: 0.15               # coverage below 1 - tolerance => unreconciled gap
+    stale_days: 180                     # decaying documents older than this are stale
+    mandatory_docs:                     # per wealth-source kind, required doc type(s)
+      asset_sale: [bank_statement]
+      business_ownership: [registry_extract]
+      investments: [fin_statement]
+      employment: [fin_statement]
+    stale_doc_types: [bank_statement, fin_statement]
+  source_of_funds:
+    delta_tolerance: 0.15
+    activity_tolerance: 0.25            # inflows above expected by this fraction => mismatch
+  scorecard:
+    weights: {customer_type: 0.15, geography: 0.30, product: 0.15, channel: 0.10, pep_exposure: 0.15, adverse_media: 0.15}
+    product_risk: {default: 0.4, deposit: 0.3, private_banking: 0.7, trade_finance: 0.7, correspondent: 0.9, crypto: 0.9}
+    channel_risk: {default: 0.4, branch: 0.2, remote: 0.6, introduced: 0.7, non_face_to_face: 0.7}
+    edd_score: 0.6                      # at/above => HIGH band, EDD tier
+    sdd_score: 0.25                     # below => LOW band, SDD tier possible
+  country_risk:                         # FATF-derived lists; refresh at plenary cadence
+    call_for_action: [IR, KP, MM]
+    increased_monitoring: [SY, YE, VE, HT, ML, SS, CD, MZ, BF, NG, ZA, VN]
+    elevated: [RU, BY, AF, LY, SO]
+  monitoring:
+    cadence_months: {sdd: 60, cdd: 36, edd: 12}
+    due_soon_days: 90
+  escalation:                           # maker-checker escalation (P-06)
+    escalating_bands: [high, prohibited]
+    escalating_media: [sanctions, terrorism]
+  perpetual_kyc:                        # continuous, signal-driven re-assessment
+    severity_uplift: {low: 0.02, medium: 0.05, high: 0.12, critical: 0.20}
+    source_weight: {sanctions: 1.0, adverse_media: 0.8, registry: 0.6}
+    max_uplift: 0.50                    # ceiling on what one run may add to the score
+    cleared_relief: 0.50                # fraction of the uplift returned when a signal clears
+    urgent_score: 0.75                  # re-scored total at/above => URGENT queue priority
+    high_score: 0.50                    # re-scored total at/above => HIGH band and priority
+    low_score: 0.25                     # re-scored total below => LOW band
+    sla_days: {urgent: 1, high: 5, standard: 15, low: 30}
+  ubo_graph:                            # cross-jurisdiction beneficial-ownership graph
+    ownership_threshold_pct: 25.0       # natural person at/above this => beneficial owner
+    control_threshold_pct: 50.0         # effective % at/above this => control (rung 1)
+    voting_threshold_pct: 50.0          # direct voting % at/above this => control (rung 2)
+    board_majority_ratio: 0.5           # share of recorded board seats => control (rung 3)
+    max_depth: 6                        # hops walked before the picture is TRUNCATED
+    max_nodes: 200                      # parties admitted before the walk truncates
+    max_paths: 64                       # simple paths enumerated per candidate owner
+    pct_decimals: 4                     # rounding, so a replay is byte-identical
+    nominee_name_recurrence: 3          # entities one name spans before it reads nominee
+    nominee_name_threshold: 0.90        # name similarity treated as the same party
+    shared_address_entities: 2          # entities per address before it reads as an agent
+    nominee_tokens: [nominee, nominees, trustee, trustees, fiduciary, fiduciaries]
+    pass_through_pct: 90.0              # single owner at/above this => pass-through layer
+    young_entity_days: 365              # incorporated within this window => newly formed
+    dormant_statuses: [dormant, struck, inactive, suspended, liquidation]
+    min_shell_signals: 2                # traits one layer must show together to flag it
+    # Opacity weights: additive, clamped to [0, 1]. Indicators, never conclusions.
+    flag_weight: {nominee_indicator: 0.25, shell_indicator: 0.20, circular_holding: 0.20, depth_truncated: 0.15, secrecy_jurisdiction: 0.15, unresolved_layer: 0.20, no_owner_at_threshold: 0.10}
+    # Review severity a resolution earns from its opacity score: descending [floor, severity]
+    # bands (first band cleared wins; below every floor is low). Bank-owned, not in code.
+    opacity_severity_bands: [[0.75, critical], [0.50, high], [0.25, medium]]
+    dual_control_opacity: 0.50          # opacity at/above this => two approvals (four-eyes)
+
+# ----------------------------------------------------------------------------- #
+# Runtime/data port -> adapter bindings. The container requires an exact entry for the
+# active runtime and never falls back to another profile. Identity bindings live under
+# identity.bindings above. These dotted paths are the build contract:
+# each adapter class takes a single Settings argument.
+#
+# The `live` profile is the analyst-facing one, and it binds EVERY port explicitly on
+# purpose: it is not SDK-free, so an unbound port would silently fall back to a managed
+# GCP adapter and quietly ship customer evidence to a service the operator did not
+# choose. Reading down the `live:` column shows exactly where each capability runs.
+# Only two ports are cloud-bound (adverse media, corporate registry) and both take a
+# subject NAME, never document content.
+# ----------------------------------------------------------------------------- #
+adapters:
+  # Atomic short-lived browser-flow persistence. Managed profiles share one regional,
+  # transactional Firestore adapter; local uses a single-replica SQLite proof.
+  browser_flow_store:
+    gcp: cdd_sow_research.adapters.gcp.firestore_browser_flow_store:FirestoreBrowserFlowStoreAdapter
+    platform: cdd_sow_research.adapters.gcp.firestore_browser_flow_store:FirestoreBrowserFlowStoreAdapter
+    live: cdd_sow_research.adapters.disabled.browser_flow_store:DisabledBrowserFlowStoreAdapter
+    local: cdd_sow_research.adapters.local.browser_flow_store:LocalSQLiteBrowserFlowStore
+    onprem: cdd_sow_research.adapters.onprem.browser_flow_store:OnPremBrowserFlowStoreAdapter
+  extraction:
+    gcp: cdd_sow_research.adapters.gcp.document_ai_extraction:DocumentAiExtractionAdapter
+    platform: cdd_sow_research.adapters.gcp.document_ai_extraction:DocumentAiExtractionAdapter
+    local: cdd_sow_research.adapters.local.extraction:LocalDocumentExtractionAdapter
+    live: cdd_sow_research.adapters.live.extraction:LiveDocumentExtractionAdapter
+    onprem: cdd_sow_research.adapters.onprem.extraction:OnPremExtractionAdapter
+  # Custody of uploaded case documents: the bytes a citation points back at. gcp stores
+  # them in the regional CMEK bucket inside the perimeter; local (and therefore live)
+  # keeps them in a SQLite blob store on the operator's own disk, so real customer
+  # documents never leave the machine; onprem is the client-vault placeholder. The ACL
+  # contract matches the knowledge base exactly: subset match, fail-closed.
+  document_store:
+    gcp: cdd_sow_research.adapters.gcp.document_store:GcsDocumentStoreAdapter
+    platform: cdd_sow_research.adapters.gcp.document_store:GcsDocumentStoreAdapter
+    live: cdd_sow_research.adapters.local.document_store:LocalDocumentStoreAdapter
+    local: cdd_sow_research.adapters.local.document_store:LocalDocumentStoreAdapter
+    onprem: cdd_sow_research.adapters.onprem.document_store:OnPremDocumentStoreAdapter
+  knowledge_base:
+    gcp: cdd_sow_research.adapters.gcp.agent_search_kb:AgentSearchKnowledgeBaseAdapter
+    platform: cdd_sow_research.adapters.platform.remote_knowledge_base:RemoteKnowledgeBaseAdapter
+    local: cdd_sow_research.adapters.local.knowledge_base:LocalKnowledgeBaseAdapter
+    live: cdd_sow_research.adapters.local.knowledge_base:LocalKnowledgeBaseAdapter
+    onprem: cdd_sow_research.adapters.onprem.knowledge_base:OnPremKnowledgeBaseAdapter
+  adverse_media:
+    gcp: cdd_sow_research.adapters.gcp.gemini_adverse_media:GeminiAdverseMediaAdapter
+    platform: cdd_sow_research.adapters.gcp.gemini_adverse_media:GeminiAdverseMediaAdapter
+    local: cdd_sow_research.adapters.local.adverse_media:LocalCannedAdverseMediaAdapter
+    live: cdd_sow_research.adapters.gcp.gemini_adverse_media:GeminiAdverseMediaAdapter
+    onprem: cdd_sow_research.adapters.onprem.adverse_media:OnPremAdverseMediaAdapter
+  registry:
+    gcp: cdd_sow_research.adapters.gcp.registry_lookup:GroundedRegistryAdapter
+    platform: cdd_sow_research.adapters.gcp.registry_lookup:GroundedRegistryAdapter
+    local: cdd_sow_research.adapters.local.registry:LocalRegistryLookupAdapter
+    live: cdd_sow_research.adapters.gcp.registry_lookup:GroundedRegistryAdapter
+    onprem: cdd_sow_research.adapters.onprem.registry:OnPremRegistryAdapter
+  # One CITED registry hop at a time; the pure engine owns the traversal. Mirrors the
+  # registry port's families exactly: the managed grounded lookup is reused by platform
+  # and live, local serves an obviously fictional multi-jurisdiction structure, and
+  # onprem refuses to invent a layer.
+  ownership_graph:
+    gcp: cdd_sow_research.adapters.gcp.ownership_graph:GroundedOwnershipGraphAdapter
+    platform: cdd_sow_research.adapters.gcp.ownership_graph:GroundedOwnershipGraphAdapter
+    local: cdd_sow_research.adapters.local.ownership_graph:LocalOwnershipGraphAdapter
+    live: cdd_sow_research.adapters.gcp.ownership_graph:GroundedOwnershipGraphAdapter
+    onprem: cdd_sow_research.adapters.onprem.ownership_graph:OnPremOwnershipGraphAdapter
+  compliance:
+    gcp: cdd_sow_research.adapters.local.compliance:LocalComplianceClientAdapter
+    platform: cdd_sow_research.adapters.platform.remote_compliance:RemoteComplianceAdapter
+    local: cdd_sow_research.adapters.local.compliance:LocalComplianceClientAdapter
+    live: cdd_sow_research.adapters.local.compliance:LocalComplianceClientAdapter
+    onprem: cdd_sow_research.adapters.onprem.compliance:OnPremComplianceAdapter
+  llm:
+    gcp: cdd_sow_research.adapters.gcp.gemini_llm:GeminiLLMAdapter
+    platform: cdd_sow_research.adapters.gcp.gemini_llm:GeminiLLMAdapter
+    local: cdd_sow_research.adapters.local.llm:LocalDeterministicLLMAdapter
+    live: cdd_sow_research.adapters.live.llm:GemmaLocalLLMAdapter
+    onprem: cdd_sow_research.adapters.onprem.llm:OnPremLLMAdapter
+  guardrail:
+    gcp: cdd_sow_research.adapters.gcp.model_armor_guardrail:ModelArmorGuardrailAdapter
+    platform: cdd_sow_research.adapters.platform.remote_guardrail:RemoteGuardrailAdapter
+    local: cdd_sow_research.adapters.local.guardrail:LocalHeuristicGuardrailAdapter
+    live: cdd_sow_research.adapters.local.guardrail:LocalHeuristicGuardrailAdapter
+    onprem: cdd_sow_research.adapters.onprem.guardrail:OnPremGuardrailAdapter
+  redaction:
+    gcp: cdd_sow_research.adapters.gcp.dlp_redaction:DlpRedactionAdapter
+    platform: cdd_sow_research.adapters.platform.remote_redaction:RemoteRedactionAdapter
+    local: cdd_sow_research.adapters.local.redaction:LocalRegexRedactionAdapter
+    live: cdd_sow_research.adapters.local.redaction:LocalRegexRedactionAdapter
+    onprem: cdd_sow_research.adapters.onprem.redaction:OnPremRedactionAdapter
+  audit:
+    gcp: cdd_sow_research.adapters.gcp.cloud_logging_audit:CloudLoggingAuditAdapter
+    platform: cdd_sow_research.adapters.platform.remote_audit:RemoteAuditAdapter
+    local: cdd_sow_research.adapters.local.audit:LocalAppendOnlyAuditAdapter
+    live: cdd_sow_research.adapters.local.audit:LocalAppendOnlyAuditAdapter
+    onprem: cdd_sow_research.adapters.onprem.audit:OnPremAuditAdapter
+  # Rule R8: a dossier always requires human review, so it is ROUTED to the Hrz7 Human-Review &
+  # Maker-Checker Console (via the shared review-kit), never terminated in a local boolean.
+  # local = enqueue to an in-memory outbox so the routing path runs offline; gcp/platform = submit
+  # over S2S to Hrz7's service intake (CDD_HRZ7_URL); onprem = sovereign-console placeholder.
+  review_router:
+    gcp: cdd_sow_research.adapters.gcp.review_router:PlatformReviewRouter
+    platform: cdd_sow_research.adapters.gcp.review_router:PlatformReviewRouter
+    local: cdd_sow_research.adapters.local.review_router:LocalReviewRouter
+    live: cdd_sow_research.adapters.local.review_router:LocalReviewRouter
+    onprem: cdd_sow_research.adapters.onprem.review_router:OnPremReviewRouter
+  # Tracing is OpenTelemetry throughout. gcp exports spans straight to Cloud Trace; the
+  # explicit platform binding exports OTLP to the Hrz5 collector when
+  # OTEL_EXPORTER_OTLP_ENDPOINT is set, else falls back to Cloud Trace (an intentional,
+  # documented default, not a silent gcp fallback). No /v1/spans HTTP client exists.
+  tracer:
+    gcp: cdd_sow_research.adapters.gcp.cloud_trace_tracer:CloudTraceTracerAdapter
+    platform: cdd_sow_research.adapters.platform.otlp_tracer:OtlpTracerAdapter
+    local: cdd_sow_research.adapters.local.tracer:LocalNoopTracerAdapter
+    live: cdd_sow_research.adapters.local.tracer:LocalNoopTracerAdapter
+    onprem: cdd_sow_research.adapters.onprem.tracer:OnPremTracerAdapter
+  evaluation:
+    gcp: cdd_sow_research.adapters.gcp.genai_eval:GenAiEvalAdapter
+    platform: cdd_sow_research.adapters.platform.remote_evaluation:RemoteEvaluationAdapter
+    local: cdd_sow_research.adapters.local.evaluation:LocalOfflineEvalAdapter
+    live: cdd_sow_research.adapters.local.evaluation:LocalOfflineEvalAdapter
+    onprem: cdd_sow_research.adapters.onprem.evaluation:OnPremEvalAdapter
+  agent_registry:
+    gcp: cdd_sow_research.adapters.gcp.a2a_registry:A2ARegistryAdapter
+    platform: cdd_sow_research.adapters.platform.remote_registry:RemoteRegistryAdapter
+    local: cdd_sow_research.adapters.local.registry_agent:LocalAgentRegistryAdapter
+    live: cdd_sow_research.adapters.local.registry_agent:LocalAgentRegistryAdapter
+    onprem: cdd_sow_research.adapters.onprem.registry_agent:OnPremAgentRegistryAdapter
+  # No platform binding: Hrz3 is an agent registry with no /v1/tools route or ToolSpec
+  # concept ("MCP" there is a protocol string + mcp:tool:* scope labels, not a catalogue of
+  # callable tools), so tool_catalog stays gcp/local/onprem until such a contract exists.
+  tool_catalog:
+    gcp: cdd_sow_research.adapters.gcp.mcp_tool_catalog:McpToolCatalogAdapter
+    platform: cdd_sow_research.adapters.gcp.mcp_tool_catalog:McpToolCatalogAdapter
+    local: cdd_sow_research.adapters.local.tool_catalog:LocalToolCatalogAdapter
+    live: cdd_sow_research.adapters.local.tool_catalog:LocalToolCatalogAdapter
+    onprem: cdd_sow_research.adapters.onprem.tool_catalog:OnPremToolCatalogAdapter
+  # Durable store for long-running SoW cases (docs/sow-longitudinal-audit-design.md).
+  # gcp/platform bind the managed Firestore Native adapter (regional, CMEK-encrypted,
+  # ACL-scoped, inside the VPC-SC perimeter); the case store is vertical-owned, so platform
+  # reuses Firestore intentionally rather than via a silent fallback. local is a WORKING
+  # in-process store; the on-prem placeholder proves interface parity.
+  case_store:
+    gcp: cdd_sow_research.adapters.gcp.firestore_case_store:FirestoreCaseStoreAdapter
+    platform: cdd_sow_research.adapters.gcp.firestore_case_store:FirestoreCaseStoreAdapter
+    local: cdd_sow_research.adapters.local.case_store:LocalCaseStoreAdapter
+    live: cdd_sow_research.adapters.local.case_store:LocalCaseStoreAdapter
+    onprem: cdd_sow_research.adapters.onprem.case_store:OnPremCaseStoreAdapter
+  # Sanctions/PEP/watchlist screening snapshot provider. gcp reads a regional CMEK bucket
+  # synced from OFAC SLS + UN/EU/UK (infra/terraform/sanctions_sync.tf); local reads a
+  # bundled snapshot refreshable via scripts/sync_sanctions.py; onprem is a placeholder.
+  sanctions:
+    gcp: cdd_sow_research.adapters.gcp.sanctions_provider:GcsSanctionsProviderAdapter
+    platform: cdd_sow_research.adapters.gcp.sanctions_provider:GcsSanctionsProviderAdapter
+    local: cdd_sow_research.adapters.local.sanctions_provider:LocalSanctionsProviderAdapter
+    live: cdd_sow_research.adapters.local.sanctions_provider:LocalSanctionsProviderAdapter
+    onprem: cdd_sow_research.adapters.onprem.sanctions_provider:OnPremSanctionsProviderAdapter
+  # Perpetual-KYC baselines + the explainable review queue. gcp/platform bind the managed
+  # Firestore adapter (regional, CMEK-encrypted, ACL-scoped, inside the VPC-SC perimeter);
+  # the store is vertical-owned, so platform reuses Firestore intentionally rather than via
+  # a silent fallback. local/live are a WORKING in-process store; onprem fails fast so an
+  # unimplemented store can never silently empty the queue.
+  monitoring_store:
+    gcp: cdd_sow_research.adapters.gcp.monitoring_store:FirestoreMonitoringStoreAdapter
+    platform: cdd_sow_research.adapters.gcp.monitoring_store:FirestoreMonitoringStoreAdapter
+    local: cdd_sow_research.adapters.local.monitoring_store:LocalMonitoringStoreAdapter
+    live: cdd_sow_research.adapters.local.monitoring_store:LocalMonitoringStoreAdapter
+    onprem: cdd_sow_research.adapters.onprem.monitoring_store:OnPremMonitoringStoreAdapter

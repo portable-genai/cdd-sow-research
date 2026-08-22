@@ -1,0 +1,64 @@
+# Keep the API image small and free of secrets / dev cruft.
+
+# VCS & CI
+.git/
+.github/
+.gitignore
+
+# Python caches & build output
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Node / Next.js (the UI is built/deployed separately, not in the API image)
+ui/
+node_modules/
+.next/
+out/
+
+# Terraform (infra, not app)
+terraform/
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+
+# Secrets / env / credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*-key.json
+service-account*.json
+application_default_credentials.json
+
+# Tests & local docs not needed at runtime
+tests/
+docs/
+*.md
+!README.md
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+tmp/
+scratch/

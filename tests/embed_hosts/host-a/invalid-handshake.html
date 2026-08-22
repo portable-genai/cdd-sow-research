@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; frame-src http://127.0.0.1:3200; style-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"
+    >
+    <meta name="referrer" content="no-referrer">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Doc1 channel boundary check</title>
+    <link rel="stylesheet" href="./styles.css">
+    <script src="./invalid-handshake.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <h1>Channel boundary check</h1>
+      <button type="button" id="check">Test global credential rejection</button>
+      <p id="boundary-status" role="status">Ready to test</p>
+      <iframe
+        id="probe"
+        title="Doc1 invalid handshake probe"
+        src="http://127.0.0.1:3200/agent/embed/inst_host_a"
+        sandbox="allow-scripts allow-same-origin"
+        referrerpolicy="no-referrer"
+        allow=""
+      ></iframe>
+    </main>
+  </body>
+</html>

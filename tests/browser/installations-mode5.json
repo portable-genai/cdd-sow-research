@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "deployment_manifest_id": "doc1-synthetic-mode5-proof",
+  "build_id": "doc1-ui-synthetic-build",
+  "installations": {
+    "inst_mode5": {
+      "tenant": "synthetic-bank",
+      "parent_origins": [
+        "http://127.0.0.1:4101"
+      ],
+      "resource_audience": "http://127.0.0.1:3200/agent/api",
+      "scopes": [
+        "cdd.read",
+        "cdd.write",
+        "documents.read",
+        "documents.write"
+      ],
+      "identity_mode": "embedded-grant",
+      "issuer_policy_id": "synthetic-mode5-subject",
+      "allowed_clients": [
+        "synthetic-mode5-bff"
+      ],
+      "protocol_versions": [
+        "1"
+      ],
+      "public_origin": "http://127.0.0.1:3210",
+      "public_mount_path": "/agent",
+      "loader_version": "v1",
+      "fallback_url": "http://127.0.0.1:3300/agent/",
+      "presentation_defaults": {
+        "theme": "light",
+        "density": "comfortable"
+      }
+    }
+  }
+}

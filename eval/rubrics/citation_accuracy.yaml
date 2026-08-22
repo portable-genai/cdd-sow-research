@@ -1,0 +1,34 @@
+# Citation-accuracy rubric — A4 AI Quality and Model-Risk gate (P-08).
+#
+# "Citation accuracy" measures whether the sources the dossier cites are genuinely among
+# the evidence retrieved or derived for the case (no fabricated or hallucinated citations).
+# In set terms, for each case: cited_ids must be a subset of retrieved/derived_ids.
+#
+# Production scorer: the Gen AI evaluation service on the Gemini Enterprise Agent Platform,
+# routed through cdd_sow_research.adapters.gcp.genai_eval:GenAiEvalAdapter.
+# Offline/CI scorer: the deterministic set-based check in eval/run_eval.py.
+
+metric: citation_accuracy
+description: >
+  Per-case correctness of the citation set: no citation outside the retrieved or derived
+  evidence (KYC documents, registry records, adverse media). Averaged over the dataset.
+threshold: 0.90          # report fails if score is below 0.90
+direction: maximize
+applies_to:
+  - SourceOfWealthNarrative.citations
+  - RiskRating.citations
+
+criteria:
+  - id: no_fabricated_citations
+    description: Every cited source_id was actually retrieved or derived for the case.
+    weight: 1.0
+
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"
+
+notes: >
+  The offline heuristic is intentionally strict: it credits a citation only when the cited
+  source_id is in the union of retrieved passages, adverse-media findings and ownership
+  records for the case, so passing the offline gate is a lower bound on the production
+  judge's score.

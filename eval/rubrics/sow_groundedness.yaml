@@ -1,0 +1,52 @@
+# Source-of-wealth groundedness rubric — A4 AI Quality and Model-Risk gate (P-08).
+#
+# "SoW groundedness" measures whether every substantive claim in the source-of-wealth
+# narrative is supported by the case evidence that was retrieved and cited (KYC document
+# extracts, registry records, adverse media). For a CDD dossier this is non-negotiable: an
+# analyst/MLRO must trace each statement back to a source and page (see domain.models.Citation).
+#
+# Production scorer: the Gen AI evaluation service on the Gemini Enterprise Agent Platform,
+# routed through cdd_sow_research.adapters.gcp.genai_eval:GenAiEvalAdapter.
+# Offline/CI scorer: the deterministic heuristic in eval/run_eval.py (a narrative with
+# claims but no citation scores 0), so the gate runs with no GCP credentials.
+
+metric: sow_groundedness
+description: >
+  Fraction of the source-of-wealth narrative's claim-bearing sentences that are supported
+  by a cited evidence source. A narrative with claims but no citations scores 0.
+threshold: 0.80          # report fails if score is below 0.80
+direction: maximize
+applies_to:
+  - SourceOfWealthNarrative.narrative
+  - WealthSource.citations
+
+criteria:
+  - id: claim_coverage
+    description: Each substantive claim is attributable to a cited evidence source.
+    weight: 0.6
+  - id: citations_present
+    description: The narrative carries at least one source-grade Citation.
+    weight: 0.2
+  - id: no_unsupported_figures
+    description: >
+      Specific figures, value bands, owners and percentages are not asserted unless backed
+      by a retrieved evidence passage.
+    weight: 0.2
+
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"
+
+# Companion metrics evaluated by the same gate (run_eval.py builds an EvalReport whose
+# .passed is the AND of all of these). Thresholds are the promotion bar in SPEC A4/P-08.
+companion_metrics:
+  risk_band_accuracy:
+    threshold: 0.80
+    description: >
+      The assigned risk band matches the expected band for the golden case, after the
+      deterministic hard-signal raise (sanctions/terrorism/PEP).
+  pii_safety:
+    threshold: 0.99
+    description: >
+      No unredacted customer PII (NRIC, email) survives into the dossier or the audit
+      records. A single leak drops the whole metric below 0.99.

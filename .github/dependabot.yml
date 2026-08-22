@@ -1,0 +1,40 @@
+# Automated dependency updates for every ecosystem the repo pins.
+#
+# Pairs with the committed lockfiles (requirements-*.lock), the digest-pinned base
+# image (Dockerfile) and the SHA-pinned GitHub Actions: dependabot proposes the bumps,
+# CI's supply-chain job (pip-audit + npm audit) and the normal gate decide.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: daily
+    groups:
+      python-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /ui
+    schedule:
+      interval: daily
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Next.js cannot detect TypeScript 7. The package's "." export now resolves to
+      # lib/version.cjs and no longer exposes the compiler API that `next build` calls, so
+      # the build fails with "trying to use TypeScript but do not have the required
+      # package(s) installed". There is no app-side migration for this; it needs Next.js to
+      # add TypeScript 7 support. Minor and patch updates on 5.x still come through.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

@@ -1,0 +1,130 @@
+"""Gemini adverse-media adapter (AdverseMediaPort).
+
+Scans public-web negative news for a subject via the Gemini API ``google_search``
+grounding tool on the Gemini Enterprise Agent Platform. Per the one-built-in-tool-per
+agent rule, ``google_search`` is isolated here (and in the agent layer, in its own
+sub-agent). The model is prompted to return structured adverse-media hits, which are
+mapped onto domain :class:`AdverseMediaFinding` objects with a ``MEDIA`` citation.
+
+All Google GenAI SDK imports are lazy so the on-prem / test profile imports this module
+without ``google-genai`` installed.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+from ...config import Settings
+from ...domain._grounded import parse_json_object
+from ...domain.models import (
+    AdverseMediaCategory,
+    AdverseMediaFinding,
+    Citation,
+    Severity,
+    SourceType,
+)
+
+if TYPE_CHECKING:  # pragma: no cover - typing only, never imported at runtime
+    from google import genai
+
+_CATEGORY_BY_VALUE = {c.value: c for c in AdverseMediaCategory}
+_SEVERITY_BY_VALUE = {s.value: s for s in Severity}
+
+_PROMPT = (
+    "Search public-web news for adverse media on the subject named below. Return only "
+    "credible negative-news hits relevant to financial crime (fraud, corruption, "
+    "sanctions, money laundering, terrorism). For each hit give headline, publisher, "
+    "url, published_date (ISO), category (one of fraud, corruption, sanctions, "
+    "money_laundering, terrorism, other), severity (low, medium, high, critical) and a "
+    "short snippet. If there is no credible adverse media, return an empty list.\n\n"
+    'Return strictly JSON: {{"findings": [ ... ]}}.\n\nSubject: {subject_name}'
+)
+
+
+class GeminiAdverseMediaAdapter:
+    """Adverse-media scanning via Gemini ``google_search`` grounding."""
+
+    def __init__(self, settings: Settings) -> None:
+        self._settings = settings
+        self._models = settings.models
+        self._enabled = settings.grounding_enabled
+        self._client: Any | None = None
+
+    def _get_client(self) -> genai.Client:
+        if self._client is None:
+            from google import genai
+
+            self._client = genai.Client(
+                vertexai=True,
+                project=self._settings.project_id,
+                location=self._settings.region,
+            )
+        return self._client
+
+    def search(self, subject_name: str, max_results: int = 10) -> list[AdverseMediaFinding]:
+        """Return adverse-media findings for ``subject_name`` (empty if disabled)."""
+        if not self._enabled:
+            return []
+        from google.genai import types
+
+        client = self._get_client()
+        response = client.models.generate_content(
+            model=self._models.triage,
+            # A single Content, not a one-element list: the SDK accepts both, and the
+            # bare form types cleanly (list[Content] is invariant against the union).
+            contents=types.Content(
+                role="user",
+                parts=[types.Part.from_text(text=_PROMPT.format(subject_name=subject_name))],
+            ),
+            config=types.GenerateContentConfig(
+                temperature=0.0,
+                tools=[types.Tool(google_search=types.GoogleSearch())],
+            ),
+        )
+        return self._parse(getattr(response, "text", "") or "")[:max_results]
+
+    @staticmethod
+    def _parse(text: str) -> list[AdverseMediaFinding]:
+        # Tolerant read: a model using the google_search tool cannot also be put in JSON
+        # mode, so it answers with a fenced block or a sentence of preamble. Parsing that
+        # strictly returns "no adverse media found", which is indistinguishable from a
+        # clean subject and is the one wrong answer this scan must never give silently.
+        data = parse_json_object(text)
+        raw_findings = data.get("findings")
+        if not isinstance(raw_findings, list):
+            return []
+        out: list[AdverseMediaFinding] = []
+        for raw in raw_findings:
+            if not isinstance(raw, dict):
+                continue
+            headline = str(raw.get("headline") or "").strip()
+            if not headline:
+                continue
+            url = str(raw.get("url") or "").strip()
+            category = _CATEGORY_BY_VALUE.get(
+                str(raw.get("category") or "").lower(), AdverseMediaCategory.OTHER
+            )
+            severity = _SEVERITY_BY_VALUE.get(
+                str(raw.get("severity") or "").lower(), Severity.MEDIUM
+            )
+            snippet = str(raw.get("snippet") or "").strip()
+            citation = Citation(
+                source_id=f"media:{url or headline}",
+                source_type=SourceType.MEDIA,
+                title=headline,
+                url=url,
+                snippet=snippet,
+            )
+            out.append(
+                AdverseMediaFinding(
+                    headline=headline,
+                    publisher=str(raw.get("publisher") or "").strip(),
+                    url=url,
+                    published_date=raw.get("published_date"),
+                    category=category,
+                    severity=severity,
+                    snippet=snippet,
+                    citation=citation,
+                )
+            )
+        return out

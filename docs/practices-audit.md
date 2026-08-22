@@ -1,0 +1,76 @@
+# Common-base practices audit
+
+- **Repo:** `cdd-sow-research`
+- **Catalog id:** Doc1 (package `cdd_sow_research`, env prefix `CDD`)
+- **Catalogue reference:** [`common-base-practices.md`](https://github.com/portable-genai/.github/blob/main/common-base-practices.md) (checks A1..G7)
+- **Note:** This is the **reference repo** the catalogue was written from: its "Here:" evidence
+  lines cite this repo's paths. Each check below was re-run against the current tree rather than
+  assumed; the one non-PASS-worthy item (G7) is flagged as a minor drift, not a gap.
+
+Applicability: Doc1 ships a UI (`ui/`) and Terraform (`infra/terraform/`), so `[ui]` and
+`[infra]` checks apply. **Load-bearing** checks (a FAIL breaks a shared catalog guarantee) are
+A1-A6, C1-C5, D1-D3 and E1; all are PASS here.
+
+| Check | Verdict | Evidence / gap |
+|---|---|---|
+| **A1** Hexagonal core, stdlib-only domain `[all]` **(load-bearing)** | PASS | `grep -rE "google\|fastapi\|httpx\|pydantic\|boto3\|azure" src/cdd_sow_research/domain/` returns nothing. |
+| **A2** Ports are `@runtime_checkable` Protocols, re-exported once `[all]` **(load-bearing)** | PASS | All 21 ports are re-exported from `ports/__init__.py`; the parity test enforces protocol conformance and exact set equality with `settings.adapters`. |
+| **A3** Runtime/data profiles are explicitly swappable `[all]` **(load-bearing)** | PASS | `CDD_PROFILE = local\|live\|gcp\|platform\|onprem`; per-port `adapters:` map in `config/settings.yaml`; offline suite runs on `pip install -e ".[dev]"` with no GCP SDK. Identity and channel are exact independent selectors, and no runtime/data binding falls through implicitly. |
+| **A4** One adapter constructor `Adapter(settings)` `[all]` **(load-bearing)** | PASS | `tests/contract/test_port_parity.py::test_adapter_constructs_with_single_settings_arg` parametrises over `SDK_FREE_PROFILES` x every port. |
+| **A5** Lazy cloud imports in cloud adapters `[all]` **(load-bearing)** | PASS | `grep -n "^from google\|^import google" src/cdd_sow_research/adapters/gcp/*.py` returns nothing; offline leg imports all modules. |
+| **A6** Contract tests enforce the hexagon; port map cannot drift `[all]` **(load-bearing)** | PASS | `test_port_parity.py` (incl. `test_port_protocols_matches_settings_adapters`) + `test_behavioral_parity.py` both present. |
+| **A7** Kernel vs vertical split in the domain `[all]` | PASS | `domain/kernel.py` (neutral machinery) vs `domain/models.py`; `models.py` imports `from .kernel import (...)`, not vice versa. |
+| **A8** Consume platform horizontals via thin delegates `[all]` | PASS | `adapters/platform/remote_*.py` are 54-124 lines, marshalling only; each horizontal concern (guardrail, redaction, KB, compliance, audit, evaluation, registry, tracer) has a `platform` binding. |
+| **B1** Consequential math is deterministic, pure, replayable `[agentic]` | PASS | `domain/gap_analysis.py`, `scorecard_service.py`, `source_of_funds_service.py`, `periodic_review_service.py`, `screening.py`, `perpetual_kyc.py`: pure stdlib, unit-tested; LLM narrates only. `perpetual_kyc.py` takes no clock (the caller supplies `as_of`), so a run is byte-identical on replay (`test_perpetual_kyc.py::test_assessment_is_replayable`). |
+| **B2** Every claim carries a citation; empty retrieval is a hard error `[agentic]` | PASS | `Citation` (kernel) on claim-bearing models; `domain/_grounded.py`; empty passages raise rather than answer ungrounded. |
+| **B3** Maker-checker on every consequential output `[agentic]` | PASS | `requires_human_review: bool = True` default on the output models (including `PerpetualKycAssessment` and `ReviewQueueItem`); `review_policy.requires_review()` always True; escalation only raises the bar; the perpetual-KYC outcome is routed via `ReviewRouterPort.route_monitoring` and never acted on. Asserted in `test_cdd_service.py`, `test_sub_services.py`, `test_perpetual_kyc.py`, `test_perpetual_kyc_routes.py`, `test_review_routing.py`. |
+| **B4** Bank-owned policy numbers in config, defaults = reference `[all]` | PASS | `domain/policy.py` frozen dataclasses (incl. `PerpetualKycPolicy`); `from_policy(...)` constructors across engines; `settings.yaml policy:`; `tests/unit/test_risk_policy.py` covers default + override, `test_perpetual_kyc.py` proves the pKYC uplifts, cap and SLA days come from policy. |
+| **B5** Open taxonomy: `StrEnum` vocabularies, engines typed on `str` `[all]` | PASS | `DocType`/`WealthSourceKind`/`FundsOriginKind` are `StrEnum`; `test_risk_policy.py::test_engine_accepts_extended_taxonomy_kind`. |
+| **C1** Identity resolved server-side; client actor/ACL discarded `[all]` **(load-bearing)** | PASS | `api/schemas.py` documents "no `actor` field"; `api/security.py` + `domain/identity.py` resolve a verified Principal per route. |
+| **C2** Object-level authz derived server-side; tenant isolation by data tags `[all]` **(load-bearing)** | PASS | ACL contract on `ports/knowledge_base.py`, `ports/case_store.py` and `ports/monitoring.py`; subset/fail-closed matchers (`case:`/`tenant:`) in local + gcp KB, case and monitoring stores; `entitlements.queue_scope`/`queue_acl_ok` fail closed on a listing with no tenant; cross-tenant tests get 403/zero (`test_case_store_acl_and_serialization.py`, `test_sow_case_routes.py`, `test_perpetual_kyc_routes.py`, `test_monitoring_store.py`). |
+| **C3** Redact before everything `[agentic]` **(load-bearing)** | PASS | Redaction is the first step of `CddService.assess`; audit stores `redacted_prompt`/`redacted_response` only. |
+| **C4** Jurisdiction-driven PII packs keep the gate honest `[agentic]` **(load-bearing)** | PASS | `domain/pii_patterns.py` (SG/IN/GB/HK/ID/MY/AU), `pii.jurisdictions` setting, `CDD_PII_JURISDICTIONS`; `test_pii_jurisdictions.py` proves no false-green cross-jurisdiction masking. |
+| **C5** Fail-closed defaults everywhere `[all]` **(load-bearing)** | PASS | `api/app.py main()` binds loopback unless `CDD_ALLOW_INSECURE_DEMO=1`; `_cors_origins()` profile-gated; `Makefile API_HOST ?= 127.0.0.1`. |
+| **C6** Security-header baseline on every surface `[ui]` | PASS | `api/app.py` sets CSP `frame-ancestors`, `nosniff`, `Referrer-Policy`, HSTS on secure profiles. Console: one policy module (`ui/lib/csp.mjs`) emitted from one point (`ui/proxy.ts`) with a per-request nonce plus `'strict-dynamic'` and no production `'unsafe-inline'` in `script-src`; `ui/next.config.mjs` emits no CSP and refuses a build whose route is prerendered; `ui/scripts/assert-hydratable.mjs` proves the served console AND embed documents hydrate under it. |
+| **C7** S2S calls authenticated, https-only outside loopback `[all]` | PASS | `adapters/platform/_s2s.py` rejects plaintext non-loopback URLs at construction; attaches `Authorization: Bearer` + signed actor header. |
+| **C8** Web login flow hardening `[ui]` | PASS | `api/auth.py` + `adapters/oidc/*` (Auth Code + PKCE, JWKS, session token); `test_oidc_auth_flow.py`, `test_oidc_session_identity.py`. |
+| **C9** Tamper-evident audit with honest limits `[all]` | PASS | `adapters/local/audit.py`: SHA-256 hash chain, append-only triggers, external anchor, JSON Lines export/restore; docstring states detected vs undetected tamper classes; `cdd-sow audit verify\|export\|restore`. |
+| **C10** No secret values in the repo `[all]` | PASS | `config/settings.yaml` stores only `*_env` names; literal-secret grep is clean. |
+| **D1** Locked, reproducible installs everywhere `[all]` **(load-bearing)** | PASS | `requirements-dev.lock`, `requirements-dev-oidc.lock`, `requirements-gcp.lock`; `ruff==0.15.18` exact; Dockerfile `pip install -r requirements-gcp.lock && pip install --no-deps .`. |
+| **D2** Digest-pinned images, SHA-pinned Actions, dependabot, CI audit `[all]` **(load-bearing)** | PASS | `FROM python:3.12-slim@sha256:...`; no unpinned `uses:`; `dependabot.yml` covers pip/npm/docker/github-actions; CI runs `pip-audit` (both locks) + `npm audit --audit-level=high`. |
+| **D3** Whole gate runs offline, zero org secrets `[all]` **(load-bearing)** | PASS | `ci.yaml` + `eval-gate.yaml` set `CDD_PROFILE: local`, no `secrets.` references. |
+| **D4** Non-root, minimal, healthchecked container `[infra]` | PASS | `Dockerfile`: `USER appuser` (uid 10001), `HEALTHCHECK` on `/healthz`, `EXPOSE 8090`, `CDD_PROFILE=gcp`; slim runtime stage. |
+| **D5** Deploy-time residency/sovereignty, parameterised `[infra]` | PASS | `infra/terraform/*` pins the allowlist-validated `var.region` (default `us-central1`), org policy, CMEK, VPC-SC, WORM log bucket; CI `terraform fmt -check` + `validate` runs offline (`-backend=false`). |
+| **E1** Offline eval smoke guards merge; Hrz4 owns promotion `[agentic]` **(load-bearing)** | PASS | `eval/run_eval.py --mode smoke\|gate`; smoke thresholds in `eval/rubrics/*.yaml`; `--mode gate` routes through `EvaluationGatePort` to Hrz4; `eval-gate.yaml` runs `--mode smoke` per PR; `promotion-gate.yaml` for the managed leg. |
+| **E2** Safety metric with strictest threshold, no false green `[agentic]` | PASS | `pii_safety >= 0.99`; `eval/run_eval.py` imports `domain.pii_patterns` so the gate detector and the runtime redactor share one pattern source. `pkyc_priority >= 0.90` is scored against the golden set's own `expected_priority` / `expected_delta_direction` (an independent oracle, not a re-read of the engine) and `test_eval_perpetual_kyc_can_go_red.py` proves per change kind that a mis-tuned engine drives it red via `agent_eval_kit.assert_each_can_go_red`. |
+| **E3** Fixtures and golden data obviously fictional `[all]` | PASS | `eval/datasets/golden_cases.jsonl` uses "Acme Logistics Holdings (FICTIONAL)" etc.; the perpetual-KYC fixtures and the bundled sanctions/adverse-media snapshots are equally fictional; DEMO.md / COMPLIANCE.md state that a fixture hit is never a determination about a real party. |
+| **F1** Demo is code, offline, one command, presenter-paced `[all]` | PASS | `make demo` -> `scripts/sow_demo_playwright.py` + `scripts/sow_demo_server.py` (real `SowCaseService`); no cloud or API key. |
+| **F2** Demo cannot rot silently `[all]` | PASS | `demo-selftest` job in `ci.yaml`; `tests/unit/test_demo_server.py`; `[demo]` extra pins Playwright; `data-panel` hooks in `scripts/render_sow_ui.py`. |
+| **F3** Portability claim is executable `[all]` | PASS (bounded) | `scripts/portability_demo.py` gates the runtime/data-port map parity, the local runtime seam, audit integrity, export/reload, separately selected local identity, and now a sixth act plus a fourth scoreboard question covering CASE data: the `cdd-case-bundle/v1` archive carrying the dossier and every source document's original bytes exports, reloads on a FRESH document store with ids and digests intact, refuses a swapped document by its own digest, and refuses a consistently rewritten bundle by the manifest digest carried out of band. `scripts/embed_portability_demo.py` gates channel and identity across two hosts, RSA/EC issuers with rotation, Modes 4/5, and three browsers. Neither proves a working sovereign runtime, complete data exit, target production hosting, or whole-system portability. |
+| **G1** Declared doc authority order, kept true `[all]` | PASS | AGENTS.md declares SPEC > ARCHITECTURE > COMPLIANCE > README; SPEC.md has no stale "forthcoming/not built" for shipped features. |
+| **G2** Compliance mapping table + adopter-owned crosswalk `[all]` | PASS | COMPLIANCE.md maps P-01..P-12 / R1..R6 to files; MAS Notice 626 crosswalk appendix marked adopter-owned. |
+| **G3** Documented, mechanised fork path `[all]` | PASS | `docs/ADOPTING.md` + `scripts/rename_fork.py` (`--dry-run` previews; writes only on `--yes`). |
+| **G4** Retired `[all]` | N-A (retired) | Retired practice. Releases are tracked by git tag and the `pyproject.toml` version. |
+| **G5** Role-specific FAQs referencing sibling systems `[all]` | PASS | `docs/faq/` (index + 5 files); security/compliance/features/portability FAQs cross-reference Hrz1-5 / Rsk1; adoption FAQ covers fork mechanics (no adjacent horizontal to name). |
+| **G6** Contribution docs cover full extension touch list `[all]` | PASS | CONTRIBUTING.md has "Adding an adapter" and "Adding a new port or sub-service"; enforced by `test_port_protocols_matches_settings_adapters`. |
+| **G7** Markdown discipline: minimise em-dashes, validate mermaid `[all]` | PASS (minor drift) | Core product docs (README, SPEC, ARCHITECTURE, COMPLIANCE, DEMO, CONTRIBUTING) are at 0 em-dashes. Residual em-dashes remain in AGENTS.md and some historical planning docs; the corrected embedding design and implementation plan contain none. Convention is "minimise", non-load-bearing. |
+
+**Verdict counts:** 40 PASS, 0 PARTIAL, 0 FAIL, 1 N-A (G7 flagged as minor drift, still PASS). Every
+load-bearing check (A1-A6, C1-C5, D1-D3, E1) is a full PASS.
+
+## Gaps carried to systems/
+
+One combined production-enablement and exit gap remains, already recorded on the Doc1 row of
+the maintainer's per-system register:
+
+- **Modes 4/5 implementation and synthetic conformance complete; production enablement
+  remains.** The full synthetic gate passes the immutable artifact, strict MessagePort,
+  authenticated transport and viewer, Mode 4 direct-token, Mode 5 BFF/PKCE/token/outbox,
+  Mode 6 fallback, RSA/EC rotation, negative-path, leak-scan, and three-browser checks.
+  This evidence is bounded to channel and identity. Named IdP/BFF registrations,
+  DNS/TLS/hosting, shared BrowserFlow/JTI stores, key custody/rotation, approved origins/CSP,
+  target-host browser evidence, and a separately deployed Mode 6 fallback remain. Working
+  on-premises adapters and complete case/document export plus restore/reload remain separate
+  gaps. See [`embedding-and-identity.md`](embedding-and-identity.md) and
+  [`embedding-implementation-plan.md`](embedding-implementation-plan.md). This is a
+  quality-of-adoption gap, not a load-bearing one.

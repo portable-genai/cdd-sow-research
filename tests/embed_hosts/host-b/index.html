@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self' http://127.0.0.1:3200; frame-src http://127.0.0.1:3200; style-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"
+    >
+    <meta name="referrer" content="no-referrer">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Synthetic bank host B</title>
+    <link rel="stylesheet" href="./styles.css">
+    <script
+      src="http://127.0.0.1:3200/agent/embed/v1/cdd-agent.js"
+      integrity="sha384-ztNjrO18CwWxByvOW2TiizG3Y+CzNp9IQZvbQ1otmbQzPyQMnuinRWlYTl014xIp"
+      crossorigin="anonymous"
+      defer
+    ></script>
+    <script src="./host.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <h1>Synthetic bank host B</h1>
+      <p id="status" role="status">Waiting for Doc1</p>
+      <p>Portable artifact: <code id="artifact-digest">sha384-ztNjrO18CwWxByvOW2TiizG3Y+CzNp9IQZvbQ1otmbQzPyQMnuinRWlYTl014xIp</code></p>
+      <cdd-agent installation-id="inst_host_b" title="Doc1 in host B" height="640"></cdd-agent>
+    </main>
+  </body>
+</html>

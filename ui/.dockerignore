@@ -1,0 +1,17 @@
+# The UI image build context is ui/ (docker build --file ui/Dockerfile ui). Keep host-built
+# artefacts out of it: the builder stage runs its own `npm ci`, and copying a developer's
+# platform-specific node_modules or a stale .next over that produces an image that does not
+# match a clean checkout.
+node_modules/
+.next/
+out/
+tsconfig.tsbuildinfo
+
+# Secrets / env / editor / OS cruft
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/
+*.swp
+.DS_Store

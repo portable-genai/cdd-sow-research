@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CDD + Source of Wealth Agent - cost & latency calculator</title>
+<script>(function(){try{var t=localStorage.getItem('calc-theme')||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script>
+  // Shared engine + pricing live once, in github.com/portable-genai/cost-latency-calculator.
+  // engine/app/styles/systems are pinned to the v1 release; prices.json tracks main so refreshes propagate.
+  window.CALC_SYSTEM = 'Doc1';
+  window.CALC_BASE = 'https://cdn.jsdelivr.net/gh/portable-genai/cost-latency-calculator';
+  window.CALC_REF = 'v1';
+  window.CALC_PRICES_REF = 'main';
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/portable-genai/cost-latency-calculator@v1/calc/styles.css">
+</head>
+<body>
+<div id="calc-root" style="padding:24px;font:15px system-ui;color:#888">Loading the cost &amp; latency calculator (from the shared engine)...</div>
+<script src="https://cdn.jsdelivr.net/gh/portable-genai/cost-latency-calculator@v1/calc/engine.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/portable-genai/cost-latency-calculator@v1/calc/app.js"></script>
+</body>
+</html>

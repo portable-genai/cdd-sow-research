@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "deployment_manifest_id": "doc1-synthetic-host-proof",
+  "build_id": "doc1-ui-synthetic-build",
+  "installations": {
+    "inst_host_a": {
+      "tenant": "synthetic-bank",
+      "parent_origins": [
+        "http://127.0.0.1:4101"
+      ],
+      "resource_audience": "https://doc1.synthetic.example/api",
+      "scopes": [
+        "cdd.read",
+        "cdd.write",
+        "documents.read",
+        "documents.write"
+      ],
+      "identity_mode": "oauth-access-token",
+      "issuer_policy_id": "synthetic-access-token",
+      "allowed_clients": [
+        "synthetic-host-a"
+      ],
+      "protocol_versions": [
+        "1"
+      ],
+      "public_origin": "http://127.0.0.1:3200",
+      "public_mount_path": "/agent",
+      "loader_version": "v1",
+      "fallback_url": "http://127.0.0.1:3300/agent/",
+      "presentation_defaults": {
+        "theme": "light",
+        "density": "comfortable"
+      }
+    },
+    "inst_host_b": {
+      "tenant": "synthetic-bank",
+      "parent_origins": [
+        "http://127.0.0.1:4102"
+      ],
+      "resource_audience": "https://doc1.synthetic.example/api",
+      "scopes": [
+        "cdd.read",
+        "cdd.write",
+        "documents.read",
+        "documents.write"
+      ],
+      "identity_mode": "oauth-access-token",
+      "issuer_policy_id": "synthetic-access-token",
+      "allowed_clients": [
+        "synthetic-host-b"
+      ],
+      "protocol_versions": [
+        "1"
+      ],
+      "public_origin": "http://127.0.0.1:3200",
+      "public_mount_path": "/agent",
+      "loader_version": "v1",
+      "fallback_url": "http://127.0.0.1:3300/agent/",
+      "presentation_defaults": {
+        "theme": "system",
+        "density": "compact"
+      }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self' http://127.0.0.1:3210; frame-src http://127.0.0.1:3210; style-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'"
+    >
+    <meta name="referrer" content="no-referrer">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Synthetic Mode 5 BFF host</title>
+    <link rel="stylesheet" href="./styles.css">
+    <script
+      src="http://127.0.0.1:3210/agent/embed/v1/cdd-agent.js"
+      integrity="sha384-ztNjrO18CwWxByvOW2TiizG3Y+CzNp9IQZvbQ1otmbQzPyQMnuinRWlYTl014xIp"
+      crossorigin="anonymous"
+      defer
+    ></script>
+    <script src="./mode5.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <h1>Institution BFF embedded grant</h1>
+      <p id="status" role="status">Waiting for the registered iframe</p>
+      <p>
+        The iframe owns PKCE and the Doc1 token. The host receives only a bounded
+        registration reference and launch code.
+      </p>
+      <cdd-agent installation-id="inst_mode5" title="Doc1 Mode 5 evidence"></cdd-agent>
+    </main>
+  </body>
+</html>

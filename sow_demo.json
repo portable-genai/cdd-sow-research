@@ -1,0 +1,1525 @@
+{
+  "case_id": "acme-holdings",
+  "subject": {
+    "id": "acme-holdings",
+    "name": "Acme Holdings Pte Ltd (FICTIONAL)",
+    "type": "entity",
+    "jurisdiction": "SG",
+    "dob_or_incorp": null
+  },
+  "iterations": [
+    {
+      "no": 0,
+      "as_of": "2026-01-15",
+      "status_after": "rfi_pending",
+      "added_evidence": [
+        {
+          "id": "spa-2019",
+          "doc_type": "other",
+          "supports": [
+            "business_ownership"
+          ],
+          "evidenced_band": "USD 25m-50m",
+          "doc_date": "2019-06-01",
+          "provided_by": "client"
+        },
+        {
+          "id": "broker-2023",
+          "doc_type": "fin_statement",
+          "supports": [
+            "investments"
+          ],
+          "evidenced_band": "USD 10m-25m",
+          "doc_date": "2023-03-01",
+          "provided_by": "client"
+        }
+      ],
+      "audit_view": {
+        "subject_id": "acme-holdings",
+        "narrative": {
+          "subject_id": "acme-holdings",
+          "narrative": "The subject's wealth is attributed to 4 declared source(s); 2 carry corroborating evidence. Evidenced USD 35m-75m against a declared USD 60m-100m net worth (69% coverage).",
+          "sources": [
+            {
+              "kind": "business_ownership",
+              "description": "Business Ownership evidenced at USD 25m-50m (declared USD 25m-50m)",
+              "est_value_band": "USD 25m-50m",
+              "citations": [
+                {
+                  "source_id": "spa-2019",
+                  "source_type": "document",
+                  "title": "Share Purchase Agreement",
+                  "url": "",
+                  "page": 4,
+                  "snippet": "",
+                  "score": null
+                }
+              ]
+            },
+            {
+              "kind": "employment",
+              "description": "Employment evidenced at no figure yet (declared USD 5m-10m)",
+              "est_value_band": "",
+              "citations": []
+            },
+            {
+              "kind": "investments",
+              "description": "Investments evidenced at USD 10m-25m (declared USD 10m-25m)",
+              "est_value_band": "USD 10m-25m",
+              "citations": [
+                {
+                  "source_id": "broker-2023",
+                  "source_type": "document",
+                  "title": "Brokerage statement 2023",
+                  "url": "",
+                  "page": 2,
+                  "snippet": "",
+                  "score": null
+                }
+              ]
+            },
+            {
+              "kind": "inheritance",
+              "description": "Inheritance evidenced at no figure yet (declared USD 2m-5m)",
+              "est_value_band": "",
+              "citations": []
+            }
+          ],
+          "citations": [
+            {
+              "source_id": "spa-2019",
+              "source_type": "document",
+              "title": "Share Purchase Agreement",
+              "url": "",
+              "page": 4,
+              "snippet": "",
+              "score": null
+            },
+            {
+              "source_id": "broker-2023",
+              "source_type": "document",
+              "title": "Brokerage statement 2023",
+              "url": "",
+              "page": 2,
+              "snippet": "",
+              "score": null
+            }
+          ],
+          "confidence": 0.69,
+          "requires_human_review": true
+        },
+        "groups": [
+          {
+            "kind": "business_ownership",
+            "declared_band": "USD 25m-50m",
+            "evidenced_band": "USD 25m-50m",
+            "corroborated": true,
+            "evidence_ids": [
+              "spa-2019"
+            ],
+            "citations": [
+              {
+                "source_id": "spa-2019",
+                "source_type": "document",
+                "title": "Share Purchase Agreement",
+                "url": "",
+                "page": 4,
+                "snippet": "",
+                "score": null
+              }
+            ]
+          },
+          {
+            "kind": "employment",
+            "declared_band": "USD 5m-10m",
+            "evidenced_band": "",
+            "corroborated": false,
+            "evidence_ids": [],
+            "citations": []
+          },
+          {
+            "kind": "investments",
+            "declared_band": "USD 10m-25m",
+            "evidenced_band": "USD 10m-25m",
+            "corroborated": true,
+            "evidence_ids": [
+              "broker-2023"
+            ],
+            "citations": [
+              {
+                "source_id": "broker-2023",
+                "source_type": "document",
+                "title": "Brokerage statement 2023",
+                "url": "",
+                "page": 2,
+                "snippet": "",
+                "score": null
+              }
+            ]
+          },
+          {
+            "kind": "inheritance",
+            "declared_band": "USD 2m-5m",
+            "evidenced_band": "",
+            "corroborated": false,
+            "evidence_ids": [],
+            "citations": []
+          }
+        ],
+        "reconciliation": {
+          "lines": [
+            {
+              "kind": "business_ownership",
+              "declared_band": "USD 25m-50m",
+              "evidenced_band": "USD 25m-50m",
+              "delta_note": "100% of the declared band is evidenced.",
+              "coverage_pct": 1.0,
+              "corroborated": true,
+              "citations": [
+                {
+                  "source_id": "spa-2019",
+                  "source_type": "document",
+                  "title": "Share Purchase Agreement",
+                  "url": "",
+                  "page": 4,
+                  "snippet": "",
+                  "score": null
+                }
+              ]
+            },
+            {
+              "kind": "employment",
+              "declared_band": "USD 5m-10m",
+              "evidenced_band": "",
+              "delta_note": "Declared but unevidenced.",
+              "coverage_pct": 0.0,
+              "corroborated": false,
+              "citations": []
+            },
+            {
+              "kind": "investments",
+              "declared_band": "USD 10m-25m",
+              "evidenced_band": "USD 10m-25m",
+              "delta_note": "100% of the declared band is evidenced.",
+              "coverage_pct": 1.0,
+              "corroborated": true,
+              "citations": [
+                {
+                  "source_id": "broker-2023",
+                  "source_type": "document",
+                  "title": "Brokerage statement 2023",
+                  "url": "",
+                  "page": 2,
+                  "snippet": "",
+                  "score": null
+                }
+              ]
+            },
+            {
+              "kind": "inheritance",
+              "declared_band": "USD 2m-5m",
+              "evidenced_band": "",
+              "delta_note": "Declared but unevidenced.",
+              "coverage_pct": 0.0,
+              "corroborated": false,
+              "citations": []
+            }
+          ],
+          "declared_total_band": "USD 60m-100m",
+          "evidenced_total_band": "USD 35m-75m",
+          "coverage_pct": 0.6875,
+          "consistency_notes": [
+            "Uncorroborated sources: employment, inheritance.",
+            "Unevidenced headroom up to USD 0-65m against the declared net worth."
+          ]
+        },
+        "gaps": [
+          {
+            "id": "gap-missing-employment",
+            "kind": "missing_corroboration",
+            "severity": "high",
+            "summary": "Declared employment has no corroborating evidence.",
+            "related_kind": "employment",
+            "evidence_ids": [],
+            "detail": "No submitted document with a citation supports this declared source."
+          },
+          {
+            "id": "gap-missing-inheritance",
+            "kind": "missing_corroboration",
+            "severity": "high",
+            "summary": "Declared inheritance has no corroborating evidence.",
+            "related_kind": "inheritance",
+            "evidence_ids": [],
+            "detail": "No submitted document with a citation supports this declared source."
+          },
+          {
+            "id": "gap-mandatory-business_ownership",
+            "kind": "missing_mandatory_doc",
+            "severity": "medium",
+            "summary": "Business Ownership is missing a required document (registry_extract).",
+            "related_kind": "business_ownership",
+            "evidence_ids": [
+              "spa-2019"
+            ],
+            "detail": "Policy requires registry_extract for this source kind; none is on file."
+          },
+          {
+            "id": "gap-stale-investments",
+            "kind": "stale_evidence",
+            "severity": "medium",
+            "summary": "Evidence for investments is older than 180 days.",
+            "related_kind": "investments",
+            "evidence_ids": [
+              "broker-2023"
+            ],
+            "detail": "Most recent supporting document is dated 2023-03-01; a refresh within the 180-day window is required."
+          },
+          {
+            "id": "gap-unreconciled-total",
+            "kind": "unreconciled_delta",
+            "severity": "medium",
+            "summary": "Declared net worth is only 69% evidenced.",
+            "related_kind": null,
+            "evidence_ids": [],
+            "detail": "Evidenced USD 35m-75m against declared USD 60m-100m (coverage 69%, tolerance 85%)."
+          }
+        ],
+        "suggested_changes": [],
+        "rfis": [
+          {
+            "id": "rfi-gap-missing-employment",
+            "gap_id": "gap-missing-employment",
+            "ask": "Please provide documentary evidence for the declared employment (e.g. employment letter, payslip, tax return).",
+            "suggested_doc_types": [
+              "employment_letter",
+              "payslip",
+              "tax_return"
+            ],
+            "priority": "high",
+            "status": "draft",
+            "due_date": null,
+            "created_at": "2026-07-08T15:02:28.126523+00:00"
+          },
+          {
+            "id": "rfi-gap-missing-inheritance",
+            "gap_id": "gap-missing-inheritance",
+            "ask": "Please provide documentary evidence for the declared inheritance (e.g. will, grant of probate, estate account).",
+            "suggested_doc_types": [
+              "will",
+              "grant_of_probate",
+              "estate_account"
+            ],
+            "priority": "high",
+            "status": "draft",
+            "due_date": null,
+            "created_at": "2026-07-08T15:02:28.126527+00:00"
+          },
+          {
+            "id": "rfi-gap-mandatory-business_ownership",
+            "gap_id": "gap-mandatory-business_ownership",
+            "ask": "Please provide the required supporting document for business ownership (share purchase agreement, company registry extract, audited accounts).",
+            "suggested_doc_types": [
+              "share_purchase_agreement",
+              "company_registry_extract",
+              "audited_accounts"
+            ],
+            "priority": "medium",
+            "status": "draft",
+            "due_date": null,
+            "created_at": "2026-07-08T15:02:28.126529+00:00"
+          },
+          {
+            "id": "rfi-gap-stale-investments",
+            "gap_id": "gap-stale-investments",
+            "ask": "Please provide an up-to-date version of the document; the one on file is outside the validity window.",
+            "suggested_doc_types": [
+              "brokerage_statement",
+              "portfolio_valuation"
+            ],
+            "priority": "medium",
+            "status": "draft",
+            "due_date": null,
+            "created_at": "2026-07-08T15:02:28.126530+00:00"
+          },
+          {
+            "id": "rfi-gap-unreconciled-total",
+            "gap_id": "gap-unreconciled-total",
+            "ask": "Please explain and evidence the difference between your declared net worth and the documents provided so far.",
+            "suggested_doc_types": [],
+            "priority": "medium",
+            "status": "draft",
+            "due_date": null,
+            "created_at": "2026-07-08T15:02:28.126531+00:00"
+          }
+        ],
+        "related_parties": null,
+        "screening": null,
+        "scorecard": null,
+        "source_of_funds": null,
+        "monitoring": null,
+        "generated_at": "2026-07-08T15:02:28.126535+00:00"
+      }
+    },
+    {
+      "no": 1,
+      "as_of": "2026-02-10",
+      "status_after": "rfi_pending",
+      "added_evidence": [
+        {
+          "id": "acra-extract",
+          "doc_type": "registry_extract",
+          "supports": [
+            "business_ownership"
+          ],
+          "evidenced_band": "USD 25m-50m",
+          "doc_date": "2026-01-20",
+          "provided_by": "client"
+        },
+        {
+          "id": "emp-letter",
+          "doc_type": "fin_statement",
+          "supports": [
+            "employment"
+          ],
+          "evidenced_band": "USD 5m-10m",
+          "doc_date": "2026-01-15",
+          "provided_by": "client"
+        },
+        {
+          "id": "probate-2015",
+          "doc_type": "other",
+          "supports": [
+            "inheritance"
+          ],
+          "evidenced_band": "USD 2m-5m",
+          "doc_date": "2015-08-01",
+          "provided_by": "client"
+        }
+      ],
+      "audit_view": {
+        "subject_id": "acme-holdings",
+        "narrative": {
+          "subject_id": "acme-holdings",
+          "narrative": "The subject's wealth is attributed to 4 declared source(s); 4 carry corroborating evidence. Evidenced USD 42m-90m against a declared USD 60m-100m net worth (82% coverage).",
+          "sources": [
+            {
+              "kind": "business_ownership",
+              "description": "Business Ownership evidenced at USD 25m-50m (declared USD 25m-50m)",
+              "est_value_band": "USD 25m-50m",
+              "citations": [
+                {
+                  "source_id": "spa-2019",
+                  "source_type": "document",
+                  "title": "Share Purchase Agreement",
+                  "url": "",
+                  "page": 4,
+                  "snippet": "",
+                  "score": null
+                },
+                {
+                  "source_id": "acra-extract",
+                  "source_type": "document",
+                  "title": "ACRA company extract",
+                  "url": "",
+                  "page": 1,
+                  "snippet": "",
+                  "score": null
+                }
+              ]
+            },
+            {
+              "kind": "employment",
+              "description": "Employment evidenced at USD 5m-10m (declared USD 5m-10m)",
+              "est_value_band": "USD 5m-10m",
+              "citations": [
+                {
+                  "source_id": "emp-letter",
+                  "source_type": "document",
+                  "title": "Employer compensation letter",
+                  "url": "",
+                  "page": 1,
+                  "snippet": "",
+                  "score": null
+                }
+              ]
+            },
+            {
+              "kind": "investments",
+              "description": "Investments evidenced at USD 10m-25m (declared USD 10m-25m)",
+              "est_value_band": "USD 10m-25m",
+              "citations": [
+                {
+                  "source_id": "broker-2023",
+                  "source_type": "document",
+                  "title": "Brokerage statement 2023",
+                  "url": "",
+                  "page": 2,
+                  "snippet": "",
+                  "score": null
+                }
+              ]
+            },
+            {
+              "kind": "inheritance",
+              "description": "Inheritance evidenced at USD 2m-5m (declared USD 2m-5m)",
+              "est_value_band": "USD 2m-5m",
+              "citations": [
+                {
+                  "source_id": "probate-2015",
+                  "source_type": "document",
+                  "title": "Grant of probate",
+                  "url": "",
+                  "page": 3,
+                  "snippet": "",
+                  "score": null
+                }
+              ]
+            }
+          ],
+          "citations": [
+            {
+              "source_id": "spa-2019",
+              "source_type": "document",
+              "title": "Share Purchase Agreement",
+              "url": "",
+              "page": 4,
+              "snippet": "",
+              "score": null
+            },
+            {
+              "source_id": "acra-extract",
+              "source_type": "document",
+              "title": "ACRA company extract",
+              "url": "",
+              "page": 1,
+              "snippet": "",
+              "score": null
+            },
+            {
+              "source_id": "emp-letter",
+              "source_type": "document",
+              "title": "Employer compensation letter",
+              "url": "",
+              "page": 1,
+              "snippet": "",
+              "score": null
+            },
+            {
+              "source_id": "broker-2023",
+              "source_type": "document",
+              "title": "Brokerage statement 2023",
+              "url": "",
+              "page": 2,
+              "snippet": "",
+              "score": null
+            },
+            {
+              "source_id": "probate-2015",
+              "source_type": "document",
+              "title": "Grant of probate",
+              "url": "",
+              "page": 3,
+              "snippet": "",
+              "score": null
+            }
+          ],
+          "confidence": 0.82,
+          "requires_human_review": true
+        },
+        "groups": [
+          {
+            "kind": "business_ownership",
+            "declared_band": "USD 25m-50m",
+            "evidenced_band": "USD 25m-50m",
+            "corroborated": true,
+            "evidence_ids": [
+              "spa-2019",
+              "acra-extract"
+            ],
+            "citations": [
+              {
+                "source_id": "spa-2019",
+                "source_type": "document",
+                "title": "Share Purchase Agreement",
+                "url": "",
+                "page": 4,
+                "snippet": "",
+                "score": null
+              },
+              {
+                "source_id": "acra-extract",
+                "source_type": "document",
+                "title": "ACRA company extract",
+                "url": "",
+                "page": 1,
+                "snippet": "",
+                "score": null
+              }
+            ]
+          },
+          {
+            "kind": "employment",
+            "declared_band": "USD 5m-10m",
+            "evidenced_band": "USD 5m-10m",
+            "corroborated": true,
+            "evidence_ids": [
+              "emp-letter"
+            ],
+            "citations": [
+              {
+                "source_id": "emp-letter",
+                "source_type": "document",
+                "title": "Employer compensation letter",
+                "url": "",
+                "page": 1,
+                "snippet": "",
+                "score": null
+              }
+            ]
+          },
+          {
+            "kind": "investments",
+            "declared_band": "USD 10m-25m",
+            "evidenced_band": "USD 10m-25m",
+            "corroborated": true,
+            "evidence_ids": [
+              "broker-2023"
+            ],
+            "citations": [
+              {
+                "source_id": "broker-2023",
+                "source_type": "document",
+                "title": "Brokerage statement 2023",
+                "url": "",
+                "page": 2,
+                "snippet": "",
+                "score": null
+              }
+            ]
+          },
+          {
+            "kind": "inheritance",
+            "declared_band": "USD 2m-5m",
+            "evidenced_band": "USD 2m-5m",
+            "corroborated": true,
+            "evidence_ids": [
+              "probate-2015"
+            ],
+            "citations": [
+              {
+                "source_id": "probate-2015",
+                "source_type": "document",
+                "title": "Grant of probate",
+                "url": "",
+                "page": 3,
+                "snippet": "",
+                "score": null
+              }
+            ]
+          }
+        ],
+        "reconciliation": {
+          "lines": [
+            {
+              "kind": "business_ownership",
+              "declared_band": "USD 25m-50m",
+              "evidenced_band": "USD 25m-50m",
+              "delta_note": "100% of the declared band is evidenced.",
+              "coverage_pct": 1.0,
+              "corroborated": true,
+              "citations": [
+                {
+                  "source_id": "spa-2019",
+                  "source_type": "document",
+                  "title": "Share Purchase Agreement",
+                  "url": "",
+                  "page": 4,
+                  "snippet": "",
+                  "score": null
+                },
+                {
+                  "source_id": "acra-extract",
+                  "source_type": "document",
+                  "title": "ACRA company extract",
+                  "url": "",
+                  "page": 1,
+                  "snippet": "",
+                  "score": null
+                }
+              ]
+            },
+            {
+              "kind": "employment",
+              "declared_band": "USD 5m-10m",
+              "evidenced_band": "USD 5m-10m",
+              "delta_note": "100% of the declared band is evidenced.",
+              "coverage_pct": 1.0,
+              "corroborated": true,
+              "citations": [
+                {
+                  "source_id": "emp-letter",
+                  "source_type": "document",
+                  "title": "Employer compensation letter",
+                  "url": "",
+                  "page": 1,
+                  "snippet": "",
+                  "score": null
+                }
+              ]
+            },
+            {
+              "kind": "investments",
+              "declared_band": "USD 10m-25m",
+              "evidenced_band": "USD 10m-25m",
+              "delta_note": "100% of the declared band is evidenced.",
+              "coverage_pct": 1.0,
+              "corroborated": true,
+              "citations": [
+                {
+                  "source_id": "broker-2023",
+                  "source_type": "document",
+                  "title": "Brokerage statement 2023",
+                  "url": "",
+                  "page": 2,
+                  "snippet": "",
+                  "score": null
+                }
+              ]
+            },
+            {
+              "kind": "inheritance",
+              "declared_band": "USD 2m-5m",
+              "evidenced_band": "USD 2m-5m",
+              "delta_note": "100% of the declared band is evidenced.",
+              "coverage_pct": 1.0,
+              "corroborated": true,
+              "citations": [
+                {
+                  "source_id": "probate-2015",
+                  "source_type": "document",
+                  "title": "Grant of probate",
+                  "url": "",
+                  "page": 3,
+                  "snippet": "",
+                  "score": null
+                }
+              ]
+            }
+          ],
+          "declared_total_band": "USD 60m-100m",
+          "evidenced_total_band": "USD 42m-90m",
+          "coverage_pct": 0.825,
+          "consistency_notes": [
+            "Unevidenced headroom up to USD 0-58m against the declared net worth."
+          ]
+        },
+        "gaps": [
+          {
+            "id": "gap-stale-investments",
+            "kind": "stale_evidence",
+            "severity": "medium",
+            "summary": "Evidence for investments is older than 180 days.",
+            "related_kind": "investments",
+            "evidence_ids": [
+              "broker-2023"
+            ],
+            "detail": "Most recent supporting document is dated 2023-03-01; a refresh within the 180-day window is required."
+          },
+          {
+            "id": "gap-unreconciled-total",
+            "kind": "unreconciled_delta",
+            "severity": "medium",
+            "summary": "Declared net worth is only 82% evidenced.",
+            "related_kind": null,
+            "evidence_ids": [],
+            "detail": "Evidenced USD 42m-90m against declared USD 60m-100m (coverage 82%, tolerance 85%)."
+          }
+        ],
+        "suggested_changes": [],
+        "rfis": [
+          {
+            "id": "rfi-gap-stale-investments",
+            "gap_id": "gap-stale-investments",
+            "ask": "Please provide an up-to-date version of the document; the one on file is outside the validity window.",
+            "suggested_doc_types": [
+              "brokerage_statement",
+              "portfolio_valuation"
+            ],
+            "priority": "medium",
+            "status": "draft",
+            "due_date": null,
+            "created_at": "2026-07-08T15:02:28.126740+00:00"
+          },
+          {
+            "id": "rfi-gap-unreconciled-total",
+            "gap_id": "gap-unreconciled-total",
+            "ask": "Please explain and evidence the difference between your declared net worth and the documents provided so far.",
+            "suggested_doc_types": [],
+            "priority": "medium",
+            "status": "draft",
+            "due_date": null,
+            "created_at": "2026-07-08T15:02:28.126741+00:00"
+          }
+        ],
+        "related_parties": null,
+        "screening": null,
+        "scorecard": null,
+        "source_of_funds": null,
+        "monitoring": null,
+        "generated_at": "2026-07-08T15:02:28.126743+00:00"
+      }
+    },
+    {
+      "no": 2,
+      "as_of": "2026-03-05",
+      "status_after": "ready_for_review",
+      "added_evidence": [
+        {
+          "id": "broker-2026",
+          "doc_type": "fin_statement",
+          "supports": [
+            "investments"
+          ],
+          "evidenced_band": "USD 15m-30m",
+          "doc_date": "2026-02-25",
+          "provided_by": "client"
+        }
+      ],
+      "audit_view": {
+        "subject_id": "acme-holdings",
+        "narrative": {
+          "subject_id": "acme-holdings",
+          "narrative": "The subject's wealth is attributed to 4 declared source(s); 4 carry corroborating evidence. Evidenced USD 42m-95m against a declared USD 60m-100m net worth (86% coverage).",
+          "sources": [
+            {
+              "kind": "business_ownership",
+              "description": "Business Ownership evidenced at USD 25m-50m (declared USD 25m-50m)",
+              "est_value_band": "USD 25m-50m",
+              "citations": [
+                {
+                  "source_id": "spa-2019",
+                  "source_type": "document",
+                  "title": "Share Purchase Agreement",
+                  "url": "",
+                  "page": 4,
+                  "snippet": "",
+                  "score": null
+                },
+                {
+                  "source_id": "acra-extract",
+                  "source_type": "document",
+                  "title": "ACRA company extract",
+                  "url": "",
+                  "page": 1,
+                  "snippet": "",
+                  "score": null
+                }
+              ]
+            },
+            {
+              "kind": "employment",
+              "description": "Employment evidenced at USD 5m-10m (declared USD 5m-10m)",
+              "est_value_band": "USD 5m-10m",
+              "citations": [
+                {
+                  "source_id": "emp-letter",
+                  "source_type": "document",
+                  "title": "Employer compensation letter",
+                  "url": "",
+                  "page": 1,
+                  "snippet": "",
+                  "score": null
+                }
+              ]
+            },
+            {
+              "kind": "investments",
+              "description": "Investments evidenced at USD 10m-30m (declared USD 10m-25m)",
+              "est_value_band": "USD 10m-30m",
+              "citations": [
+                {
+                  "source_id": "broker-2023",
+                  "source_type": "document",
+                  "title": "Brokerage statement 2023",
+                  "url": "",
+                  "page": 2,
+                  "snippet": "",
+                  "score": null
+                },
+                {
+                  "source_id": "broker-2026",
+                  "source_type": "document",
+                  "title": "Brokerage statement 2026",
+                  "url": "",
+                  "page": 2,
+                  "snippet": "",
+                  "score": null
+                }
+              ]
+            },
+            {
+              "kind": "inheritance",
+              "description": "Inheritance evidenced at USD 2m-5m (declared USD 2m-5m)",
+              "est_value_band": "USD 2m-5m",
+              "citations": [
+                {
+                  "source_id": "probate-2015",
+                  "source_type": "document",
+                  "title": "Grant of probate",
+                  "url": "",
+                  "page": 3,
+                  "snippet": "",
+                  "score": null
+                }
+              ]
+            }
+          ],
+          "citations": [
+            {
+              "source_id": "spa-2019",
+              "source_type": "document",
+              "title": "Share Purchase Agreement",
+              "url": "",
+              "page": 4,
+              "snippet": "",
+              "score": null
+            },
+            {
+              "source_id": "acra-extract",
+              "source_type": "document",
+              "title": "ACRA company extract",
+              "url": "",
+              "page": 1,
+              "snippet": "",
+              "score": null
+            },
+            {
+              "source_id": "emp-letter",
+              "source_type": "document",
+              "title": "Employer compensation letter",
+              "url": "",
+              "page": 1,
+              "snippet": "",
+              "score": null
+            },
+            {
+              "source_id": "broker-2023",
+              "source_type": "document",
+              "title": "Brokerage statement 2023",
+              "url": "",
+              "page": 2,
+              "snippet": "",
+              "score": null
+            },
+            {
+              "source_id": "broker-2026",
+              "source_type": "document",
+              "title": "Brokerage statement 2026",
+              "url": "",
+              "page": 2,
+              "snippet": "",
+              "score": null
+            },
+            {
+              "source_id": "probate-2015",
+              "source_type": "document",
+              "title": "Grant of probate",
+              "url": "",
+              "page": 3,
+              "snippet": "",
+              "score": null
+            }
+          ],
+          "confidence": 0.86,
+          "requires_human_review": true
+        },
+        "groups": [
+          {
+            "kind": "business_ownership",
+            "declared_band": "USD 25m-50m",
+            "evidenced_band": "USD 25m-50m",
+            "corroborated": true,
+            "evidence_ids": [
+              "spa-2019",
+              "acra-extract"
+            ],
+            "citations": [
+              {
+                "source_id": "spa-2019",
+                "source_type": "document",
+                "title": "Share Purchase Agreement",
+                "url": "",
+                "page": 4,
+                "snippet": "",
+                "score": null
+              },
+              {
+                "source_id": "acra-extract",
+                "source_type": "document",
+                "title": "ACRA company extract",
+                "url": "",
+                "page": 1,
+                "snippet": "",
+                "score": null
+              }
+            ]
+          },
+          {
+            "kind": "employment",
+            "declared_band": "USD 5m-10m",
+            "evidenced_band": "USD 5m-10m",
+            "corroborated": true,
+            "evidence_ids": [
+              "emp-letter"
+            ],
+            "citations": [
+              {
+                "source_id": "emp-letter",
+                "source_type": "document",
+                "title": "Employer compensation letter",
+                "url": "",
+                "page": 1,
+                "snippet": "",
+                "score": null
+              }
+            ]
+          },
+          {
+            "kind": "investments",
+            "declared_band": "USD 10m-25m",
+            "evidenced_band": "USD 10m-30m",
+            "corroborated": true,
+            "evidence_ids": [
+              "broker-2023",
+              "broker-2026"
+            ],
+            "citations": [
+              {
+                "source_id": "broker-2023",
+                "source_type": "document",
+                "title": "Brokerage statement 2023",
+                "url": "",
+                "page": 2,
+                "snippet": "",
+                "score": null
+              },
+              {
+                "source_id": "broker-2026",
+                "source_type": "document",
+                "title": "Brokerage statement 2026",
+                "url": "",
+                "page": 2,
+                "snippet": "",
+                "score": null
+              }
+            ]
+          },
+          {
+            "kind": "inheritance",
+            "declared_band": "USD 2m-5m",
+            "evidenced_band": "USD 2m-5m",
+            "corroborated": true,
+            "evidence_ids": [
+              "probate-2015"
+            ],
+            "citations": [
+              {
+                "source_id": "probate-2015",
+                "source_type": "document",
+                "title": "Grant of probate",
+                "url": "",
+                "page": 3,
+                "snippet": "",
+                "score": null
+              }
+            ]
+          }
+        ],
+        "reconciliation": {
+          "lines": [
+            {
+              "kind": "business_ownership",
+              "declared_band": "USD 25m-50m",
+              "evidenced_band": "USD 25m-50m",
+              "delta_note": "100% of the declared band is evidenced.",
+              "coverage_pct": 1.0,
+              "corroborated": true,
+              "citations": [
+                {
+                  "source_id": "spa-2019",
+                  "source_type": "document",
+                  "title": "Share Purchase Agreement",
+                  "url": "",
+                  "page": 4,
+                  "snippet": "",
+                  "score": null
+                },
+                {
+                  "source_id": "acra-extract",
+                  "source_type": "document",
+                  "title": "ACRA company extract",
+                  "url": "",
+                  "page": 1,
+                  "snippet": "",
+                  "score": null
+                }
+              ]
+            },
+            {
+              "kind": "employment",
+              "declared_band": "USD 5m-10m",
+              "evidenced_band": "USD 5m-10m",
+              "delta_note": "100% of the declared band is evidenced.",
+              "coverage_pct": 1.0,
+              "corroborated": true,
+              "citations": [
+                {
+                  "source_id": "emp-letter",
+                  "source_type": "document",
+                  "title": "Employer compensation letter",
+                  "url": "",
+                  "page": 1,
+                  "snippet": "",
+                  "score": null
+                }
+              ]
+            },
+            {
+              "kind": "investments",
+              "declared_band": "USD 10m-25m",
+              "evidenced_band": "USD 10m-30m",
+              "delta_note": "100% of the declared band is evidenced.",
+              "coverage_pct": 1.0,
+              "corroborated": true,
+              "citations": [
+                {
+                  "source_id": "broker-2023",
+                  "source_type": "document",
+                  "title": "Brokerage statement 2023",
+                  "url": "",
+                  "page": 2,
+                  "snippet": "",
+                  "score": null
+                },
+                {
+                  "source_id": "broker-2026",
+                  "source_type": "document",
+                  "title": "Brokerage statement 2026",
+                  "url": "",
+                  "page": 2,
+                  "snippet": "",
+                  "score": null
+                }
+              ]
+            },
+            {
+              "kind": "inheritance",
+              "declared_band": "USD 2m-5m",
+              "evidenced_band": "USD 2m-5m",
+              "delta_note": "100% of the declared band is evidenced.",
+              "coverage_pct": 1.0,
+              "corroborated": true,
+              "citations": [
+                {
+                  "source_id": "probate-2015",
+                  "source_type": "document",
+                  "title": "Grant of probate",
+                  "url": "",
+                  "page": 3,
+                  "snippet": "",
+                  "score": null
+                }
+              ]
+            }
+          ],
+          "declared_total_band": "USD 60m-100m",
+          "evidenced_total_band": "USD 42m-95m",
+          "coverage_pct": 0.8562,
+          "consistency_notes": [
+            "Unevidenced headroom up to USD 0-58m against the declared net worth."
+          ]
+        },
+        "gaps": [],
+        "suggested_changes": [],
+        "rfis": [],
+        "related_parties": null,
+        "screening": null,
+        "scorecard": null,
+        "source_of_funds": null,
+        "monitoring": null,
+        "generated_at": "2026-07-08T15:02:28.126913+00:00"
+      }
+    }
+  ],
+  "final_status": "approved",
+  "snapshot": {
+    "case_id": "acme-holdings",
+    "version": 8,
+    "audit_view": {
+      "subject_id": "acme-holdings",
+      "narrative": {
+        "subject_id": "acme-holdings",
+        "narrative": "The subject's wealth is attributed to 4 declared source(s); 4 carry corroborating evidence. Evidenced USD 42m-95m against a declared USD 60m-100m net worth (86% coverage).",
+        "sources": [
+          {
+            "kind": "business_ownership",
+            "description": "Business Ownership evidenced at USD 25m-50m (declared USD 25m-50m)",
+            "est_value_band": "USD 25m-50m",
+            "citations": [
+              {
+                "source_id": "spa-2019",
+                "source_type": "document",
+                "title": "Share Purchase Agreement",
+                "url": "",
+                "page": 4,
+                "snippet": "",
+                "score": null
+              },
+              {
+                "source_id": "acra-extract",
+                "source_type": "document",
+                "title": "ACRA company extract",
+                "url": "",
+                "page": 1,
+                "snippet": "",
+                "score": null
+              }
+            ]
+          },
+          {
+            "kind": "employment",
+            "description": "Employment evidenced at USD 5m-10m (declared USD 5m-10m)",
+            "est_value_band": "USD 5m-10m",
+            "citations": [
+              {
+                "source_id": "emp-letter",
+                "source_type": "document",
+                "title": "Employer compensation letter",
+                "url": "",
+                "page": 1,
+                "snippet": "",
+                "score": null
+              }
+            ]
+          },
+          {
+            "kind": "investments",
+            "description": "Investments evidenced at USD 10m-30m (declared USD 10m-25m)",
+            "est_value_band": "USD 10m-30m",
+            "citations": [
+              {
+                "source_id": "broker-2023",
+                "source_type": "document",
+                "title": "Brokerage statement 2023",
+                "url": "",
+                "page": 2,
+                "snippet": "",
+                "score": null
+              },
+              {
+                "source_id": "broker-2026",
+                "source_type": "document",
+                "title": "Brokerage statement 2026",
+                "url": "",
+                "page": 2,
+                "snippet": "",
+                "score": null
+              }
+            ]
+          },
+          {
+            "kind": "inheritance",
+            "description": "Inheritance evidenced at USD 2m-5m (declared USD 2m-5m)",
+            "est_value_band": "USD 2m-5m",
+            "citations": [
+              {
+                "source_id": "probate-2015",
+                "source_type": "document",
+                "title": "Grant of probate",
+                "url": "",
+                "page": 3,
+                "snippet": "",
+                "score": null
+              }
+            ]
+          }
+        ],
+        "citations": [
+          {
+            "source_id": "spa-2019",
+            "source_type": "document",
+            "title": "Share Purchase Agreement",
+            "url": "",
+            "page": 4,
+            "snippet": "",
+            "score": null
+          },
+          {
+            "source_id": "acra-extract",
+            "source_type": "document",
+            "title": "ACRA company extract",
+            "url": "",
+            "page": 1,
+            "snippet": "",
+            "score": null
+          },
+          {
+            "source_id": "emp-letter",
+            "source_type": "document",
+            "title": "Employer compensation letter",
+            "url": "",
+            "page": 1,
+            "snippet": "",
+            "score": null
+          },
+          {
+            "source_id": "broker-2023",
+            "source_type": "document",
+            "title": "Brokerage statement 2023",
+            "url": "",
+            "page": 2,
+            "snippet": "",
+            "score": null
+          },
+          {
+            "source_id": "broker-2026",
+            "source_type": "document",
+            "title": "Brokerage statement 2026",
+            "url": "",
+            "page": 2,
+            "snippet": "",
+            "score": null
+          },
+          {
+            "source_id": "probate-2015",
+            "source_type": "document",
+            "title": "Grant of probate",
+            "url": "",
+            "page": 3,
+            "snippet": "",
+            "score": null
+          }
+        ],
+        "confidence": 0.86,
+        "requires_human_review": true
+      },
+      "groups": [
+        {
+          "kind": "business_ownership",
+          "declared_band": "USD 25m-50m",
+          "evidenced_band": "USD 25m-50m",
+          "corroborated": true,
+          "evidence_ids": [
+            "spa-2019",
+            "acra-extract"
+          ],
+          "citations": [
+            {
+              "source_id": "spa-2019",
+              "source_type": "document",
+              "title": "Share Purchase Agreement",
+              "url": "",
+              "page": 4,
+              "snippet": "",
+              "score": null
+            },
+            {
+              "source_id": "acra-extract",
+              "source_type": "document",
+              "title": "ACRA company extract",
+              "url": "",
+              "page": 1,
+              "snippet": "",
+              "score": null
+            }
+          ]
+        },
+        {
+          "kind": "employment",
+          "declared_band": "USD 5m-10m",
+          "evidenced_band": "USD 5m-10m",
+          "corroborated": true,
+          "evidence_ids": [
+            "emp-letter"
+          ],
+          "citations": [
+            {
+              "source_id": "emp-letter",
+              "source_type": "document",
+              "title": "Employer compensation letter",
+              "url": "",
+              "page": 1,
+              "snippet": "",
+              "score": null
+            }
+          ]
+        },
+        {
+          "kind": "investments",
+          "declared_band": "USD 10m-25m",
+          "evidenced_band": "USD 10m-30m",
+          "corroborated": true,
+          "evidence_ids": [
+            "broker-2023",
+            "broker-2026"
+          ],
+          "citations": [
+            {
+              "source_id": "broker-2023",
+              "source_type": "document",
+              "title": "Brokerage statement 2023",
+              "url": "",
+              "page": 2,
+              "snippet": "",
+              "score": null
+            },
+            {
+              "source_id": "broker-2026",
+              "source_type": "document",
+              "title": "Brokerage statement 2026",
+              "url": "",
+              "page": 2,
+              "snippet": "",
+              "score": null
+            }
+          ]
+        },
+        {
+          "kind": "inheritance",
+          "declared_band": "USD 2m-5m",
+          "evidenced_band": "USD 2m-5m",
+          "corroborated": true,
+          "evidence_ids": [
+            "probate-2015"
+          ],
+          "citations": [
+            {
+              "source_id": "probate-2015",
+              "source_type": "document",
+              "title": "Grant of probate",
+              "url": "",
+              "page": 3,
+              "snippet": "",
+              "score": null
+            }
+          ]
+        }
+      ],
+      "reconciliation": {
+        "lines": [
+          {
+            "kind": "business_ownership",
+            "declared_band": "USD 25m-50m",
+            "evidenced_band": "USD 25m-50m",
+            "delta_note": "100% of the declared band is evidenced.",
+            "coverage_pct": 1.0,
+            "corroborated": true,
+            "citations": [
+              {
+                "source_id": "spa-2019",
+                "source_type": "document",
+                "title": "Share Purchase Agreement",
+                "url": "",
+                "page": 4,
+                "snippet": "",
+                "score": null
+              },
+              {
+                "source_id": "acra-extract",
+                "source_type": "document",
+                "title": "ACRA company extract",
+                "url": "",
+                "page": 1,
+                "snippet": "",
+                "score": null
+              }
+            ]
+          },
+          {
+            "kind": "employment",
+            "declared_band": "USD 5m-10m",
+            "evidenced_band": "USD 5m-10m",
+            "delta_note": "100% of the declared band is evidenced.",
+            "coverage_pct": 1.0,
+            "corroborated": true,
+            "citations": [
+              {
+                "source_id": "emp-letter",
+                "source_type": "document",
+                "title": "Employer compensation letter",
+                "url": "",
+                "page": 1,
+                "snippet": "",
+                "score": null
+              }
+            ]
+          },
+          {
+            "kind": "investments",
+            "declared_band": "USD 10m-25m",
+            "evidenced_band": "USD 10m-30m",
+            "delta_note": "100% of the declared band is evidenced.",
+            "coverage_pct": 1.0,
+            "corroborated": true,
+            "citations": [
+              {
+                "source_id": "broker-2023",
+                "source_type": "document",
+                "title": "Brokerage statement 2023",
+                "url": "",
+                "page": 2,
+                "snippet": "",
+                "score": null
+              },
+              {
+                "source_id": "broker-2026",
+                "source_type": "document",
+                "title": "Brokerage statement 2026",
+                "url": "",
+                "page": 2,
+                "snippet": "",
+                "score": null
+              }
+            ]
+          },
+          {
+            "kind": "inheritance",
+            "declared_band": "USD 2m-5m",
+            "evidenced_band": "USD 2m-5m",
+            "delta_note": "100% of the declared band is evidenced.",
+            "coverage_pct": 1.0,
+            "corroborated": true,
+            "citations": [
+              {
+                "source_id": "probate-2015",
+                "source_type": "document",
+                "title": "Grant of probate",
+                "url": "",
+                "page": 3,
+                "snippet": "",
+                "score": null
+              }
+            ]
+          }
+        ],
+        "declared_total_band": "USD 60m-100m",
+        "evidenced_total_band": "USD 42m-95m",
+        "coverage_pct": 0.8562,
+        "consistency_notes": [
+          "Unevidenced headroom up to USD 0-58m against the declared net worth."
+        ]
+      },
+      "gaps": [],
+      "suggested_changes": [],
+      "rfis": [],
+      "related_parties": null,
+      "screening": null,
+      "scorecard": null,
+      "source_of_funds": null,
+      "monitoring": null,
+      "generated_at": "2026-07-08T15:02:28.126913+00:00"
+    },
+    "approved_by": "mlro.lim@bank.test",
+    "sealed_at": "2026-07-08T15:02:28.127012+00:00"
+  }
+}

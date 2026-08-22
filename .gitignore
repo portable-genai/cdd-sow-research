@@ -1,0 +1,119 @@
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+# ``lib/`` targets Python build output, but it also swallowed the UI's source
+# ``ui/lib/`` (its api client + types), which ui/components imports and must be tracked.
+/lib/
+lib64/
+!ui/lib/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# Test / coverage / type-check caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.hypothesis/
+*.cover
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ---------------------------------------------------------------------------
+# Node / Next.js (ui/)
+# ---------------------------------------------------------------------------
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.next/
+out/
+.turbo/
+*.tsbuildinfo
+
+# ---------------------------------------------------------------------------
+# Terraform (terraform/)
+# ---------------------------------------------------------------------------
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# ---------------------------------------------------------------------------
+# Secrets / env / credentials  (never commit these)
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.secrets.example
+*.pem
+*.key
+*-key.json
+service-account*.json
+application_default_credentials.json
+gcp-credentials*.json
+
+# ---------------------------------------------------------------------------
+# Editors / OS
+# ---------------------------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ---------------------------------------------------------------------------
+# Local artefacts
+# ---------------------------------------------------------------------------
+*.log
+.cache/
+tmp/
+scratch/
+
+# Completed deployment dossiers: real institution values, never tracked
+*.local.md
