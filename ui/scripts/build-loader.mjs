@@ -4,6 +4,17 @@ import path from "node:path";
 import process from "node:process";
 import ts from "typescript";
 
+// pdfjs-dist's own version, read from ITS package.json rather than repeated as a literal: the
+// runtime component (DocumentViewerModal.tsx) requests the worker at a path keyed by this same
+// value read off the library at import time. A bump that moved one and not the other would
+// silently serve a stale worker against a newer library at runtime.
+const { version: pdfjsVersion } = JSON.parse(
+  await readFile(
+    path.join(process.cwd(), "node_modules", "pdfjs-dist", "package.json"),
+    "utf8",
+  ),
+);
+
 const uiRoot = process.cwd();
 const sourcePath = path.join(uiRoot, "embed", "cdd-agent.ts");
 const outputDirectory = path.join(uiRoot, "public", "embed", "v1");
@@ -16,7 +27,7 @@ const pdfWorkerSource = path.join(
   "build",
   "pdf.worker.min.mjs",
 );
-const pdfWorkerDirectory = path.join(uiRoot, "public", "assets", "pdfjs", "4.10.38");
+const pdfWorkerDirectory = path.join(uiRoot, "public", "assets", "pdfjs", pdfjsVersion);
 const pdfWorkerOutput = path.join(pdfWorkerDirectory, "pdf.worker.min.mjs");
 
 const source = await readFile(sourcePath, "utf8");

@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 
 import { assertHydratableCsp, frameAncestors } from "./lib/csp.mjs";
 import { readEnvSetting } from "./lib/env-setting.mjs";
@@ -10,6 +11,12 @@ import { readEnvSetting } from "./lib/env-setting.mjs";
 // against the first.
 frameAncestors(process.env);
 assertHydratableCsp(readFileSync(new URL("./app/layout.tsx", import.meta.url), "utf8"));
+
+// pdfjs-dist's own version, not a repeated literal: DocumentViewerModal.tsx requests the worker
+// keyed by this same value read off the library, and build-loader.mjs vendors it to the matching
+// path. A stale literal here would leave the served worker's Cache-Control and Content-Type
+// headers pointing at a path the app no longer requests.
+const pdfjsVersion = createRequire(import.meta.url)("pdfjs-dist/package.json").version;
 
 /** @type {import('next').NextConfig} */
 const basePath = "/agent";
@@ -61,7 +68,7 @@ const nextConfig = {
         ],
       },
       {
-        source: "/assets/pdfjs/4.10.38/pdf.worker.min.mjs",
+        source: `/assets/pdfjs/${pdfjsVersion}/pdf.worker.min.mjs`,
         headers: [
           { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
           { key: "Content-Type", value: "text/javascript; charset=utf-8" },
