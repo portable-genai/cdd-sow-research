@@ -66,8 +66,13 @@ ui_release_tag="${image_prefix}/doc1-ui:${image_tag}"
 
 npm --prefix ui ci
 npm --prefix ui run build:loader
-docker build --pull --tag "$api_tag" .
-docker build --pull --tag "$ui_tag" --file ui/Dockerfile ui
+# --platform linux/amd64 is NOT optional. Cloud Run refuses an image whose manifest does not
+# support amd64/linux, and a plain `docker build` on an Apple Silicon workstation produces
+# exactly that: an arm64-only image that pushes, scans, signs and promotes without complaint
+# and is then rejected at deploy time by the one system that matters. Pinning the platform
+# here means the artefact a maintainer builds locally is the artefact that can actually run.
+docker build --platform linux/amd64 --pull --tag "$api_tag" .
+docker build --platform linux/amd64 --pull --tag "$ui_tag" --file ui/Dockerfile ui
 
 loader_sri="$(tr -d '\r\n' < ui/public/embed/v1/cdd-agent.js.sri)"
 loader_sha256="$(sha256sum ui/public/embed/v1/cdd-agent.js | awk '{print $1}')"
