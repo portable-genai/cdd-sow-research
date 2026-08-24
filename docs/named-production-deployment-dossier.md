@@ -33,16 +33,18 @@ institution is not acceptable production evidence.
 |---|---|---|
 | Institution | `PLACEHOLDER` | Executive sponsor |
 | Installation name | `doc1-<institution>-production` | Deployment owner |
-| Deployment owner | `PENDING` | Named person or team |
-| Security owner | `PENDING` | Named person or team |
-| Operations owner | `PENDING` | Named person or team |
-| Evidence approver | `PENDING` | Independent reviewer |
+| Deployment owner | Ashish Awasthi | Named person or team |
+| Security owner | Ashish Awasthi | Named person or team |
+| Operations owner | Ashish Awasthi | Named person or team |
+| Evidence approver | Ashish Awasthi | Independent reviewer — **NOT independent; see the recorded deviation below** |
 | Incident channel | `PENDING` | Tested escalation route |
 | Evidence-retention location | `PENDING` | Access-controlled record location |
 
-**Recorded deviation: single-person ownership.** If every owner role above resolves to one
-person, two consequences must be accepted explicitly before any production apply, and
-re-checked when a second person joins:
+**Recorded deviation: single-person ownership. DECIDED 2026-08-24.** Every owner role above
+is Ashish Awasthi, the sole maintainer, by explicit decision rather than by default: the
+question was asked directly and answered "all four are me for now." The two consequences below
+are therefore accepted, not merely disclosed, and stay accepted until a second person joins one
+of these roles:
 
 1. **The evidence approver is not independent.** The review rule for that row asks for an
    independent reviewer, and self-approval does not satisfy it. This is the same
