@@ -23,9 +23,30 @@ tag before any command can run. It also decodes and
 schema-validates both secret payloads, binds their exact bytes to reviewed SHA-256 digests, and
 requires at least two replicas plus a real alert notification channel.
 
-Repository code and reusable infrastructure are ready for a named deployment. The dossier is
-intentionally incomplete until an institution supplies the decisions below. A fictional
-institution is not acceptable production evidence.
+Repository code and reusable infrastructure are ready for a named deployment.
+
+**Assumption changed 2026-08-24: a fictional institution IS acceptable evidence here, with one
+carve-out.** This dossier previously refused fictional inputs outright, which made every field
+below unfillable without a real counterparty and left the whole Track C deployment blocked on
+one. The maintainer's decision reverses that default for the reference deployment: a fictional
+institution may supply the identity, origin, installation and browser-policy inputs, because
+what those inputs exercise is the *mechanism* — preflight rejection, digest binding, perimeter
+enforcement, CMEK, WORM routing — and a mechanism does not know whether the name bound to it is
+real.
+
+**The carve-out is data, not names.** Where a control's correctness depends on real-world data
+that fictional data cannot stand in for, fictional input is NOT acceptable and the evidence must
+say so. The named case is **adverse-news and open-source search in the CDD flow**: a search over
+an invented entity returns nothing, and "no adverse news found" against a name that cannot
+generate adverse news is a vacuous pass, not a control that was exercised. The same test applies
+to any future check whose signal comes from outside this deployment. For those, either use a
+real public entity with published, verifiable coverage, or record the check as UNEXERCISED
+rather than PASS.
+
+**What this evidence is, and is not.** It demonstrates that the deployment mechanism works
+end to end under real GCP enforcement. It is not an institutional production evidence pack: the
+institution is fictional and, per the recorded deviation below, the evidence approver is not
+independent. Any pitch or brief citing it states both.
 
 ## 1. Deployment identity and owners
 
@@ -65,20 +86,24 @@ all GCP services this repo depends on are available in `asia-southeast1`, which 
 `us-central1` is the pin. An institution deploying under a residency obligation sets its own
 in-country region explicitly rather than inheriting this default.
 
+Values below were created and confirmed on **2026-08-24** under organization `thingz.live`
+(`400961117351`). Rows still reading `PENDING` are genuinely not created.
+
 | Input | Required value | Review rule |
 |---|---|---|
-| GCP organization and project | `PENDING` | Dedicated or explicitly approved shared project |
-| Credential reachability | `PENDING` | See the note below |
-| Billing and quota owner | `PENDING` | Quotas cover HSM, Firestore and Cloud Run, plus IAP for the separate Mode 6 edge |
-| Approved region | `us-central1` (USA), or the institution's in-country region | Must be in `allowed_regions` |
-| Allowed regions | `PENDING` | Security and legal approval attached |
-| Access Context Manager policy | `PENDING` | Dry-run VPC-SC before enforcement |
+| GCP organization and project | `thingz.live` / `400961117351`, project `portable-genai-prod` (number `192121533143`) | Shared deployment project, approved in [gcp-org-and-project-topology.md](https://github.com/portable-genai/org-metadata/blob/main/docs/gcp-org-and-project-topology.md) |
+| Credential reachability | `ashish@whiz.coach`, holding `roles/resourcemanager.organizationAdmin`, `roles/resourcemanager.projectCreator` and `roles/accesscontextmanager.policyAdmin` | See the note below |
+| Billing and quota owner | `01E200-BFA66C-B15046` (`whiz.coach`), linked and enabled; owner Ashish Awasthi | Quotas cover HSM, Firestore and Cloud Run, plus IAP for the separate Mode 6 edge |
+| Approved region | `us-central1` (USA) | Must be in `allowed_regions` |
+| Allowed regions | `["us-central1"]` | Reference deployment under no residency obligation; see the region record. **Satisfies no APAC residency regime** |
+| Access Context Manager policy | `718324219947` (title `portable-genai`, org-scoped) | Dry-run VPC-SC before enforcement |
 | Agent origin | `PENDING` | Dedicated HTTPS origin |
 | Standalone fallback origin | `PENDING` | Separate Mode 6 service and cookie boundary |
 | DNS managed zone and owner | `PENDING` | Change window recorded |
 | Certificate authority and owner | `PENDING` | Managed certificate or approved equivalent |
-| Terraform state backend | `PENDING` | GCS bucket plus installation-specific prefix; local state is rejected |
-| WORM retention decision | `PENDING` | Six-month default; irreversible lock explicitly approved before `DOC1_WORM_LOCK_APPROVED=true` is set |
+| Terraform state backend | `gs://portable-genai-prod-tfstate`, prefix `doc1/`; versioned, UBLA, public access prevented | GCS bucket plus installation-specific prefix; local state is rejected |
+| Alert notification channel | `projects/portable-genai-prod/notificationChannels/16092192702056537312` (email) | Real channel required by preflight |
+| WORM retention decision | **3 days, UNLOCKED** (`retention_days = 3`, `worm_locked = false`). DECIDED 2026-08-24 | See the revised rule below — the six-month floor still binds a locked stack |
 
 **Workstation credentials.** A dedicated `gcloud` configuration authenticated as the
 deployment owner, holding `roles/resourcemanager.organizationAdmin` on the target
@@ -93,10 +118,25 @@ cutover. DNSSEC must be confirmed off before switching. After the registrar name
 propagation is confirmed complete only once the zone's own registry and multiple independent
 public resolvers all return the new delegation and every record set resolves correctly.
 
-**WORM retention lock.** Locking a GCS retention policy cannot be undone: for the locked period
-the retention cannot be shortened or removed and no object can be deleted, including by a
-project owner. That consequence and the storage cost must be accepted explicitly before
-`DOC1_WORM_LOCK_APPROVED=true` is set.
+**WORM retention lock. Revised 2026-08-24.** Locking a GCS retention policy cannot be undone:
+for the locked period the retention cannot be shortened or removed and no object can be deleted,
+including by a project owner. That consequence and the storage cost must still be accepted
+explicitly before `DOC1_WORM_LOCK_APPROVED=true` is set.
+
+The maintainer's decision for the reference deployment is **not to lock, and to keep retention
+short and configurable: 3 days.** The reasoning is that the retention *period* is a policy
+number a bank sets under its own governance, while what this deployment needs to demonstrate is
+the *routing and immutability mechanism* — that audit records leave the app, land in a bucket
+the app cannot delete from, and are covered by a retention policy at all. A 3-day unlocked
+policy exercises every part of that except the irreversibility, and it keeps the stack
+destroyable, which matters on a first apply.
+
+**What this costs.** An unlocked policy is removable by a project owner, so this deployment does
+not evidence tamper-proof retention. Any evidence pack citing it says "retention policy applied,
+lock not exercised" rather than claiming WORM. The six-month floor is unchanged for a locked
+stack: `retention_days >= 180` still binds whenever `worm_locked = true`, so the compliance
+control (P-08) is intact for anyone deploying for real and is relaxed only where the lock is
+off. Confirm the exact behaviour in `infra/terraform/variables.tf`.
 
 ## 3. Installation and browser policy
 

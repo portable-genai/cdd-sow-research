@@ -198,6 +198,11 @@ run "reject_bootstrap_with_edge_enabled" {
   expect_failures = [terraform_data.production_stage_contract]
 }
 
+# This run block deliberately sets NEITHER retention_days NOR worm_locked: it exists to observe
+# the shipped defaults in variables.tf, so pinning either one would make its own assertions
+# tautological. That makes it the one guard here sensitive to an auto-loaded terraform.tfvars —
+# `terraform test` loads that filename silently, so real deployment inputs must NOT use it.
+# Keep operator inputs in an explicitly-passed file (e.g. `-var-file=doc1-prod.tfvars`).
 run "default_retention_keeps_worm_lock_enabled" {
   command = plan
 
@@ -227,7 +232,41 @@ run "reject_retention_below_six_months" {
     enable_org_policies = false
     enable_vpc_sc       = false
     standalone          = false
+    worm_locked         = true
     retention_days      = 179
+  }
+
+  expect_failures = [var.retention_days]
+}
+
+run "unlocked_stack_accepts_short_retention" {
+  command = plan
+
+  variables {
+    project_id          = "fictional-doc1-production"
+    enable_org_policies = false
+    enable_vpc_sc       = false
+    standalone          = false
+    worm_locked         = false
+    retention_days      = 3
+  }
+
+  assert {
+    condition     = var.retention_days == 3 && !var.worm_locked
+    error_message = "An UNLOCKED evaluation stack must be allowed a short, destroyable retention."
+  }
+}
+
+run "unlocked_stack_still_requires_a_positive_retention" {
+  command = plan
+
+  variables {
+    project_id          = "fictional-doc1-production"
+    enable_org_policies = false
+    enable_vpc_sc       = false
+    standalone          = false
+    worm_locked         = false
+    retention_days      = 0
   }
 
   expect_failures = [var.retention_days]

@@ -90,13 +90,22 @@ variable "scheduler_time_zone" {
 }
 
 variable "retention_days" {
-  description = "WORM audit-log retention in days. Default 180 days (six months). Lock is irreversible."
+  description = <<-EOT
+    WORM audit-log retention in days. Default 180 (six months); the lock is irreversible.
+
+    The 180-day compliance floor (P-08) binds whenever worm_locked = true, which is the
+    production posture and the default. It is NOT applied to an unlocked stack, where the
+    policy is removable by a project owner anyway and therefore evidences routing and
+    coverage rather than immutability. That lets an evaluation or reference deployment run a
+    deliberately short, destroyable retention (e.g. 3 days) without weakening the control for
+    anyone deploying for real: turning the lock on re-imposes the floor at plan time.
+  EOT
   type        = number
   default     = 180 # Six months; mirrors config/settings.yaml logging.retention_days
 
   validation {
-    condition     = var.retention_days >= 180
-    error_message = "Compliance retention must be at least 180 days (six months) (P-08)."
+    condition     = var.worm_locked ? var.retention_days >= 180 : var.retention_days >= 1
+    error_message = "A LOCKED stack must retain at least 180 days (six months) (P-08); an unlocked stack must still retain at least 1 day."
   }
 }
 
