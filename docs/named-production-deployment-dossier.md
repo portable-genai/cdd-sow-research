@@ -306,11 +306,68 @@ The final evidence pack must contain:
 |---|---|---|
 | Repository and reusable infrastructure | Ready | Local gates and Terraform validation |
 | Doc1 Mode 5 code for a Google subject | Ready | Section 3a's three changes are implemented: per-installation subject token type, the Google ID-token profile verifier with its negative matrix, and scope derived from reviewed installation policy |
-| Named institution inputs | PENDING | No institution named; every row in sections 1 to 7 is `PENDING` or `PLACEHOLDER` |
+| Named institution inputs | PARTIAL | Section 2 is filled with real, created resources (see the 2026-08-24 record below). Sections 3 and 5 still need a portal origin and identity providers this deployment does not run |
 | Identity provider capability | PARTIAL | Google Cloud Identity can serve Mode 5 and Mode 6; Mode 4 is not applicable and the preflight does not demand it |
 | Hrz9 portal half | Ready (code) | `journey-portal` implements `private_key_jwt` signing behind a signing-key port with non-exportable Cloud KMS custody, the BFF JWKS route, CSRF plus exact `Origin` plus Fetch Metadata enforcement before any credential is minted, and a host authorization proof built from the verified principal. A cross-repo fixture verifies a portal-minted assertion against this repo's actual `PrivateKeyJwtVerifier`, with the replay, tamper, expiry, audience, client and foreign-key negatives refused. Its deployment inputs are tracked in its own dossier |
-| Controlled pre-production apply | BLOCKED | No institution, project or credentials named yet |
+| Base stack applied | **DONE 2026-08-24** | 77 resources live in `portable-genai-prod`: Org Policy, CMEK, dry-run VPC-SC perimeter, WORM sink and log bucket, Model Armor, DLP, Document AI, Firestore, four posture alerts. See the record below |
+| Named Modes 4/5 edge | BLOCKED | Not on inputs that could be invented, but on a portal and identity providers that must actually exist. See "What the named edge still needs" |
 | Production-complete gate | BLOCKED | All eight conditions in `embedding-implementation-plan.md` Section 15.2 must pass |
+
+## 9a. The 2026-08-24 reference deployment: what was applied, and what it proves
+
+**Applied.** 77 resources into `portable-genai-prod`, region `us-central1`, from the inputs in
+section 2. Org Policy (residency, no SA keys, uniform bucket access, domain-restricted
+sharing), the CMEK key ring and key with six service bindings, a dry-run VPC-SC perimeter over
+twelve restricted services, the audit sink routing both the app log and Cloud Audit Logs into a
+CMEK-encrypted log bucket, Model Armor, two DLP templates, a Document AI processor, the
+`sow-cases` Firestore database, a CMEK Artifact Registry, and four log-metric/alert pairs on a
+real notification channel.
+
+**The alert pipeline was proved, not assumed.** A synthetic `decision=blocked` entry was written
+to `cdd-sow-agent-audit`; the metric materialised on `resource.type=global` with a count of 1.
+This is the reason the alert filters use a broad `one_of` union: the obvious per-metric guess of
+`cloud_run_revision` would have produced an alert that never fired, and a dead alert is
+indistinguishable from a quiet system.
+
+**Images.** `doc1-api` and `doc1-ui` built, scanned, pushed to the CMEK registry and
+cosign-signed. The scan refused two earlier attempts and both refusals were real: the images
+were shipping pip and npm, whose VENDORED dependencies carried the advisories. Neither was a
+dependency of this application and neither appeared in any lockfile.
+
+**What this evidence is.** Live enforcement of the posture the repository previously only
+described. It closes the "posture-as-code closed, live enforcement needs a named project" half
+of audit D5.
+
+**What it is not.** Retention is applied but not locked, so it is NOT WORM evidence. Firestore
+runs on Google-managed encryption because CMEK there is allowlist-gated. The VPC-SC perimeter is
+dry-run, so denial is logged and not enforced. The residency claim is the **United States**, not
+`us-central1`: Document AI has no `us-central1` endpoint, and the Org Policy correctly blocked
+the widening until the boundary was restated at country granularity. HA is not demonstrated.
+Every one of these is printed by `deployment_env.py` as a posture disclosure rather than left
+for a reader to notice.
+
+## 9b. What the named edge still needs
+
+The Modes 4/5 edge did not stop for want of inputs that could be typed in. It stops on three
+things that have to genuinely exist, and the preflight is right to demand them:
+
+1. **A parent origin that is not the agent origin.** The manifest schema explicitly refuses an
+   installation whose `parent_origins` contains its own agent origin, so a self-embed cannot
+   stand in for a host portal. The intended parent is the Hrz9 `journey-portal` shell.
+2. **A second, separate standalone domain.** Mode 6 is a distinct service and cookie boundary
+   and may not share the agent domain.
+3. **Working identity providers.** Mode 5 needs a BFF publishing a real JWKS — that is Hrz9's
+   BFF — and Mode 6 needs an OIDC client with a callback on the standalone domain. This is the
+   same rule as the adverse-news carve-out in the header: a JWKS URI that serves nothing makes
+   token validation a vacuous pass, so a fictional issuer is NOT acceptable here.
+
+The load balancer is not incidental to this and cannot be traded for two `*.run.app` URLs. It
+is what makes `/agent` and `/agent/api` ONE origin, and the same-origin contract is what the
+embed design rests on; two Cloud Run URLs are two origins.
+
+**The reachable next step** is therefore Hrz9's deployment, which supplies the parent origin and
+the Mode 5 BFF JWKS, after which this dossier's sections 3 and 5 can be completed with real
+values rather than invented ones.
 
 `scripts/deployment_env.py run -- <command>` is the only supported environment-file runner for
 production commands. It validates the complete dossier first, loads both files without

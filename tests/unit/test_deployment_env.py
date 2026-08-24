@@ -1072,3 +1072,55 @@ def test_relaxations_are_disclosed_not_silent() -> None:
     # A production posture discloses nothing, because it waives nothing.
     values["DOC1_DEPLOYMENT_POSTURE"] = "production"
     assert deployment_env.posture_disclosures(values) == []
+
+
+def test_reference_posture_relaxes_the_retention_floor_but_not_below_a_day() -> None:
+    """The six-month floor pairs with the lock; an unlocked stack evidences neither.
+
+    Added after the 2026-08-24 reference deployment, where the first version of the posture
+    relaxed the WORM lock and the replica floor but NOT this rule, because the retention check
+    runs before the posture was derived. The stack failed the gate on a floor it was meant to
+    be exempt from, which is the ordering bug this test pins.
+    """
+    values = _ready_values()
+    values["DOC1_DEPLOYMENT_POSTURE"] = "reference"
+    values["DOC1_WORM_LOCK_APPROVED"] = "false"
+    values["DOC1_AUDIT_RETENTION_DAYS"] = "3"
+    assert deployment_env.validate_environment(values, require_ready=True) == []
+
+    values["DOC1_AUDIT_RETENTION_DAYS"] = "0"
+    errors = deployment_env.validate_environment(values, require_ready=True)
+    assert any("at least 1" in error for error in errors)
+
+    values["DOC1_DEPLOYMENT_POSTURE"] = "production"
+    values["DOC1_AUDIT_RETENTION_DAYS"] = "3"
+    errors = deployment_env.validate_environment(values, require_ready=True)
+    assert any("at least 180" in error for error in errors)
+
+
+def test_a_managed_zone_of_none_is_a_statement_not_a_blank() -> None:
+    """Terraform always supported no zone; the preflight demanded one, and they disagreed."""
+    values = _ready_values()
+    values["DOC1_DNS_MANAGED_ZONE"] = "none"
+    assert deployment_env.validate_environment(values, require_ready=True) == []
+
+    # The OWNER is still required: the control is that somebody is accountable for how the
+    # name resolves, not that a Cloud DNS zone exists.
+    values["DOC1_DNS_OWNER"] = ""
+    errors = deployment_env.validate_environment(values, require_ready=True)
+    assert any("DOC1_DNS_OWNER" in error for error in errors)
+
+
+def test_none_zone_reaches_terraform_as_an_empty_string() -> None:
+    values = _ready_values()
+    values["DOC1_DNS_MANAGED_ZONE"] = "none"
+    assert deployment_env.terraform_environment(values)["TF_VAR_dns_managed_zone"] == ""
+
+
+def test_an_omitted_posture_is_treated_as_production() -> None:
+    """Relaxations are asked for, never inherited by omission."""
+    values = _ready_values()
+    del values["DOC1_DEPLOYMENT_POSTURE"]
+    values["DOC1_WORM_LOCK_APPROVED"] = "false"
+    errors = deployment_env.validate_environment(values, require_ready=True)
+    assert any("DOC1_WORM_LOCK_APPROVED" in error for error in errors)

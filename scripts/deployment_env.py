@@ -878,11 +878,34 @@ def validate_environment(values: dict[str, str], *, require_ready: bool = False)
     errors: list[str] = []
     ready = require_ready or _is_true(values.get("DOC1_DEPLOYMENT_ENABLED", "false"))
 
+    # Posture is ORTHOGONAL to stage: the stage says which part of the stack is being applied,
+    # the posture says what the deployment is FOR. "production" is the default and changes
+    # nothing. "reference" is the maintainer-owned demonstration stack. It relaxes exactly the
+    # rules named below, each one reported by posture_disclosures() so the relaxation can
+    # never be silent. Everything else — residency, digest binding, exact origins, real alert
+    # channels, secret-version pinning — is unchanged, because those are what the deployment
+    # exists to demonstrate. Derived HERE, at the top, because the retention rule immediately
+    # below consults it: deriving it lower down is how the first version of this missed that
+    # rule entirely and left a reference stack failing on a floor it was meant to be exempt
+    # from.
+    posture = values.get("DOC1_DEPLOYMENT_POSTURE", "")
+    if ready and posture not in {"production", "reference"}:
+        errors.append("DOC1_DEPLOYMENT_POSTURE must be production or reference")
+    # An unset posture behaves as "production", so a DRAFT file (where placeholders are
+    # allowed and the key may simply not be filled in yet) is still held to the strict rules.
+    # The relaxations have to be asked for; they are never what you get by omission.
+    reference_posture = posture == "reference"
+
     retention = values.get("DOC1_AUDIT_RETENTION_DAYS", "180")
     try:
         retention_days = int(retention)
-        if retention_days < 180:
+        # The six-month floor is a PRODUCTION rule and pairs with the irreversible lock; a
+        # reference stack that is not locking anything is not evidencing retention length
+        # either. It must still be a positive number of days.
+        if not reference_posture and retention_days < 180:
             errors.append("DOC1_AUDIT_RETENTION_DAYS must be at least 180")
+        if retention_days < 1:
+            errors.append("DOC1_AUDIT_RETENTION_DAYS must be at least 1")
     except ValueError:
         errors.append("DOC1_AUDIT_RETENTION_DAYS must be an integer")
         retention_days = 0
@@ -914,18 +937,6 @@ def validate_environment(values: dict[str, str], *, require_ready: bool = False)
     edge_stage = deployment_stage == "production-edge"
     if bootstrap_stage and mode != "embedded-grant":
         errors.append("mode5-key-bootstrap requires embedded-grant identity")
-    # Posture is ORTHOGONAL to stage: stage says which part of the stack is being applied,
-    # posture says what the deployment is FOR. "production" is the default and changes
-    # nothing. "reference" is the maintainer-owned demonstration stack, and it relaxes
-    # exactly two production rules, both named explicitly below and both reported in the
-    # preflight summary so the relaxation can never be silent. Everything else — residency,
-    # digest binding, exact origins, real alert channels, secret-version pinning — is
-    # unchanged, because those are what the deployment exists to demonstrate.
-    posture = values.get("DOC1_DEPLOYMENT_POSTURE", "")
-    if posture not in {"production", "reference"}:
-        errors.append("DOC1_DEPLOYMENT_POSTURE must be production or reference")
-    reference_posture = posture == "reference"
-
     lifecycle = values.get("DOC1_STACK_LIFECYCLE", "")
     if lifecycle not in {"new", "existing"}:
         errors.append("DOC1_STACK_LIFECYCLE must be new or existing")
@@ -949,6 +960,15 @@ def validate_environment(values: dict[str, str], *, require_ready: bool = False)
         if mode == "embedded-grant":
             required_nonsecret.append("DOC1_EMBED_SIGNING_KEY_VERSION")
     for key in required_nonsecret:
+        # `none` on the managed zone is an explicit statement ("this deployment runs no DNS
+        # zone; the name resolves elsewhere"), not an unfilled blank. Terraform already
+        # supports that case — an empty dns_managed_zone emits the address without records —
+        # and the preflight demanded a zone anyway, so the two disagreed and the stricter one
+        # won by accident rather than by decision. DOC1_DNS_OWNER stays required either way:
+        # the control is "somebody named is accountable for how this name resolves", not
+        # "there is a Cloud DNS zone".
+        if key == "DOC1_DNS_MANAGED_ZONE" and values.get(key, "") == "none":
+            continue
         if _has_placeholder(values.get(key, "")):
             errors.append(f"{key} is missing or still contains a placeholder")
     if edge_stage:
@@ -1188,7 +1208,12 @@ def terraform_environment(values: dict[str, str]) -> dict[str, str]:
                 "TF_VAR_api_image": values["DOC1_API_IMAGE"],
                 "TF_VAR_ui_image": values["DOC1_UI_IMAGE"],
                 "TF_VAR_agent_domain": values["DOC1_AGENT_DOMAIN"],
-                "TF_VAR_dns_managed_zone": values["DOC1_DNS_MANAGED_ZONE"],
+                # `none` is the explicit "resolved outside this deployment" sentinel and
+                # becomes Terraform's empty string, which skips the record set.
+                "TF_VAR_dns_managed_zone": (
+                    "" if values["DOC1_DNS_MANAGED_ZONE"] == "none"
+                    else values["DOC1_DNS_MANAGED_ZONE"]
+                ),
                 "TF_VAR_installation_manifest_secret_id": values[
                     "DOC1_INSTALLATION_MANIFEST_SECRET_ID"
                 ],
@@ -1509,6 +1534,19 @@ def posture_disclosures(values: dict[str, str]) -> list[str]:
         disclosures.append(
             "  - audit retention is applied but NOT locked: routing and coverage are "
             "evidenced, immutability is not. Do not describe this stack as WORM."
+        )
+    try:
+        if int(values.get("DOC1_AUDIT_RETENTION_DAYS", "180")) < 180:
+            disclosures.append(
+                "  - audit retention is below the six-month compliance floor: the retention "
+                "PERIOD is not evidenced, only that a policy applies at all."
+            )
+    except ValueError:
+        pass
+    if values.get("DOC1_DNS_MANAGED_ZONE", "") == "none":
+        disclosures.append(
+            "  - no DNS zone is managed by this deployment: the name resolves via the owner "
+            "named in DOC1_DNS_OWNER, and zone-cutover evidence is NOT produced."
         )
     try:
         if int(values.get("DOC1_EDGE_MIN_INSTANCES", "0")) < 2:
