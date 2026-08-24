@@ -83,6 +83,69 @@ variable "region" {
   }
 }
 
+variable "resource_location_values" {
+  description = <<-EOT
+    Value groups for the gcp.resourceLocations Org Policy. Empty (default) derives the
+    strictest form, `in:<region>-locations`: the deploy region and its sub-locations, nothing
+    else.
+
+    Widen it only when a service the stack genuinely needs has NO presence at single-region
+    granularity. Document AI is the worked example: it serves no us-central1 endpoint, so a
+    us-central1 deployment must reach the `us` multi-region, and `in:us-central1-locations`
+    correctly refuses that — observed on the first apply, 2026-08-24, where the policy blocked
+    processor creation with "us violates constraint 'constraints/gcp.resourceLocations'".
+
+    That refusal is the control working, so the fix is not to punch a hole in it. Move to the
+    smallest value group that still describes ONE JURISDICTION — `in:us-locations` keeps every
+    resource inside the United States — and state the residency claim at that granularity
+    rather than pretending it is still single-region. Never list an individual foreign region
+    to unblock one service: that turns a jurisdiction boundary into a list of exceptions
+    nobody can reason about.
+  EOT
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for value in var.resource_location_values : startswith(value, "in:") || startswith(value, "is:")])
+    error_message = "Each value must be an Org Policy location value group (in:...) or a literal location (is:...)."
+  }
+}
+
+variable "documentai_location" {
+  description = <<-EOT
+    Document AI processor location. Empty (the default) derives it from var.region.
+
+    Document AI does NOT run in every GCP region, so its location cannot simply track the
+    deploy region: creating a processor in an unsupported one 404s at apply
+    (`/v1/projects/../locations/us-central1/processors` was not found — found by execution
+    2026-08-24). As of that date the service reports: us, eu, asia-south1, asia-southeast1,
+    australia-southeast1, europe-west2, europe-west3, northamerica-northeast1, us-east7,
+    cloud-regional. Re-read it with:
+      GET https://documentai.googleapis.com/v1/projects/PROJECT/locations
+
+    Derivation is deliberately NARROW: if var.region is itself a supported location it is used
+    unchanged, and OTHERWISE THE PLAN FAILS asking for an explicit value. It does not quietly
+    fall back to the `us` or `eu` multi-region, because that would move KYC document bytes to
+    a broader jurisdiction than the one the operator selected and validated against the
+    residency allowlist — silently, in the one repository whose headline claim is deploy-time
+    residency. Widening to a multi-region is a residency decision and must be typed out.
+  EOT
+  type        = string
+  default     = ""
+
+  validation {
+    condition = var.documentai_location == "" || contains(
+      [
+        "us", "eu", "asia-south1", "asia-southeast1", "australia-southeast1",
+        "europe-west2", "europe-west3", "northamerica-northeast1", "us-east7",
+        "cloud-regional",
+      ],
+      var.documentai_location
+    )
+    error_message = "documentai_location must be a location Document AI actually serves. Query the live list at https://documentai.googleapis.com/v1/projects/PROJECT/locations rather than assuming the deploy region is one."
+  }
+}
+
 variable "scheduler_time_zone" {
   description = "IANA time zone for the scheduled sanctions-sync job. Set to match var.region."
   type        = string
@@ -123,6 +186,21 @@ variable "existing_locked_retention_days" {
     condition     = var.existing_locked_retention_days == 0 || var.retention_days >= var.existing_locked_retention_days
     error_message = "retention_days cannot be lower than the existing locked retention. Existing stacks must preserve or increase their locked value."
   }
+}
+
+variable "firestore_cmek_enabled" {
+  description = <<-EOT
+    Bind the case-store Firestore database to the stack's CMEK key (P-09). Default true.
+
+    Firestore CMEK is ALLOWLIST-GATED by Google: without the entitlement, database creation
+    fails with a 429 and a link to a request form, which no code change can satisfy. Set this
+    false ONLY on a project awaiting that allowlist, and disclose it — the case store then
+    holds customer material under Google-managed encryption while the rest of the stack is
+    customer-managed. A locked (production) stack may not set it false; firestore.tf carries
+    that precondition.
+  EOT
+  type        = bool
+  default     = true
 }
 
 variable "worm_locked" {

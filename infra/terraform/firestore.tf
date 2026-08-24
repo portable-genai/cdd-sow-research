@@ -19,11 +19,20 @@ resource "google_project_service" "firestore" {
   disable_on_destroy = false
 }
 
-# The Firestore service agent must be able to use the regional CMEK key.
+# The Firestore service agent must be able to use the regional CMEK key. Asked for, not
+# spelled out — see the note above the service-agent grants in kms.tf.
+resource "google_project_service_identity" "firestore" {
+  provider = google-beta
+  project  = var.project_id
+  service  = "firestore.googleapis.com"
+
+  depends_on = [google_project_service.firestore]
+}
+
 resource "google_kms_crypto_key_iam_member" "firestore" {
   crypto_key_id = google_kms_crypto_key.cdd.id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
-  member        = "serviceAccount:service-${data.google_project.this.number}@gcp-sa-firestore.iam.gserviceaccount.com"
+  member        = "serviceAccount:${google_project_service_identity.firestore.email}"
 }
 
 resource "google_firestore_database" "sow_cases" {
@@ -34,8 +43,19 @@ resource "google_firestore_database" "sow_cases" {
 
   # Regional CMEK end to end (P-09), delete protection on (a case store is model-risk
   # evidence), and point-in-time recovery for the audit window.
-  cmek_config {
-    kms_key_name = google_kms_crypto_key.cdd.id
+  #
+  # CMEK on Firestore is ALLOWLIST-GATED by Google. Creating a CMEK database in a project
+  # without that entitlement fails with a 429 QuotaFailure pointing at a request form, which
+  # is an external dependency no code change can satisfy — discovered on the first real apply,
+  # 2026-08-24. The toggle exists so a project awaiting the allowlist can still stand the rest
+  # of the stack up; it defaults to ON, so a production deploy that has the entitlement is
+  # unaffected and a deploy that does not must switch it off DELIBERATELY and disclose it.
+  # Every other CMEK binding (logging, storage, Document AI, Vertex) is unconditional.
+  dynamic "cmek_config" {
+    for_each = var.firestore_cmek_enabled ? [1] : []
+    content {
+      kms_key_name = google_kms_crypto_key.cdd.id
+    }
   }
   delete_protection_state           = "DELETE_PROTECTION_ENABLED"
   point_in_time_recovery_enablement = "POINT_IN_TIME_RECOVERY_ENABLED"
@@ -44,6 +64,13 @@ resource "google_firestore_database" "sow_cases" {
     google_project_service.firestore,
     google_kms_crypto_key_iam_member.firestore,
   ]
+
+  lifecycle {
+    precondition {
+      condition     = var.firestore_cmek_enabled || !var.worm_locked
+      error_message = "A locked (production) stack must keep Firestore CMEK enabled: the case store holds the same customer material as the audit trail, so exempting it while claiming an immutable audit posture would be incoherent."
+    }
+  }
 }
 
 # The app service account reads/writes case documents (least privilege: no admin).

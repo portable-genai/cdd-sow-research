@@ -30,8 +30,11 @@ resource "google_org_policy_policy" "resource_locations" {
   spec {
     rules {
       values {
-        # e.g. "in:us-central1-locations" — the region plus its zones/sub-locations.
-        allowed_values = ["in:${var.region}-locations"]
+        # Default: "in:<region>-locations" — the region plus its zones/sub-locations, and
+        # nothing else. var.resource_location_values overrides it only where a required
+        # service has no single-region presence; see that variable for why widening is a
+        # jurisdiction statement rather than an exception list.
+        allowed_values = length(var.resource_location_values) > 0 ? var.resource_location_values : ["in:${var.region}-locations"]
       }
     }
   }

@@ -26,6 +26,25 @@ ENV NODE_ENV=production \
     PORT=3000
 
 WORKDIR /app
+
+# A digest pin freezes the base image, and therefore also freezes its unpatched packages.
+# Reproducible and patched are independent properties; the pin only buys the first.
+RUN apk upgrade --no-cache
+
+# Remove npm (and its bundled corepack/yarn) from the RUNTIME image. Next.js standalone
+# output ships its own minimal node_modules and is started with `node server.js`, so nothing
+# here installs packages — but the base image carries a full npm, and npm BUNDLES its
+# dependencies. Every Node advisory in the 2026-08-24 promotion scan came from that bundle
+# (tar, sigstore, glob, minimatch, brace-expansion, picomatch, ip-address); not one was a
+# dependency of this application, and none appeared in package-lock.json, so no npm upgrade
+# in the builder could have reached them. Same shape as pip vendoring msgpack in the API
+# image: the scanner is right, the finding is real, and the package manager is the thing that
+# does not belong in a serving container.
+RUN rm -rf /usr/local/lib/node_modules/npm \
+           /usr/local/lib/node_modules/corepack \
+           /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+           /opt/yarn-* /usr/local/bin/yarn /usr/local/bin/yarnpkg
+
 RUN addgroup -S doc1 -g 10001 \
  && adduser -S doc1 -u 10001 -G doc1
 

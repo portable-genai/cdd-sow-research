@@ -6,6 +6,7 @@ run "named_edge_contract" {
 
   variables {
     project_id                           = "fictional-doc1-production"
+    documentai_location                  = "us"
     enable_org_policies                  = false
     enable_vpc_sc                        = false
     worm_locked                          = false
@@ -129,6 +130,7 @@ run "default_omits_irreversible_mode5_key" {
 
   variables {
     project_id          = "fictional-doc1-production"
+    documentai_location = "us"
     enable_org_policies = false
     enable_vpc_sc       = false
     worm_locked         = false
@@ -145,6 +147,7 @@ run "mode5_key_bootstrap_omits_edge" {
 
   variables {
     project_id                     = "fictional-doc1-production"
+    documentai_location            = "us"
     enable_org_policies            = false
     enable_vpc_sc                  = false
     worm_locked                    = false
@@ -171,6 +174,7 @@ run "reject_bootstrap_with_edge_enabled" {
 
   variables {
     project_id                           = "fictional-doc1-production"
+    documentai_location                  = "us"
     enable_org_policies                  = false
     enable_vpc_sc                        = false
     worm_locked                          = false
@@ -208,6 +212,7 @@ run "default_retention_keeps_worm_lock_enabled" {
 
   variables {
     project_id          = "fictional-doc1-production"
+    documentai_location = "us"
     enable_org_policies = false
     enable_vpc_sc       = false
     standalone          = false
@@ -229,6 +234,7 @@ run "reject_retention_below_six_months" {
 
   variables {
     project_id          = "fictional-doc1-production"
+    documentai_location = "us"
     enable_org_policies = false
     enable_vpc_sc       = false
     standalone          = false
@@ -244,6 +250,7 @@ run "unlocked_stack_accepts_short_retention" {
 
   variables {
     project_id          = "fictional-doc1-production"
+    documentai_location = "us"
     enable_org_policies = false
     enable_vpc_sc       = false
     standalone          = false
@@ -262,6 +269,7 @@ run "unlocked_stack_still_requires_a_positive_retention" {
 
   variables {
     project_id          = "fictional-doc1-production"
+    documentai_location = "us"
     enable_org_policies = false
     enable_vpc_sc       = false
     standalone          = false
@@ -277,6 +285,7 @@ run "reject_reducing_existing_locked_retention" {
 
   variables {
     project_id                     = "fictional-doc1-production"
+    documentai_location            = "us"
     enable_org_policies            = false
     enable_vpc_sc                  = false
     standalone                     = false
@@ -292,6 +301,7 @@ run "reject_mutable_api_image" {
 
   variables {
     project_id                           = "fictional-doc1-production"
+    documentai_location                  = "us"
     enable_org_policies                  = false
     enable_vpc_sc                        = false
     worm_locked                          = false
@@ -319,6 +329,7 @@ run "reject_reserved_secret_override" {
 
   variables {
     project_id          = "fictional-doc1-production"
+    documentai_location = "us"
     enable_org_policies = false
     enable_vpc_sc       = false
     worm_locked         = false
@@ -338,6 +349,7 @@ run "reject_region_secret_override" {
 
   variables {
     project_id          = "fictional-doc1-production"
+    documentai_location = "us"
     enable_org_policies = false
     enable_vpc_sc       = false
     worm_locked         = false
@@ -357,6 +369,7 @@ run "reject_edge_limit_that_can_exhaust_shared_capacity" {
 
   variables {
     project_id                            = "fictional-doc1-production"
+    documentai_location                   = "us"
     enable_org_policies                   = false
     enable_vpc_sc                         = false
     worm_locked                           = false
@@ -426,5 +439,47 @@ run "unbound_stage_ignores_key_version_pin" {
   assert {
     condition     = terraform_data.signing_key_binding.output.enforced == false
     error_message = "Stages without an embedded-grant production edge must not require a pinned key version."
+  }
+}
+
+# Document AI does not serve every region, and the failure mode without this guard is a 404
+# at apply after the rest of the stack is already up. Proved red on 2026-08-24: the whole
+# suite ran green against a config whose real apply could not create the processor.
+run "reject_a_region_document_ai_does_not_serve" {
+  command = plan
+
+  variables {
+    project_id          = "fictional-doc1-production"
+    enable_org_policies = false
+    enable_vpc_sc       = false
+    worm_locked         = false
+    region              = "us-central1"
+    allowed_regions     = ["us-central1"]
+    documentai_location = ""
+  }
+
+  expect_failures = [google_document_ai_processor.kyc]
+}
+
+# The deploy region is used unchanged when Document AI DOES serve it, so an in-country
+# deployment never widens by accident. asia-southeast1 is served, which is worth pinning:
+# it is the region the original alignment record chose, and the reason that record deferred
+# a per-service check was uncertainty about exactly this.
+run "a_served_region_needs_no_widening" {
+  command = plan
+
+  variables {
+    project_id          = "fictional-doc1-production"
+    enable_org_policies = false
+    enable_vpc_sc       = false
+    worm_locked         = false
+    region              = "asia-southeast1"
+    allowed_regions     = ["asia-southeast1"]
+    documentai_location = ""
+  }
+
+  assert {
+    condition     = google_document_ai_processor.kyc.location == "asia-southeast1"
+    error_message = "A region Document AI serves must be used as-is, never widened to a multi-region."
   }
 }

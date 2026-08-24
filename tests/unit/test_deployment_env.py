@@ -48,6 +48,7 @@ def _ready_values(
             "DOC1_NAME_PREFIX": "cdd-sow",
             "DOC1_STACK_LIFECYCLE": "new",
             "DOC1_DEPLOYMENT_STAGE": "production-edge",
+            "DOC1_DEPLOYMENT_POSTURE": "production",
             "GOOGLE_CLOUD_PROJECT": "approved-doc1-prod",
             "GCP_REGION": "asia-southeast1",
             "DOC1_ALLOWED_REGIONS": "asia-southeast1",
@@ -1008,3 +1009,66 @@ def test_new_stack_rejects_non_resource_not_found_gcloud_failures(
 
     with pytest.raises(deployment_env.DeploymentEnvError, match="absence could not be proven"):
         deployment_env.verify_stack_lifecycle(values)
+
+
+def test_reference_posture_relaxes_only_ha_and_the_worm_lock() -> None:
+    """The reference posture must relax exactly two rules, and nothing else.
+
+    Written after the reference deployment on 2026-08-24. The risk being guarded is scope
+    creep in a relaxation: a posture that quietly waives one more rule each time it is
+    convenient stops being a documented deviation and becomes a second, weaker product.
+    """
+    values = _ready_values()
+    values["DOC1_DEPLOYMENT_POSTURE"] = "reference"
+    values["DOC1_WORM_LOCK_APPROVED"] = "false"
+    values["DOC1_EDGE_MIN_INSTANCES"] = "0"
+    assert deployment_env.validate_environment(values, require_ready=True) == []
+
+    # The SAME two values are rejected under the production posture, which is what makes this
+    # a posture and not a hole. Proved here rather than assumed.
+    values["DOC1_DEPLOYMENT_POSTURE"] = "production"
+    errors = deployment_env.validate_environment(values, require_ready=True)
+    assert any("DOC1_WORM_LOCK_APPROVED" in error for error in errors)
+    assert any("DOC1_EDGE_MIN_INSTANCES" in error for error in errors)
+
+
+def test_reference_posture_still_enforces_everything_else() -> None:
+    """Residency, exact origins and real alert channels are what the stack demonstrates."""
+    values = _ready_values()
+    values["DOC1_DEPLOYMENT_POSTURE"] = "reference"
+    values["DOC1_WORM_LOCK_APPROVED"] = "false"
+    values["DOC1_EDGE_MIN_INSTANCES"] = "0"
+    values["GCP_REGION"] = "europe-west2"  # not in DOC1_ALLOWED_REGIONS
+    errors = deployment_env.validate_environment(values, require_ready=True)
+    assert any("GCP_REGION" in error for error in errors)
+
+
+def test_reference_posture_rejects_a_negative_replica_count() -> None:
+    values = _ready_values()
+    values["DOC1_DEPLOYMENT_POSTURE"] = "reference"
+    values["DOC1_WORM_LOCK_APPROVED"] = "false"
+    values["DOC1_EDGE_MIN_INSTANCES"] = "-1"
+    errors = deployment_env.validate_environment(values, require_ready=True)
+    assert any("must not be negative" in error for error in errors)
+
+
+def test_an_unknown_posture_is_rejected() -> None:
+    values = _ready_values()
+    values["DOC1_DEPLOYMENT_POSTURE"] = "demo"
+    errors = deployment_env.validate_environment(values, require_ready=True)
+    assert any("DOC1_DEPLOYMENT_POSTURE" in error for error in errors)
+
+
+def test_relaxations_are_disclosed_not_silent() -> None:
+    """A relaxed rule that passes quietly is how an evidence pack claims an unexercised control."""
+    values = _ready_values()
+    values["DOC1_DEPLOYMENT_POSTURE"] = "reference"
+    values["DOC1_WORM_LOCK_APPROVED"] = "false"
+    values["DOC1_EDGE_MIN_INSTANCES"] = "0"
+    disclosures = deployment_env.posture_disclosures(values)
+    assert any("NOT locked" in line for line in disclosures)
+    assert any("high availability is not demonstrated" in line.lower() for line in disclosures)
+
+    # A production posture discloses nothing, because it waives nothing.
+    values["DOC1_DEPLOYMENT_POSTURE"] = "production"
+    assert deployment_env.posture_disclosures(values) == []
