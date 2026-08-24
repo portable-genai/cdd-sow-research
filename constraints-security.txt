@@ -1,0 +1,22 @@
+# constraints-security.txt — minimum versions imposed for known vulnerabilities.
+#
+# These packages are NOT direct dependencies and are NOT pinned by requirements-gcp.lock:
+# they arrive transitively (or from the base image's own ensurepip) and therefore resolve to
+# whatever the resolver picks on the day of the build. That is how a digest-pinned,
+# lockfile-driven, reproducible image still shipped two HIGH advisories — found by the trivy
+# gate in scripts/promote_production_images.sh on 2026-08-24, which refused the promotion.
+#
+# A constraints file is deliberately NOT a lockfile and must not be mistaken for one. It
+# states a FLOOR ("no older than"), so it cannot pin a build the way the lock does; it exists
+# because you cannot pin what the lock never listed. The right long-term home for each line is
+# an upstream pin — once the kit or the base image ships the fixed version, the line here
+# becomes redundant and should be deleted rather than left to rot into a floor nobody rechecks.
+#
+# Re-derive rather than trust this file: `trivy image --severity HIGH,CRITICAL <image>`.
+
+# GHSA-6v7p-g79w-8964 — out-of-bounds read / crash on Unpacker reuse after an error.
+msgpack>=1.2.1
+
+# CVE-2025-47273 — path traversal in setuptools PackageIndex. Ships in the base image's
+# ensurepip at 70.3.0, so the venv inherits it unless it is explicitly raised.
+setuptools>=78.1.1

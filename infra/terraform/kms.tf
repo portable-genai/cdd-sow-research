@@ -83,23 +83,56 @@ data "google_project" "this" {
   project_id = var.project_id
 }
 
+# Service agents are ASKED FOR, never spelled out. A "service-<number>@gcp-sa-<x>" address is
+# a guess about an implementation detail, and it fails in the two ways that matter: the agent
+# does not exist until the service is first provisioned (apply dies with "Service account ...
+# does not exist"), and the local part is not always what the pattern predicts. Each block
+# below either CREATES the identity or READS it from the service that owns it, so the address
+# is authoritative and the resource ordering is explicit rather than hoped for.
+# sanctions_sync.tf already did this correctly via data.google_storage_project_service_account;
+# these four were string interpolation and all four broke on the first real apply, 2026-08-24.
+
+resource "google_project_service_identity" "documentai" {
+  provider = google-beta
+  project  = var.project_id
+  service  = "documentai.googleapis.com"
+
+  depends_on = [google_project_service.required]
+}
+
+resource "google_project_service_identity" "aiplatform" {
+  provider = google-beta
+  project  = var.project_id
+  service  = "aiplatform.googleapis.com"
+
+  depends_on = [google_project_service.required]
+}
+
+# Cloud Logging exposes no service_identity resource. This data source is the authoritative
+# answer to "which agent encrypts this project's logs", and is what the address must come from.
+data "google_logging_project_cmek_settings" "this" {
+  project = var.project_id
+
+  depends_on = [google_project_service.required]
+}
+
 # Document AI service agent.
 resource "google_kms_crypto_key_iam_member" "documentai" {
   crypto_key_id = google_kms_crypto_key.cdd.id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
-  member        = "serviceAccount:service-${data.google_project.this.number}@gcp-sa-prod-dai-core.iam.gserviceaccount.com"
+  member        = "serviceAccount:${google_project_service_identity.documentai.email}"
 }
 
 # Vertex AI / Agent Runtime service agent.
 resource "google_kms_crypto_key_iam_member" "aiplatform" {
   crypto_key_id = google_kms_crypto_key.cdd.id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
-  member        = "serviceAccount:service-${data.google_project.this.number}@gcp-sa-aiplatform.iam.gserviceaccount.com"
+  member        = "serviceAccount:${google_project_service_identity.aiplatform.email}"
 }
 
 # Cloud Logging service agent (CMEK on the WORM bucket).
 resource "google_kms_crypto_key_iam_member" "logging" {
   crypto_key_id = google_kms_crypto_key.cdd.id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
-  member        = "serviceAccount:service-${data.google_project.this.number}@gcp-sa-logging.iam.gserviceaccount.com"
+  member        = "serviceAccount:${data.google_logging_project_cmek_settings.this.service_account_id}"
 }

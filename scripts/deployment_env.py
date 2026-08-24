@@ -54,6 +54,7 @@ BASE_REQUIRED = (
     "DOC1_NAME_PREFIX",
     "DOC1_STACK_LIFECYCLE",
     "DOC1_DEPLOYMENT_STAGE",
+    "DOC1_DEPLOYMENT_POSTURE",
     "DOC1_DEPLOYMENT_OWNER",
     "DOC1_SECURITY_OWNER",
     "DOC1_OPERATIONS_OWNER",
@@ -913,6 +914,18 @@ def validate_environment(values: dict[str, str], *, require_ready: bool = False)
     edge_stage = deployment_stage == "production-edge"
     if bootstrap_stage and mode != "embedded-grant":
         errors.append("mode5-key-bootstrap requires embedded-grant identity")
+    # Posture is ORTHOGONAL to stage: stage says which part of the stack is being applied,
+    # posture says what the deployment is FOR. "production" is the default and changes
+    # nothing. "reference" is the maintainer-owned demonstration stack, and it relaxes
+    # exactly two production rules, both named explicitly below and both reported in the
+    # preflight summary so the relaxation can never be silent. Everything else — residency,
+    # digest binding, exact origins, real alert channels, secret-version pinning — is
+    # unchanged, because those are what the deployment exists to demonstrate.
+    posture = values.get("DOC1_DEPLOYMENT_POSTURE", "")
+    if posture not in {"production", "reference"}:
+        errors.append("DOC1_DEPLOYMENT_POSTURE must be production or reference")
+    reference_posture = posture == "reference"
+
     lifecycle = values.get("DOC1_STACK_LIFECYCLE", "")
     if lifecycle not in {"new", "existing"}:
         errors.append("DOC1_STACK_LIFECYCLE must be new or existing")
@@ -1064,13 +1077,24 @@ def validate_environment(values: dict[str, str], *, require_ready: bool = False)
             errors.append("DOC1_APPROVED_PARENT_ORIGINS must contain exact HTTPS origins")
             break
 
-    if values.get("DOC1_WORM_LOCK_APPROVED", "").lower() != "true":
+    if not reference_posture and values.get("DOC1_WORM_LOCK_APPROVED", "").lower() != "true":
+        # A reference stack must stay destroyable, so the irreversible lock is not demanded of
+        # it. The retention policy itself is still applied and still evidenced; what is not
+        # exercised is immutability, and the evidence has to say so rather than claim WORM.
         errors.append("DOC1_WORM_LOCK_APPROVED must be true before production execution")
     if edge_stage:
         try:
             min_instances = int(values.get("DOC1_EDGE_MIN_INSTANCES", "0"))
-            if min_instances < 2:
+            # Two replicas is a HIGH-AVAILABILITY requirement, not a correctness one: the
+            # multi-replica state it protects (browser-flow outbox, replay cache) is in
+            # Firestore and behaves identically at one replica or none. A reference stack
+            # scales to zero so an idle demo costs nothing, and pays a cold start instead.
+            # HA is therefore NOT demonstrated by a reference deployment, which is a
+            # disclosure, not a defect.
+            if not reference_posture and min_instances < 2:
                 errors.append("DOC1_EDGE_MIN_INSTANCES must be at least 2")
+            if min_instances < 0:
+                errors.append("DOC1_EDGE_MIN_INSTANCES must not be negative")
         except ValueError:
             errors.append("DOC1_EDGE_MIN_INSTANCES must be an integer")
     alert_channels = [
@@ -1469,6 +1493,34 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def posture_disclosures(values: dict[str, str]) -> list[str]:
+    """What a reference posture is NOT evidencing.
+
+    A relaxed rule that passes silently is indistinguishable from a rule that was met, which
+    is how an evidence pack ends up claiming a control it never exercised. Every relaxation
+    the reference posture grants is named here and printed by both `validate` and `run`, so
+    the operator reading the preflight sees the gap at the moment it is taken rather than
+    discovering it in review.
+    """
+    if values.get("DOC1_DEPLOYMENT_POSTURE", "") != "reference":
+        return []
+    disclosures = ["posture=reference: this stack is a demonstration, not institutional evidence"]
+    if values.get("DOC1_WORM_LOCK_APPROVED", "").lower() != "true":
+        disclosures.append(
+            "  - audit retention is applied but NOT locked: routing and coverage are "
+            "evidenced, immutability is not. Do not describe this stack as WORM."
+        )
+    try:
+        if int(values.get("DOC1_EDGE_MIN_INSTANCES", "0")) < 2:
+            disclosures.append(
+                "  - fewer than two replicas: high availability is NOT demonstrated, and a "
+                "cold start is expected on the first request after idle."
+            )
+    except ValueError:
+        pass
+    return disclosures
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     try:
@@ -1479,9 +1531,12 @@ def main(argv: list[str] | None = None) -> int:
             errors.extend(validate_secret_file_permissions(args.secrets_file))
         if errors:
             raise DeploymentEnvError("\n".join(f"- {error}" for error in errors))
+        disclosures = posture_disclosures(values)
         if args.command == "validate":
             state = "production-ready" if args.require_ready else "draft-valid"
             print(f"Doc1 deployment environment: {state}")
+            for line in disclosures:
+                print(line)
             return 0
         if args.command == "verify-secrets":
             verify_secret_versions(values)
@@ -1492,6 +1547,8 @@ def main(argv: list[str] | None = None) -> int:
             command = command[1:]
         if not command:
             raise DeploymentEnvError("run requires a command after --")
+        for line in disclosures:
+            print(line, file=sys.stderr)
         command = prepare_terraform_command(command, values)
         if requires_live_verification(command):
             if values["DOC1_DEPLOYMENT_STAGE"] == "production-edge":

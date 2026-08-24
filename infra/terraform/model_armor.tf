@@ -45,5 +45,24 @@ resource "google_model_armor_template" "cdd_guardrail" {
     }
   }
 
+  # REQUIRED by the API as of the 6.x provider line: creation fails with
+  # "The 'template_metadata' field is required." when this block is absent, even though
+  # every field inside it is individually optional. Found by execution against the real
+  # service on 2026-08-24; `terraform validate` and the offline suite both accept the
+  # template without it, because neither resolves the API's own field requirements.
+  #
+  # The two settings are deliberate, not filler. Multi-language detection matters because a
+  # prompt-injection attempt does not have to arrive in English, and enforcement that only
+  # reads one language is a guardrail with a documented way around it. Logging only the
+  # operations that were BLOCKED keeps the sanitize path from copying customer KYC prompt
+  # text into ordinary operation logs, which would put the very material this template exists
+  # to protect outside the CMEK-encrypted WORM bucket that is supposed to hold it.
+  template_metadata {
+    multi_language_detection {
+      enable_multi_language_detection = true
+    }
+    log_sanitize_operations = true
+  }
+
   depends_on = [google_project_service.required]
 }
