@@ -110,7 +110,7 @@ deploy-preflight: ## Fail unless every named-production input is real and approv
 deploy-verify-secrets: ## Bind exact Secret Manager versions to reviewed payload digests.
 	$(PYTHON) scripts/deployment_env.py verify-secrets
 
-tf-plan: ## Terraform plan for the asia-southeast1 infrastructure.
+tf-plan: ## Terraform plan for the deployment infrastructure (region is a deploy-time input).
 	$(PYTHON) scripts/deployment_env.py run -- terraform -chdir=$(TF_DIR) init -input=false
 	$(PYTHON) scripts/deployment_env.py run -- terraform -chdir=$(TF_DIR) plan
 
