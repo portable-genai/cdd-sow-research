@@ -163,11 +163,17 @@ function DocumentViewerModal({
         }
 
         const pdfjs = await import("pdfjs-dist");
-        pdfjs.GlobalWorkerOptions.workerSrc =
-          "/agent/assets/pdfjs/4.10.38/pdf.worker.min.mjs";
+        // The served worker lives under a path keyed by the installed package's own version
+        // (see ui/scripts/build-loader.mjs), never a literal repeated here: a bump that moved
+        // the constant in one place and not the other would silently mismatch the served worker
+        // against the library at runtime, and nothing offline would catch it.
+        pdfjs.GlobalWorkerOptions.workerSrc = `/agent/assets/pdfjs/${pdfjs.version}/pdf.worker.min.mjs`;
         const task = pdfjs.getDocument({ data: bytes });
         const document_ = await task.promise;
-        destroyPdf = () => document_.destroy();
+        // `PDFDocumentProxy.destroy()` was removed; destruction now lives on the loading TASK
+        // (`pdfjs.getDocument(...)`), which is also what frees the worker thread this task
+        // spawned, so this closes strictly more than the old call site did.
+        destroyPdf = () => task.destroy();
         if (document_.numPages > MAX_PDF_PAGES) {
           throw new Error(`PDF exceeds the ${MAX_PDF_PAGES}-page viewer limit.`);
         }
@@ -199,7 +205,10 @@ function DocumentViewerModal({
           container.append(canvas);
           const context = canvas.getContext("2d");
           if (!context) throw new Error("Canvas rendering is unavailable.");
-          await page.render({ canvasContext: context, viewport }).promise;
+          // `canvas` is the current API; `canvasContext` alone is documented as backwards
+          // compatibility only, and the type it now expects (`RenderParameters`) no longer
+          // accepts a bare `{ canvasContext, viewport }` object without it.
+          await page.render({ canvas, canvasContext: context, viewport }).promise;
           page.cleanup();
         }
       } catch (caught) {
