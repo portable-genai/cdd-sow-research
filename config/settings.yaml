@@ -28,7 +28,12 @@ document_ai:
 knowledge_base:
   base_url_env: HRZ_KB_URL             # A2 Enterprise KB (B1's governed RAG store)
   data_store_id: ${CDD_KB_DATA_STORE:-cdd-case-kb}   # only used by the standalone GCP adapter
-  location: ${GCP_REGION:-us-central1}   # tracks the deploy region
+  # NOT the deploy region. Discovery Engine serves `global`, `us` and `eu`, so tracking
+  # GCP_REGION produced `us-central1-discoveryengine.googleapis.com`, a hostname that does not
+  # exist, and grounded retrieval failed with a 501 blaming the api_endpoint configuration.
+  # `us` is the residency-preserving choice for a United States deployment; an EU deployment
+  # sets `eu`. Terraform's knowledge_base_location carries the same value and the same reason.
+  location: ${CDD_KB_LOCATION:-us}
   top_k: 10
   # Discovery Engine path segments (standalone GCP adapter). The API defaults fit most
   # projects; enterprises with named collections/branches override per deployment.

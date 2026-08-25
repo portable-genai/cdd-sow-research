@@ -144,7 +144,13 @@ def test_gcp_region_is_configurable_from_one_selector(monkeypatch):
     settings = Settings.load(CONFIG_PATH)
     assert settings.region == "europe-west4"
     assert settings.document_ai.location == "europe-west4"
-    assert settings.knowledge_base.location == "europe-west4"
+    # The knowledge base is DELIBERATELY not on this selector. Discovery Engine serves `global`,
+    # `us` and `eu` and no Cloud region, so tracking GCP_REGION produced
+    # `europe-west4-discoveryengine.googleapis.com` -- a hostname that does not exist -- and
+    # grounded retrieval failed with a 501 that blames the api_endpoint configuration. One
+    # selector per FACT, and "which Cloud region do we deploy in" and "which Discovery Engine
+    # location holds the corpus" are two facts with two answer sets.
+    assert settings.knowledge_base.location == "us"
     assert settings.model_armor.host == "modelarmor.europe-west4.rep.googleapis.com"
     assert settings.logging.retention_days == 180
     assert settings.models.reasoning == "gemini-3.5-flash"
@@ -277,3 +283,16 @@ def test_benign_media_does_not_escalate_low_band():
 
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(pytest.main([__file__, "-q"]))
+
+
+def test_the_knowledge_base_location_has_its_own_selector(monkeypatch):
+    """It must be settable for an EU deployment without moving the whole region."""
+
+    monkeypatch.setenv("CDD_KB_LOCATION", "eu")
+    assert Settings.load(CONFIG_PATH).knowledge_base.location == "eu"
+
+
+def test_the_knowledge_base_location_default_is_one_discovery_engine_serves(monkeypatch):
+    monkeypatch.delenv("CDD_KB_LOCATION", raising=False)
+    monkeypatch.setenv("GCP_REGION", "asia-southeast1")
+    assert Settings.load(CONFIG_PATH).knowledge_base.location in {"global", "us", "eu"}
