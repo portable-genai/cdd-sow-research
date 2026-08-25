@@ -23,6 +23,7 @@ from ...domain.models import (
     RetrievalQuery,
     RetrievedPassage,
     SourceType,
+    citation_title,
 )
 
 if TYPE_CHECKING:  # pragma: no cover - typing only, never imported at runtime
@@ -47,6 +48,27 @@ _CONTENT_SIGNATURES: tuple[tuple[bytes, str], ...] = (
     (b"\xff\xd8\xff", "image/jpeg"),
     (b"RIFF", "image/webp"),
 )
+
+
+def _struct_data(
+    document: KycDocument, acl_tags: tuple[str, ...], page_count: int
+) -> dict[str, Any]:
+    """The metadata written beside a document, which is all a search response can read back.
+
+    A module-level function rather than an inline literal because it is the whole content of
+    the ingest half: a search result carries the document's id and its ``struct_data`` and
+    nothing else, so anything absent here is unrecoverable later, whatever the search side
+    does. ``title`` was absent, and that is why every managed citation was named after its
+    own id (see ``domain.models.citation_title``).
+    """
+    return {
+        "source_id": document.id,
+        "doc_type": document.doc_type.value,
+        "title": citation_title(document.doc_type),
+        "uri": document.uri,
+        "acl_tags": list(acl_tags),
+        "pages": page_count,
+    }
 
 
 def _ingest_mime_type(content: bytes) -> str:
@@ -152,17 +174,19 @@ class AgentSearchKnowledgeBaseAdapter:
         Agent Search does its own layout-aware chunking over the raw bytes, so
         ``page_texts`` is recorded as structured metadata (the page count) rather than
         used to pre-split the document.
+
+        Re-ingesting a document already in the branch is SUCCESS, not failure. Document
+        ids are derived from content (``domain.models.document_id``), so the same evidence
+        offered twice arrives under the same id, and the store already holding it is the
+        outcome the caller wanted. Reported explicitly rather than left to the caller's
+        best-effort ``except``, which would have swallowed a genuine ingest failure and an
+        idempotent no-op into one indistinguishable silence.
         """
+        from google.api_core import exceptions as gexc
         from google.cloud import discoveryengine_v1
 
         client = self._documents()
-        struct = {
-            "source_id": document.id,
-            "doc_type": document.doc_type.value,
-            "uri": document.uri,
-            "acl_tags": list(acl_tags),
-            "pages": len(page_texts),
-        }
+        struct = _struct_data(document, acl_tags, len(page_texts))
         doc = discoveryengine_v1.Document(
             id=document.id,
             struct_data=struct,
@@ -170,7 +194,12 @@ class AgentSearchKnowledgeBaseAdapter:
                 raw_bytes=content, mime_type=_ingest_mime_type(content)
             ),
         )
-        client.create_document(parent=self._branch(), document=doc, document_id=document.id)
+        try:
+            client.create_document(parent=self._branch(), document=doc, document_id=document.id)
+        except gexc.AlreadyExists:
+            return IngestResult(
+                document_id=document.id, chunks=0, status="already-indexed", ok=True
+            )
         return IngestResult(document_id=document.id, chunks=0, status="indexed", ok=True)
 
     def search(self, query: RetrievalQuery) -> list[RetrievedPassage]:
@@ -223,7 +252,11 @@ class AgentSearchKnowledgeBaseAdapter:
         struct = self._to_dict(getattr(document, "struct_data", None))
         derived = self._to_dict(getattr(document, "derived_struct_data", None))
         source_id = str(struct.get("source_id") or getattr(document, "id", "") or "unknown")
-        title = str(struct.get("source_id") or source_id)
+        # Fall back through the document's KIND before its id. A document ingested before
+        # the title was written carries a doc_type that still names it; only a document
+        # carrying neither is reduced to its id, and then the citation says so rather than
+        # presenting an id as though it were a name.
+        title = str(struct.get("title") or struct.get("doc_type") or source_id)
         url = str(struct.get("uri") or "")
         acl_tags = tuple(str(t) for t in (struct.get("acl_tags") or ()))
 

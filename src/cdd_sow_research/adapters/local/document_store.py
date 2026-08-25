@@ -19,13 +19,12 @@ from __future__ import annotations
 import hashlib
 import sqlite3
 import threading
-import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
 from ...config import Settings
 from ...domain.errors import DocumentConflictError, DocumentNotFoundError
-from ...domain.models import DocType, StoredDocument
+from ...domain.models import DocType, StoredDocument, document_id
 
 _DEFAULT_DB_PATH = Path.home() / ".cdd_sow_research" / "documents.db"
 _ACL_SEP = "␟"  # unit separator: joins acl_tags into one column safely
@@ -92,7 +91,7 @@ class LocalDocumentStoreAdapter:
         mime_type: str = "",
     ) -> StoredDocument:
         record = StoredDocument(
-            id=f"doc-{uuid.uuid4().hex[:12]}",
+            id=document_id(content, subject_id, doc_type, filename),
             filename=filename,
             doc_type=doc_type,
             mime_type=mime_type or "application/octet-stream",
@@ -104,9 +103,13 @@ class LocalDocumentStoreAdapter:
             sha256=hashlib.sha256(content).hexdigest(),
         )
         with self._lock:
+            # The id is derived from the filing, so offering the same document twice is a
+            # REPEAT rather than a second document. Ignoring the second insert keeps the
+            # first record's ACL tags and upload time, which is the conservative choice:
+            # re-uploading evidence must never be a way to widen who can read it.
             self._conn.execute(
-                "INSERT INTO documents (id, filename, doc_type, mime_type, size_bytes, "
-                "pages, subject_id, acl_tags, uploaded_at, sha256, content) "
+                "INSERT OR IGNORE INTO documents (id, filename, doc_type, mime_type, "
+                "size_bytes, pages, subject_id, acl_tags, uploaded_at, sha256, content) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     record.id,
@@ -123,7 +126,13 @@ class LocalDocumentStoreAdapter:
                 ),
             )
             self._conn.commit()
-        return record
+            row = self._conn.execute(
+                "SELECT * FROM documents WHERE id = ?", (record.id,)
+            ).fetchone()
+        # Return what the store HOLDS, not what this call proposed: on a repeat those
+        # differ (upload time, and the ACL tags deliberately not widened), and returning
+        # the proposal would report an ACL the store never applied.
+        return self._row_to_record(row) if row is not None else record
 
     def restore(
         self,

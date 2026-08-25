@@ -34,6 +34,7 @@ Pure domain code: no Google Cloud / ADK / FastAPI imports.
 from __future__ import annotations
 
 import contextlib
+import logging
 from contextlib import nullcontext
 from dataclasses import replace
 from typing import Any
@@ -56,6 +57,8 @@ from .models import (
 from .review_policy import CddReviewPolicy
 from .serialization import to_jsonable
 from .sow_service import SourceOfWealthService, all_citations
+
+_LOG = logging.getLogger(__name__)
 
 
 def _own_text(content: bytes) -> bytes:
@@ -332,14 +335,40 @@ class CddService:
         screened" is the honest answer then, and it is visibly distinct in the dossier
         from a real result with zero alerts. A screening outage therefore degrades the
         dossier rather than failing it; the maker-checker gate still applies.
+
+        The degradation is deliberate. Its SILENCE was not. This returned None on any
+        exception and emitted nothing -- no log, no span attribute, nothing an operator
+        could have queried -- so a deployment whose watchlist snapshot did not exist ran
+        for as long as it existed producing dossiers that had screened nobody, and the
+        only reason anyone found out was that a paired run compared it against a laptop
+        that had. "Not screened" was on the wire the whole time and read as an absence
+        rather than as an outage.
+
+        So the outcome is recorded on the way out, both branches. An unwired provider is a
+        configuration fact and is logged once at INFO; a provider that was wired and failed
+        is an OUTAGE and is logged at ERROR with the cause, because those are two different
+        events that had been producing one indistinguishable None.
         """
         if self._sanctions is None:
+            _LOG.info(
+                "watchlist screening skipped for subject %s: no sanctions provider is bound "
+                "under this profile; the dossier will report NOT SCREENED",
+                getattr(subject, "id", "?"),
+            )
             return None
         span = self._tracer.span("cdd.screen", action="screen_subject", actor=subject.id)
         with span if span is not None else nullcontext():
             try:
                 return self._screening.screen_subject(subject, self._sanctions)
-            except Exception:  # noqa: BLE001 - an unreadable snapshot degrades, never crashes
+            except Exception as exc:  # noqa: BLE001 - an unreadable snapshot degrades, never crashes
+                _LOG.error(
+                    "watchlist screening FAILED for subject %s and the dossier will report "
+                    "NOT SCREENED: %s: %s. The snapshot is expected at the configured "
+                    "sanctions bucket/object; a dossier produced now has screened nobody.",
+                    getattr(subject, "id", "?"),
+                    type(exc).__name__,
+                    exc,
+                )
                 return None
 
     def _compliance_check(self, subject: Any, rating: RiskRating, actor: str) -> None:

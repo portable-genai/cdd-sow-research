@@ -16,13 +16,12 @@ The Cloud Storage SDK import is lazy so the local/on-prem/test profiles import w
 from __future__ import annotations
 
 import hashlib
-import uuid
 from datetime import UTC, datetime
 from typing import Any
 
 from ...config import Settings
 from ...domain.errors import DocumentConflictError, DocumentNotFoundError
-from ...domain.models import DocType, StoredDocument
+from ...domain.models import DocType, StoredDocument, document_id
 
 _ACL_SEP = "|"  # object metadata values are plain strings
 
@@ -62,7 +61,7 @@ class GcsDocumentStoreAdapter:
         mime_type: str = "",
     ) -> StoredDocument:
         record = StoredDocument(
-            id=f"doc-{uuid.uuid4().hex[:12]}",
+            id=document_id(content, subject_id, doc_type, filename),
             filename=filename,
             doc_type=doc_type,
             mime_type=mime_type or "application/octet-stream",

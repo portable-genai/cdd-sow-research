@@ -35,8 +35,9 @@ from ...domain.models import (
     RetrievalQuery,
     RetrievedPassage,
     SourceType,
+    citation_title,
 )
-from ._seed import SEED_PASSAGES
+from ._seed import DEMO_CORPUS_TAG, SEED_PASSAGES
 
 # Default on-disk location for the local index (overridable via settings.local.db_path).
 _DEFAULT_DB_DIR = Path.home() / ".cdd_sow_research"
@@ -74,6 +75,8 @@ class LocalKnowledgeBaseAdapter:
         # documents, and a case with nothing indexed is refused as ungrounded.
         if self._settings.profile == "local" and self._is_empty():
             self.seed(SEED_PASSAGES)
+        elif self._settings.profile == "local":
+            self._retag_legacy_seed_rows()
 
     # ------------------------------------------------------------------ #
     # Connection / schema
@@ -108,6 +111,33 @@ class LocalKnowledgeBaseAdapter:
                 """
             )
             self._conn.commit()
+
+    def _retag_legacy_seed_rows(self) -> int:
+        """Tag seed rows written before the demo corpus was scoped. Returns the count fixed.
+
+        Tagging ``SEED_PASSAGES`` in source only reaches an index that does not exist yet,
+        because the corpus is seeded exactly once, when the store is empty. Every laptop
+        that has already run this application therefore keeps the untagged -- and so
+        PUBLIC -- rows it was seeded with, and the fix reaches precisely the machines that
+        never had the defect while missing the ones that do. That is the worse half of the
+        two: nothing looks wrong, because the CLI still prints a cited dossier.
+
+        Matched by seed ``source_id`` AND an empty tag set, both conditions required. The
+        id alone would re-tag a case document that happened to share an id; an empty tag
+        set alone would capture any legitimately public passage a future profile writes.
+        """
+        seed_ids = tuple(p.citation.source_id for p in SEED_PASSAGES)
+        if not seed_ids:
+            return 0
+        placeholders = ",".join("?" for _ in seed_ids)
+        with self._lock:
+            cursor = self._conn.execute(
+                f"UPDATE passages SET acl_tags = ? "  # noqa: S608 - placeholders are generated
+                f"WHERE acl_tags = '' AND source_id IN ({placeholders})",
+                (DEMO_CORPUS_TAG, *seed_ids),
+            )
+            self._conn.commit()
+            return int(cursor.rowcount or 0)
 
     def _is_empty(self) -> bool:
         with self._lock:
@@ -186,7 +216,7 @@ class LocalKnowledgeBaseAdapter:
                 citation=Citation(
                     source_id=document.id,
                     source_type=SourceType.DOCUMENT,
-                    title=document.doc_type.value,
+                    title=citation_title(document.doc_type),
                     url=document.uri,
                     page=page,
                     snippet=text[:120],
@@ -211,7 +241,25 @@ class LocalKnowledgeBaseAdapter:
         )
 
     def search(self, query: RetrievalQuery) -> list[RetrievedPassage]:
-        """Return ranked, ACL-filtered passages with page-level citations for ``query``."""
+        """Return ranked, ACL-filtered passages with page-level citations for ``query``.
+
+        The built-in demo corpus is admitted only as a FALLBACK, when the case's own
+        evidence retrieved nothing. It used to be untagged, which under the ACL contract
+        means public: it then competed with a case's uploaded documents on relevance, and
+        since retrieval is capped at ``top_k`` it did not merely join them but displaced
+        them. A dossier for a real subject cited a fictional bank statement.
+
+        Ordering the two passes this way is what makes the rule stateable in one sentence:
+        the demo corpus grounds a query that would otherwise be ungrounded, and never
+        competes with real evidence for a place in the result.
+        """
+        rows = self._ranked_rows(query)
+        out = self._admit(rows, query.acl_principals, query.top_k)
+        if not out:
+            out = self._admit(rows, (*query.acl_principals, DEMO_CORPUS_TAG), query.top_k)
+        return out
+
+    def _ranked_rows(self, query: RetrievalQuery) -> list[sqlite3.Row]:
         match = self._build_match(query.text)
         if not match:
             sql = "SELECT * FROM passages ORDER BY score DESC LIMIT ?"
@@ -220,13 +268,17 @@ class LocalKnowledgeBaseAdapter:
             sql = "SELECT * FROM passages WHERE passages MATCH ? ORDER BY rank LIMIT ?"
             params = [match, max(query.top_k, 1) * 4]
         with self._lock:
-            rows = self._conn.execute(sql, params).fetchall()
+            return list(self._conn.execute(sql, params).fetchall())
+
+    def _admit(
+        self, rows: list[sqlite3.Row], principals: tuple[str, ...], top_k: int
+    ) -> list[RetrievedPassage]:
         out: list[RetrievedPassage] = []
         for row in rows:
             passage = self._row_to_passage(row)
-            if self._acl_ok(passage.acl_tags, query.acl_principals):
+            if self._acl_ok(passage.acl_tags, principals):
                 out.append(passage)
-            if len(out) >= max(query.top_k, 1):
+            if len(out) >= max(top_k, 1):
                 break
         return out
 
