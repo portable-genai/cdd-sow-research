@@ -39,6 +39,11 @@ DEFAULT_GCP_REGION = "us-central1"
 
 _LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 RUNTIME_PROFILES = frozenset({"local", "live", "gcp", "platform", "onprem"})
+#: Profiles whose adapters bind real Google Cloud SDKs and therefore need a real project.
+MANAGED_PROFILES = frozenset({"gcp", "platform"})
+#: The project id `config/settings.yaml` documents as a placeholder. Correct on a laptop, and a
+#: defect in any profile that calls a cloud API.
+PLACEHOLDER_PROJECT_ID = "your-gcp-project"
 
 #: The one environment variable that selects the runtime profile. Only :func:`resolve_profile`
 #: may read it; ``tests/unit/test_profile_single_source.py`` fails the build if another module
@@ -698,6 +703,94 @@ class EmbeddedGrantSettings:
         return matches[0]
 
 
+#: The one place ``CDD_IAP_TENANT_DOMAINS_JSON`` is read.
+IAP_TENANT_DOMAINS_ENV = "CDD_IAP_TENANT_DOMAINS_JSON"
+
+
+def resolve_iap_tenant_by_domain(configured: object) -> dict[str, str]:
+    """Merge the reviewed IAP domain -> tenant map with its environment override.
+
+    Read in three states, like every other security-relevant setting here. UNSET keeps what
+    ``settings.yaml`` declares; SET AND EMPTY is an operator naming no mapping at all and must
+    not silently inherit the shipped one, because for this map "empty" is the branch that turns
+    the tenant back into whatever Google calls the sign-in domain.
+    """
+
+    def _clean(raw: object, source: str) -> dict[str, str]:
+        if not raw:
+            return {}
+        if not isinstance(raw, dict):
+            raise ValueError(f"{source} must be an object mapping identity domains to tenants")
+        cleaned: dict[str, str] = {}
+        for domain, tenant in raw.items():
+            key = str(domain).strip().lower()
+            value = str(tenant).strip()
+            if not key or not value:
+                raise ValueError(
+                    f"{source} contains an empty domain or tenant; a blank domain would map the "
+                    "identities that present NO domain onto a real tenant"
+                )
+            cleaned[key] = value
+        return cleaned
+
+    setting = read_env_setting(IAP_TENANT_DOMAINS_ENV)
+    if setting.is_configured_empty:
+        raise ValueError(
+            f"{IAP_TENANT_DOMAINS_ENV} is set to an empty value, which names no mapping. Unset it "
+            "to keep the reviewed map, or provide one."
+        )
+    if setting.is_unset:
+        return _clean(configured, "identity.iap_tenant_by_domain")
+    try:
+        parsed = json.loads(setting.value)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{IAP_TENANT_DOMAINS_ENV} must contain a JSON object") from exc
+    return _clean(parsed, IAP_TENANT_DOMAINS_ENV)
+
+
+#: The one place ``CDD_IAP_GROUPS_JSON`` is read.
+IAP_GROUPS_ENV = "CDD_IAP_GROUPS_JSON"
+
+
+def resolve_iap_groups_by_domain(configured: object) -> dict[str, tuple[str, ...]]:
+    """Merge the reviewed IAP domain -> groups map with its environment override."""
+
+    def _clean(raw: object, source: str) -> dict[str, tuple[str, ...]]:
+        if not raw:
+            return {}
+        if not isinstance(raw, dict):
+            raise ValueError(f"{source} must be an object mapping identity domains to groups")
+        cleaned: dict[str, tuple[str, ...]] = {}
+        for domain, groups in raw.items():
+            key = str(domain).strip().lower()
+            if not key:
+                raise ValueError(f"{source} contains an empty domain")
+            if isinstance(groups, str) or not isinstance(groups, (list, tuple)):
+                raise ValueError(f"{source}[{domain!r}] must be a list of group principals")
+            values = tuple(str(group).strip() for group in groups)
+            if not values or any(not group for group in values):
+                raise ValueError(
+                    f"{source}[{domain!r}] must name at least one non-empty group; an empty list "
+                    "grants nothing and is better written by omitting the domain"
+                )
+            cleaned[key] = values
+        return cleaned
+
+    setting = read_env_setting(IAP_GROUPS_ENV)
+    if setting.is_configured_empty:
+        raise ValueError(
+            f"{IAP_GROUPS_ENV} is set to an empty value, which names no mapping. Unset it to keep "
+            "the reviewed map, or provide one."
+        )
+    if setting.is_unset:
+        return _clean(configured, "identity.iap_groups_by_domain")
+    try:
+        parsed = json.loads(setting.value)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{IAP_GROUPS_ENV} must contain a JSON object") from exc
+    return _clean(parsed, IAP_GROUPS_ENV)
+
+
 @dataclass(frozen=True)
 class IdentitySettings:
     """Implemented Mode 6 session-login identity configuration.
@@ -726,6 +819,29 @@ class IdentitySettings:
     # display-only and is never accepted as a linking key.
     citation_subject_links: dict[str, str] = field(default_factory=dict)
     embedded_grant: EmbeddedGrantSettings = field(default_factory=EmbeddedGrantSettings)
+    #: Verified IAP identity domain -> reviewed tenant id.
+    #:
+    #: The IAP path used the assertion's ``hd`` claim AS the tenant, which is the one identity
+    #: mode with no policy behind it while the refusal it raises says "did not resolve a
+    #: policy-mapped tenant". Two things break on that. A machine identity carries no ``hd`` at
+    #: all, so it resolved to nothing and was refused; and a human's Workspace domain is not the
+    #: institution's tenant id, so the tenant this service stamped on evidence was whatever
+    #: Google happened to call the sign-in domain.
+    #:
+    #: Empty keeps the old behaviour. Non-empty makes the map exhaustive: an unmapped domain
+    #: resolves to NO tenant and the request is refused, rather than falling back to the domain.
+    iap_tenant_by_domain: dict[str, str] = field(default_factory=dict)
+    #: Verified IAP identity domain -> the groups that domain's members hold here.
+    #:
+    #: The IAP path built ``principals=("user:<subject>",)`` and nothing else, so an IAP identity
+    #: held no case-access role and :func:`may_access_case` refused it every case. On a managed
+    #: deployment that is not a restriction, it is a service nobody can use: every signed-in
+    #: analyst was told they were "not entitled" to the case they had just named.
+    #:
+    #: The groups are the SAME strings the entitlement rules already use, so this grants nothing
+    #: new; it states which verified domains hold them. Empty keeps the old behaviour, and an
+    #: unmapped domain grants no group at all.
+    iap_groups_by_domain: dict[str, tuple[str, ...]] = field(default_factory=dict)
     # Identity bindings are selected by ``mode``, never by the runtime profile.
     bindings: dict[str, str] = field(default_factory=dict)
 
@@ -928,7 +1044,7 @@ class BrowserFlowStoreSettings:
 
 @dataclass(frozen=True)
 class Settings:
-    project_id: str = "your-gcp-project"
+    project_id: str = PLACEHOLDER_PROJECT_ID
     region: str = DEFAULT_GCP_REGION
     # local (default, SDK-free) | live (real local models + cloud web grounding) | gcp |
     # platform | onprem
@@ -1166,6 +1282,19 @@ class Settings:
             )
         if identity_mode not in self.identity.bindings:
             raise ValueError(f"identity mode {identity_mode!r} is not enabled in identity.bindings")
+
+        if self.profile in MANAGED_PROFILES and self.project_id == PLACEHOLDER_PROJECT_ID:
+            # The documented placeholder is exactly right for a laptop, where nothing calls a
+            # cloud API, and is a live defect anywhere a cloud SDK is bound. Unvalidated it
+            # travelled all the way into a real request: the deployed agent answered 500 with
+            # "projects/your-gcp-project does not exist" on the first dossier build, which reads
+            # as a broken service rather than an unset GOOGLE_CLOUD_PROJECT. Refusing at load
+            # turns a runtime 500 into a boot failure that names the variable.
+            raise ValueError(
+                f"project_id is still the documented placeholder {PLACEHOLDER_PROJECT_ID!r} in "
+                f"the {self.profile!r} profile, where every adapter calls a real Google Cloud "
+                "API. Set GOOGLE_CLOUD_PROJECT to the deployment project."
+            )
 
         actual_ports = frozenset(self.adapters)
         if actual_ports != RUNTIME_ADAPTER_PORTS:
@@ -1547,6 +1676,12 @@ class Settings:
                 trusted_issuers=trusted_issuers,
                 access_token_issuers=access_token_issuers,
                 embedded_grant=embedded_grant,
+                iap_tenant_by_domain=resolve_iap_tenant_by_domain(
+                    identity_raw.pop("iap_tenant_by_domain", None)
+                ),
+                iap_groups_by_domain=resolve_iap_groups_by_domain(
+                    identity_raw.pop("iap_groups_by_domain", None)
+                ),
                 **identity_raw,
             ),
             "channel": ChannelSettings(

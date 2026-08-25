@@ -1243,6 +1243,17 @@ def get_sow_case(
 # --------------------------------------------------------------------------- #
 # Health & governance
 # --------------------------------------------------------------------------- #
+# Two paths, ONE handler, because the platform reserves one of them.
+#
+# `/healthz` is what the container's own probe calls, and it must stay. It is also unreachable
+# THROUGH a proxy on Google's serverless platform: a request to `<service>/healthz` is answered by
+# the frontend with its own 404 and never arrives, while `/healthzz` and `/v1/healthz` arrive
+# normally. The embedding host therefore could not ask this service whether it was ready, and the
+# console sat on "Connecting to Doc1..." against a service that was healthy the whole time.
+#
+# `/v1/healthz` is the same response under a name nothing intercepts, and it sits with the rest of
+# the versioned surface the console already calls.
+@api_router.get("/v1/healthz", response_model=HealthResponse, tags=["ops"])
 @api_router.get("/healthz", response_model=HealthResponse, tags=["ops"])
 def healthz() -> HealthResponse:
     """Liveness/readiness plus safe, non-secret deployment-selector metadata."""

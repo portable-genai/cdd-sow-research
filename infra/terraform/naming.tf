@@ -38,6 +38,7 @@ locals {
   # Buckets (agent_runtime.tf, sanctions_sync.tf). Project-qualified: bucket names are global.
   staging_bucket_name   = "${var.project_id}-${var.name_prefix}-agent-staging"
   sanctions_bucket_name = "${var.project_id}-${var.name_prefix}-agent-sanctions"
+  documents_bucket_name = "${var.project_id}-${var.name_prefix}-agent-documents"
 
   # Sanctions sync job (sanctions_sync.tf).
   sanctions_sync_sa_id    = "${var.name_prefix}-sanctions-sync"  # renamed from cdd-sanctions-sync

@@ -632,3 +632,23 @@ variable "edge_max_instances" {
     error_message = "edge_max_instances must be greater than or equal to edge_min_instances."
   }
 }
+
+variable "document_writer_service_accounts" {
+  type        = list(string)
+  default     = []
+  description = <<-EOT
+    Service-account emails, other than this stack's own serving identity, allowed to read and
+    write case documents.
+
+    Exists for embedding hosts: a portal that mounts this app same-origin runs it under a runtime
+    identity of the PORTAL's making, which this stack cannot know and the serving-identity grant
+    does not cover. Empty by default, because an app deployed on its own needs none.
+  EOT
+  validation {
+    condition = alltrue([
+      for email in var.document_writer_service_accounts :
+      can(regex("^[a-z0-9-]+@[a-z0-9-]+\\.iam\\.gserviceaccount\\.com$", email))
+    ])
+    error_message = "each document_writer_service_accounts entry must be a service-account email."
+  }
+}

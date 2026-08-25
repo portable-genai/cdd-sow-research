@@ -107,7 +107,10 @@ export async function health(): Promise<{
   identity_mode: string;
   channel_mode: string;
 }> {
-  return request("/healthz");
+  // `/v1/healthz`, not `/healthz`: the platform reserves the latter, so a request to it through
+  // the embedding host's reverse proxy is answered by the frontend and never reaches the API.
+  // The console then waits forever on "Connecting to Doc1..." against a healthy service.
+  return request("/v1/healthz");
 }
 
 export interface CapabilityManifest {

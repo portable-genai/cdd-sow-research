@@ -289,6 +289,7 @@ function AgentConsoleContent({ embedded }: { embedded: boolean }) {
             <span className="text-ink-500">Subject name</span>
             <input
               className="mt-1 w-full rounded border border-ink-200 px-2 py-1.5 text-sm"
+              data-demo="subject-name"
               placeholder="Legal name of the company or person"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -327,6 +328,7 @@ function AgentConsoleContent({ embedded }: { embedded: boolean }) {
       <Panel title="Build the dossier">
         <div className="flex flex-wrap items-center gap-3">
           <button
+            data-demo="build-dossier"
             className="rounded bg-regblue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             onClick={onAssess}
             disabled={!canAssess}
