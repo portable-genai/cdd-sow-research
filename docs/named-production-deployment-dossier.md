@@ -86,17 +86,21 @@ all GCP services this repo depends on are available in `asia-southeast1`, which 
 `us-central1` is the pin. An institution deploying under a residency obligation sets its own
 in-country region explicitly rather than inheriting this default.
 
-Values below were created and confirmed on **2026-08-24** under organization `thingz.live`
-(`400961117351`). Rows still reading `PENDING` are genuinely not created.
+The reference deployment's own values are created and confirmed, and are recorded in the
+gitignored local copy of this file rather than here. This published copy carries placeholders on
+every row that names a real organization, project, principal or billing account: the tree is
+public, publishing is not reversible, and `publish-scrub-scan.py` refuses a tree that still
+carries a live identifier. Rows reading `PENDING` are genuinely not created; rows reading
+`REPLACE_ME_*` are created and deliberately not published.
 
 | Input | Required value | Review rule |
 |---|---|---|
-| GCP organization and project | `thingz.live` / `400961117351`, project `portable-genai-prod` (number `192121533143`) | Shared deployment project, approved in [gcp-org-and-project-topology.md](https://github.com/portable-genai/org-metadata/blob/main/docs/gcp-org-and-project-topology.md) |
-| Credential reachability | `ashish@whiz.coach`, holding `roles/resourcemanager.organizationAdmin`, `roles/resourcemanager.projectCreator` and `roles/accesscontextmanager.policyAdmin` | See the note below |
-| Billing and quota owner | `01E200-BFA66C-B15046` (`whiz.coach`), linked and enabled; owner Ashish Awasthi | Quotas cover HSM, Firestore and Cloud Run, plus IAP for the separate Mode 6 edge |
+| GCP organization and project | `REPLACE_ME_ORGANIZATION` / `REPLACE_ME_ORG_ID`, project `REPLACE_ME_PROJECT_ID` (number `REPLACE_ME_PROJECT_NUMBER`) | Shared deployment project, approved in [gcp-org-and-project-topology.md](https://github.com/portable-genai/org-metadata/blob/main/docs/gcp-org-and-project-topology.md) |
+| Credential reachability | `REPLACE_ME_ORG_ADMIN`, holding `roles/resourcemanager.organizationAdmin`, `roles/resourcemanager.projectCreator` and `roles/accesscontextmanager.policyAdmin` | See the note below |
+| Billing and quota owner | `REPLACE_ME_BILLING_ACCOUNT` (`REPLACE_ME_BILLING_ORG`), linked and enabled; owner `REPLACE_ME_BILLING_OWNER` | Quotas cover HSM, Firestore and Cloud Run, plus IAP for the separate Mode 6 edge |
 | Approved region | `us-central1` (USA) | Must be in `allowed_regions` |
 | Allowed regions | `["us-central1"]` | Reference deployment under no residency obligation; see the region record. **Satisfies no APAC residency regime** |
-| Access Context Manager policy | `718324219947` (title `portable-genai`, org-scoped) | Dry-run VPC-SC before enforcement |
+| Access Context Manager policy | `REPLACE_ME_ACCESS_POLICY_ID` (org-scoped) | Dry-run VPC-SC before enforcement |
 | Agent origin | `PENDING` | Dedicated HTTPS origin |
 | Standalone fallback origin | `PENDING` | Separate Mode 6 service and cookie boundary |
 | DNS managed zone and owner | `PENDING` | Change window recorded |

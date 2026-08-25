@@ -162,7 +162,11 @@ def _settings(
 
 
 def test_managed_mode4_selects_shared_citation_store(tmp_path: Path) -> None:
-    settings = replace(_settings(tmp_path, algorithm="RS256"), profile="gcp")
+    # A managed profile needs a real project: the loader refuses the documented placeholder
+    # where every adapter calls a live cloud API.
+    settings = replace(
+        _settings(tmp_path, algorithm="RS256"), profile="gcp", project_id="bank-doc1-prod"
+    )
 
     settings.validate_deployment()
 

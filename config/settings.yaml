@@ -28,13 +28,21 @@ document_ai:
 knowledge_base:
   base_url_env: HRZ_KB_URL             # A2 Enterprise KB (B1's governed RAG store)
   data_store_id: ${CDD_KB_DATA_STORE:-cdd-case-kb}   # only used by the standalone GCP adapter
-  location: ${GCP_REGION:-us-central1}   # tracks the deploy region
+  # NOT the deploy region. Discovery Engine serves `global`, `us` and `eu`, so tracking
+  # GCP_REGION produced `us-central1-discoveryengine.googleapis.com`, a hostname that does not
+  # exist, and grounded retrieval failed with a 501 blaming the api_endpoint configuration.
+  # `us` is the residency-preserving choice for a United States deployment; an EU deployment
+  # sets `eu`. Terraform's knowledge_base_location carries the same value and the same reason.
+  location: ${CDD_KB_LOCATION:-us}
   top_k: 10
   # Discovery Engine path segments (standalone GCP adapter). The API defaults fit most
   # projects; enterprises with named collections/branches override per deployment.
   collection_id: ${CDD_KB_COLLECTION:-default_collection}
   branch_id: ${CDD_KB_BRANCH:-default_branch}
   serving_config_id: ${CDD_KB_SERVING_CONFIG:-default_search}
+  # The Discovery Engine ENGINE (app) to search. Empty searches the data store directly, which
+  # is Standard edition and refuses the extractive segments this adapter asks for.
+  engine_id: ${CDD_KB_ENGINE:-}
 
 model_armor:
   template_id: ${CDD_MODEL_ARMOR_TEMPLATE:-cdd-sow-guardrail}   # terraform output model_armor_template
@@ -191,6 +199,24 @@ identity:
   # adapter binding exists. Each policy names server-owned issuer/JWKS/audience/tenant,
   # clients, scopes, claim mappings, and bounded token lifetime.
   access_token_issuers: []
+  # Verified IAP identity domain -> reviewed tenant id, as JSON.
+  #
+  # The IAP mode is the one identity mode whose tenant had no policy behind it: it used the
+  # assertion's `hd` claim directly, so a machine identity (which carries no `hd`) resolved to no
+  # tenant and was refused, and a human's Workspace domain became the tenant id even though the
+  # two are different names for different things. Empty keeps that behaviour. Non-empty makes the
+  # map exhaustive: an unmapped domain resolves to no tenant and the request is refused.
+  #
+  #   CDD_IAP_TENANT_DOMAINS_JSON='{"bank.example":"demo-bank"}'
+  iap_tenant_by_domain: {}
+  # Verified IAP identity domain -> the group principals its members hold here, as JSON.
+  #
+  # The IAP path granted `user:<subject>` and nothing else, so an IAP identity satisfied no
+  # case-access role and was refused every case. These are the same group strings the entitlement
+  # rules already recognise; this only states which verified domains hold them.
+  #
+  #   CDD_IAP_GROUPS_JSON='{"bank.example":["group:cdd-analyst"]}'
+  iap_groups_by_domain: {}
   # Immutable issuer-qualified actor links for citation continuation. Never use email:
   # citation_subject_links:
   #   "issub:<embedded issuer+sub encoding>": "issub:<Mode 6 issuer+sub encoding>"

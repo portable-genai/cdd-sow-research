@@ -284,7 +284,11 @@ def test_startup_rejects_missing_signing_key(
 
 
 def test_managed_profile_selects_shared_store(mode5: Settings) -> None:
-    managed = replace(mode5, profile="gcp")
+    # A managed profile with the documented placeholder project is not a valid managed
+    # configuration, so name one: the loader refuses the placeholder where adapters call a
+    # real cloud API, and a fixture that skipped it was describing a deployment that could
+    # not exist.
+    managed = replace(mode5, profile="gcp", project_id="bank-doc1-prod")
 
     managed.validate_deployment()
 
@@ -318,6 +322,7 @@ def test_production_mode5_requires_non_exportable_kms_signer(
     exported = replace(
         mode5,
         profile="gcp",
+        project_id="bank-doc1-prod",
         deployment=replace(mode5.deployment, production=True, replica_count=2),
     )
 

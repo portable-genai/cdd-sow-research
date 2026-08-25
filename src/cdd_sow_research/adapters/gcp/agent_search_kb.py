@@ -29,6 +29,46 @@ if TYPE_CHECKING:  # pragma: no cover - typing only, never imported at runtime
     from google.cloud import discoveryengine_v1
 
 
+#: Leading bytes that identify a format, longest first so a prefix cannot shadow a longer one.
+#:
+#: The declared type was hardcoded to ``application/pdf`` for every document, so a text, CSV or
+#: image upload was handed to the PDF parser and failed indexing with "Document parsing stage
+#: failure: Failed to parse the PDF file: FILE_READ_ERROR". The document still LISTED in the data
+#: store, carrying an errored index status that nothing surfaced, so retrieval returned nothing
+#: and the dossier was refused for want of evidence that had in fact been uploaded, stored and
+#: ingested. Three green steps and a silent fourth.
+#:
+#: Sniffed from the CONTENT rather than declared, because the port hands this adapter a
+#: :class:`KycDocument`, which carries no filename and no media type -- and because the bytes are
+#: the thing the parser will actually read, so they are the honest source for what it is.
+_CONTENT_SIGNATURES: tuple[tuple[bytes, str], ...] = (
+    (b"%PDF-", "application/pdf"),
+    (b"\x89PNG\r\n\x1a\n", "image/png"),
+    (b"\xff\xd8\xff", "image/jpeg"),
+    (b"RIFF", "image/webp"),
+)
+
+
+def _ingest_mime_type(content: bytes) -> str:
+    """What Discovery Engine should PARSE these bytes as.
+
+    Unrecognised binary falls back to PDF, which is what everything was declared as before, so
+    nothing is worse off than it was and everything recognisable is now parsed correctly.
+    """
+
+    for signature, mime_type in _CONTENT_SIGNATURES:
+        if content.startswith(signature):
+            # RIFF is also WAV and AVI; only the WEBP form is a document this store indexes.
+            if signature == b"RIFF" and content[8:12] != b"WEBP":
+                continue
+            return mime_type
+    try:
+        content.decode("utf-8")
+    except UnicodeDecodeError:
+        return "application/pdf"
+    return "text/plain"
+
+
 class AgentSearchKnowledgeBaseAdapter:
     """Direct Agent Search governed-RAG adapter (standalone fallback for A2)."""
 
@@ -36,6 +76,7 @@ class AgentSearchKnowledgeBaseAdapter:
         self._settings = settings
         cfg = settings.knowledge_base
         self._location = cfg.location
+        self._engine_id = cfg.engine_id
         self._data_store_id = cfg.data_store_id
         self._top_k = cfg.top_k
         self._collection_id = cfg.collection_id
@@ -76,9 +117,23 @@ class AgentSearchKnowledgeBaseAdapter:
         )
 
     def _serving_config(self) -> str:
+        """The serving config to search: the ENGINE's when one is configured.
+
+        A data store's own serving config is Standard edition, and this adapter asks for
+        extractive segments, which is an Enterprise-edition feature. Searching the data store
+        directly therefore fails with a 400 telling the caller, in so many words, to address the
+        engine instead. Ingestion still targets the data store, because documents are written to
+        a branch and an engine has none.
+        """
+
+        base = f"projects/{self._settings.project_id}/locations/{self._location}"
+        if self._engine_id:
+            return (
+                f"{base}/collections/{self._collection_id}/engines/{self._engine_id}"
+                f"/servingConfigs/{self._serving_config_id}"
+            )
         return (
-            f"projects/{self._settings.project_id}/locations/{self._location}"
-            f"/collections/{self._collection_id}/dataStores/{self._data_store_id}"
+            f"{base}/collections/{self._collection_id}/dataStores/{self._data_store_id}"
             f"/servingConfigs/{self._serving_config_id}"
         )
 
@@ -112,7 +167,7 @@ class AgentSearchKnowledgeBaseAdapter:
             id=document.id,
             struct_data=struct,
             content=discoveryengine_v1.Document.Content(
-                raw_bytes=content, mime_type="application/pdf"
+                raw_bytes=content, mime_type=_ingest_mime_type(content)
             ),
         )
         client.create_document(parent=self._branch(), document=doc, document_id=document.id)

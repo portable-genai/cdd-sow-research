@@ -632,3 +632,85 @@ variable "edge_max_instances" {
     error_message = "edge_max_instances must be greater than or equal to edge_min_instances."
   }
 }
+
+variable "additional_serving_service_accounts" {
+  type        = list(string)
+  default     = []
+  description = <<-EOT
+    Service-account emails, other than this stack's own, that SERVE this application and must
+    therefore hold the same project roles.
+
+    Exists for embedding hosts, which run this app under a runtime identity of their own making.
+    The list is deliberately granted the whole serving role set rather than a subset: a subset
+    assembled from whichever 403 was hit last is how an identity ends up permissioned by
+    outage history instead of by what the app does.
+  EOT
+  validation {
+    condition = alltrue([
+      for email in var.additional_serving_service_accounts :
+      can(regex("^[a-z0-9-]+@[a-z0-9-]+\\.iam\\.gserviceaccount\\.com$", email))
+    ])
+    error_message = "each additional_serving_service_accounts entry must be a service-account email."
+  }
+}
+
+variable "document_writer_service_accounts" {
+  type        = list(string)
+  default     = []
+  description = <<-EOT
+    Service-account emails, other than this stack's own serving identity, allowed to read and
+    write case documents.
+
+    Exists for embedding hosts: a portal that mounts this app same-origin runs it under a runtime
+    identity of the PORTAL's making, which this stack cannot know and the serving-identity grant
+    does not cover. Empty by default, because an app deployed on its own needs none.
+  EOT
+  validation {
+    condition = alltrue([
+      for email in var.document_writer_service_accounts :
+      can(regex("^[a-z0-9-]+@[a-z0-9-]+\\.iam\\.gserviceaccount\\.com$", email))
+    ])
+    error_message = "each document_writer_service_accounts entry must be a service-account email."
+  }
+}
+
+variable "knowledge_base_location" {
+  type        = string
+  default     = "us"
+  description = <<-EOT
+    Discovery Engine location for the case knowledge base.
+
+    NOT the deploy region: Discovery Engine serves `global`, `us` and `eu`, so a Cloud region
+    resolves to a hostname that does not exist and grounded retrieval fails with a 501 blaming
+    the api_endpoint. `us` is the residency-preserving choice for a United States deployment and
+    matches the country-granular resourceLocations policy this project already carries.
+  EOT
+  validation {
+    condition     = contains(["global", "us", "eu"], var.knowledge_base_location)
+    error_message = "knowledge_base_location must be one of global, us, eu."
+  }
+}
+
+variable "knowledge_base_data_store_id" {
+  type        = string
+  default     = "cdd-case-kb"
+  description = "Data store id; must match CDD_KB_DATA_STORE in the serving environment."
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9-]{1,62}$", var.knowledge_base_data_store_id))
+    error_message = "knowledge_base_data_store_id must be a lowercase DNS-style id."
+  }
+}
+
+variable "knowledge_base_engine_id" {
+  type        = string
+  default     = "cdd-case-search"
+  description = <<-EOT
+    Discovery Engine engine (app) id over the case data store; must match CDD_KB_ENGINE in the
+    serving environment. Enterprise tier, because the adapter requests extractive segments and a
+    Standard-tier search refuses them.
+  EOT
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9-]{1,62}$", var.knowledge_base_engine_id))
+    error_message = "knowledge_base_engine_id must be a lowercase DNS-style id."
+  }
+}

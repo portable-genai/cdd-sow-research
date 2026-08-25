@@ -26,6 +26,41 @@ if TYPE_CHECKING:  # pragma: no cover - typing only, never imported at runtime
     from google import genai
 
 
+#: Model-id prefixes that take Gemini 3's discrete ``thinking_level``.
+#:
+#: Everything else takes ``thinking_budget`` (an integer, -1 for dynamic) or nothing at all.
+#: The two are not interchangeable: sending ``thinking_level`` to a 2.5 model is refused with
+#: "Unable to submit request because thinking_level is not supported by this model".
+#:
+#: This module pinned the Gemini 3 form unconditionally, which quietly contradicted the
+#: settings file's own stated principle -- model ids are env-overridable "because model
+#: availability is regional: a model that is GA in one region 404s in another, and a deployment
+#: must be able to pin the id its own region actually serves without a fork". A deployment could
+#: pin the id and still not run, because the THINKING parameter was pinned to one generation.
+_DISCRETE_THINKING_PREFIXES = ("gemini-3",)
+
+
+def _takes_discrete_thinking(model: str) -> bool:
+    return model.strip().lower().startswith(_DISCRETE_THINKING_PREFIXES)
+
+
+def _thinking_config(model: str, level: ThinkingLevel, types: Any) -> Any:
+    """The thinking configuration THIS model accepts, or None when it accepts none."""
+
+    if _takes_discrete_thinking(model):
+        mapping = {
+            ThinkingLevel.MINIMAL: types.ThinkingLevel.LOW,
+            ThinkingLevel.LOW: types.ThinkingLevel.LOW,
+            ThinkingLevel.MEDIUM: types.ThinkingLevel.HIGH,
+            ThinkingLevel.HIGH: types.ThinkingLevel.HIGH,
+        }
+        return types.ThinkingConfig(thinking_level=mapping.get(level, types.ThinkingLevel.HIGH))
+    # Gemini 2.5 takes a budget: 0 disables thinking, -1 lets the model choose. MINIMAL is the
+    # only level that asks for as little thinking as possible; everything else gets dynamic.
+    budget = 0 if level is ThinkingLevel.MINIMAL else -1
+    return types.ThinkingConfig(thinking_budget=budget)
+
+
 class GeminiLLMAdapter:
     """Generate completions and triage labels via Gemini on the Agent Platform."""
 
@@ -65,7 +100,9 @@ class GeminiLLMAdapter:
         client = self._get_client()
         model = request.model or self._reasoning_model()
         contents = self._to_contents(request)
-        config = self._build_config(request, types)
+        # The SAME model string the request will carry: a thinking parameter chosen for a
+        # different model than the one being called is the defect this argument removes.
+        config = self._build_config(request, types, model)
 
         response = client.models.generate_content(model=model, contents=contents, config=config)
         return LlmResponse(
@@ -93,9 +130,7 @@ class GeminiLLMAdapter:
             config=types.GenerateContentConfig(
                 temperature=0.0,
                 max_output_tokens=16,
-                thinking_config=types.ThinkingConfig(
-                    thinking_level=self._thinking_level(ThinkingLevel.MINIMAL, types)
-                ),
+                thinking_config=_thinking_config(self._models.triage, ThinkingLevel.MINIMAL, types),
             ),
         )
         raw = (getattr(response, "text", "") or "").strip()
@@ -112,13 +147,11 @@ class GeminiLLMAdapter:
             )
         return contents
 
-    def _build_config(self, request: LlmRequest, types: Any) -> Any:
+    def _build_config(self, request: LlmRequest, types: Any, model: str) -> Any:
         kwargs: dict[str, Any] = {
             "temperature": request.temperature,
             "max_output_tokens": request.max_output_tokens,
-            "thinking_config": types.ThinkingConfig(
-                thinking_level=self._thinking_level(request.thinking, types)
-            ),
+            "thinking_config": _thinking_config(model, request.thinking, types),
         }
         if request.system_instruction:
             kwargs["system_instruction"] = request.system_instruction
@@ -126,21 +159,6 @@ class GeminiLLMAdapter:
             kwargs["response_mime_type"] = "application/json"
             kwargs["response_schema"] = request.response_schema
         return types.GenerateContentConfig(**kwargs)
-
-    @staticmethod
-    def _thinking_level(level: ThinkingLevel, types: Any) -> Any:
-        """Map the domain :class:`ThinkingLevel` to the SDK ``ThinkingLevel``.
-
-        Gemini 3 exposes discrete thinking levels (``LOW`` / ``HIGH``); MEDIUM and above
-        are treated as HIGH so CDD reasoning runs at full depth.
-        """
-        mapping = {
-            ThinkingLevel.MINIMAL: types.ThinkingLevel.LOW,
-            ThinkingLevel.LOW: types.ThinkingLevel.LOW,
-            ThinkingLevel.MEDIUM: types.ThinkingLevel.HIGH,
-            ThinkingLevel.HIGH: types.ThinkingLevel.HIGH,
-        }
-        return mapping.get(level, types.ThinkingLevel.HIGH)
 
     @staticmethod
     def _map_usage(usage_metadata: Any) -> TokenUsage:

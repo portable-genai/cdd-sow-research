@@ -27,10 +27,18 @@ locals {
     "roles/documentai.apiUser",     # process KYC documents
     "roles/discoveryengine.editor", # ingest case docs into A2 (case-scoped ACL)
     "roles/dlp.user",               # deidentifyContent (P-04, R1)
-    "roles/logging.logWriter",      # write redacted audit events to WORM sink (R2)
-    "roles/cloudtrace.agent",       # OpenTelemetry spans (content OFF)
+    # sanitizeUserPrompt / sanitizeModelResponse against the guardrail template. Never needed
+    # before because the gcp guardrail binding could not even import its SDK, so the whole
+    # adapter was unreachable and its missing role invisible.
+    "roles/modelarmor.user",
+    "roles/logging.logWriter", # write redacted audit events to WORM sink (R2)
+    "roles/cloudtrace.agent",  # OpenTelemetry spans (content OFF)
     "roles/secretmanager.secretAccessor",
     "roles/run.invoker",
+    # Calls to DLP are billed against this project and refused with
+    # "Permission 'serviceusage.services.use' denied on //dlp.googleapis.com" without it. It
+    # reads like a quota-project problem and is a missing role.
+    "roles/serviceusage.serviceUsageConsumer",
   ]
 }
 
@@ -39,6 +47,35 @@ resource "google_project_iam_member" "app" {
   project  = var.project_id
   role     = each.value
   member   = "serviceAccount:${google_service_account.app.email}"
+}
+
+# The SAME role set for any additional serving identity, so a second one is not a second
+# security decision.
+#
+# An embedding host runs this app under a runtime identity of the host's making, which this
+# stack has never heard of. Every grant above therefore misses it, and the app fails one API at
+# a time in the order it happens to call them: first Cloud Storage on the document upload, then
+# Cloud Trace on the first traced request, then DLP on the first redaction. Each failure reads
+# as a different problem; all three are the same missing identity.
+#
+# Granting the identical list, rather than a hand-picked subset, is deliberate: the app needs
+# what the app needs, and a subset assembled by whoever hit the first 403 is how an identity
+# ends up with exactly the permissions the last outage required.
+resource "google_project_iam_member" "additional_serving" {
+  for_each = {
+    for pair in setproduct(var.additional_serving_service_accounts, local.app_roles) :
+    "${pair[0]}|${pair[1]}" => { member = pair[0], role = pair[1] }
+  }
+  project = var.project_id
+  role    = each.value.role
+  member  = "serviceAccount:${each.value.member}"
+}
+
+resource "google_kms_crypto_key_iam_member" "additional_serving" {
+  for_each      = toset(var.additional_serving_service_accounts)
+  crypto_key_id = google_kms_crypto_key.cdd.id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+  member        = "serviceAccount:${each.value}"
 }
 
 # App uses the CMEK for envelope ops it performs directly.

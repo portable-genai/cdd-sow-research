@@ -11,6 +11,7 @@ from __future__ import annotations
 import base64
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from http.cookies import SimpleCookie
 from typing import Annotated, Any, Protocol, runtime_checkable
@@ -32,6 +33,16 @@ _CORRELATION = re.compile(r"^[A-Za-z0-9._:/-]{1,128}$")
 _ACTOR_PREFIX = "issub:"
 _IAP_ISSUER = "https://cloud.google.com/iap"
 _IAP_ASSERTION_HEADER = "x-goog-iap-jwt-assertion"
+#: The same assertion, forwarded by a same-origin embedding host under a name Google's serverless
+#: frontend does not reserve and therefore does not strip.
+#:
+#: Read as a FALLBACK, never as an alternative trust path. The assertion this yields is verified
+#: exactly like the standard one -- signature against Google's published IAP keys, issuer, and the
+#: audience this deployment names -- so a caller gains nothing by choosing the header. What it
+#: solves is transport: ``x-goog-*`` is removed from a request entering a serverless service, so
+#: an embedding host behind IAP cannot hand this service the assertion IAP gave it under the
+#: standard name, and this service would refuse a request that had in fact passed through IAP.
+_PORTAL_ASSERTION_HEADER = "x-portal-iap-assertion"
 _IAP_KEYS_URL = "https://www.gstatic.com/iap/verify/public_key"
 
 
@@ -203,8 +214,40 @@ class IapAuthenticationAdapter:
         self._settings = settings
         self._audience = optional_setting("CDD_IAP_AUDIENCE") or ""
 
+    def _groups_for(self, claims: Mapping[str, object]) -> tuple[str, ...]:
+        """The reviewed group principals a VERIFIED identity domain holds here.
+
+        Without this the IAP path granted ``user:<subject>`` alone, which satisfies no
+        case-access role, so every signed-in analyst was refused every case they named. The
+        groups are the same strings the entitlement rules already recognise; naming a domain here
+        states who holds them, and grants nothing that was not already grantable.
+        """
+
+        hosted_domain = str(claims.get("hd") or "").strip().lower()
+        email = str(claims.get("email") or "").strip().lower()
+        domain = hosted_domain or email.rpartition("@")[2]
+        return tuple(self._settings.identity.iap_groups_by_domain.get(domain, ()))
+
+    def _tenant_for(self, claims: Mapping[str, object]) -> str:
+        """Resolve the reviewed tenant for a VERIFIED assertion, or the empty string.
+
+        ``hd`` is a Google hosted domain, not a tenant id, and it is absent entirely on a
+        machine identity. The reviewed map is what turns the one into the other; with no map
+        configured this returns ``hd`` exactly as before, so an existing deployment is unchanged.
+        """
+
+        hosted_domain = str(claims.get("hd") or "").strip().lower()
+        # A service account presents no hosted domain, so its email domain is the closest thing
+        # to one; naming that domain in the map is how a deployment admits a machine caller.
+        email = str(claims.get("email") or "").strip().lower()
+        domain = hosted_domain or email.rpartition("@")[2]
+        mapping = self._settings.identity.iap_tenant_by_domain
+        if not mapping:
+            return hosted_domain
+        return str(mapping.get(domain, "")).strip()
+
     def authenticate(self, ctx: RequestContext, *, correlation: str = "") -> AuthenticatedIdentity:
-        assertion = ctx.header(_IAP_ASSERTION_HEADER)
+        assertion = ctx.header(_IAP_ASSERTION_HEADER) or ctx.header(_PORTAL_ASSERTION_HEADER)
         if not assertion:
             raise IdentityError("missing IAP assertion header; request did not pass through IAP")
         if not self._audience:
@@ -212,7 +255,7 @@ class IapAuthenticationAdapter:
         claims = self._verify(assertion)
         issuer = str(claims.get("iss") or "").strip()
         source_subject = str(claims.get("sub") or "").strip()
-        tenant = str(claims.get("hd") or "").strip()
+        tenant = self._tenant_for(claims)
         if issuer != _IAP_ISSUER or not source_subject:
             raise IdentityError("IAP assertion is missing the exact issuer/sub identity")
         if not tenant:
@@ -220,7 +263,7 @@ class IapAuthenticationAdapter:
         subject = canonical_actor(issuer, source_subject)
         principal = Principal(
             subject=subject,
-            principals=(f"user:{subject}",),
+            principals=(f"user:{subject}", *self._groups_for(claims)),
             tenant=tenant,
             assurance="iap",
             source="gcp-iap",

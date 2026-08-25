@@ -139,6 +139,7 @@ export function DocumentPanel({
         <p className="mt-1 text-xs text-ink-400">PDF, PNG, JPEG, WebP, TXT, CSV, Markdown</p>
         <input
           ref={inputRef}
+          data-demo="document-upload"
           type="file"
           className="hidden"
           multiple
@@ -157,7 +158,10 @@ export function DocumentPanel({
       ) : null}
 
       {documents.length ? (
-        <ul className="mt-3 divide-y divide-ink-100 rounded border border-ink-200">
+        <ul
+          data-demo="document-list"
+          className="mt-3 divide-y divide-ink-100 rounded border border-ink-200"
+        >
           {documents.map((d) => (
             <li key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm">
               <button
