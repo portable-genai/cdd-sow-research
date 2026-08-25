@@ -309,6 +309,14 @@ class KnowledgeBaseSettings:
     collection_id: str = "default_collection"
     branch_id: str = "default_branch"
     serving_config_id: str = "default_search"
+    #: The Discovery Engine ENGINE (app) to search, when the deployment has one.
+    #:
+    #: Empty searches the data store's own serving config, which is Standard edition. This
+    #: adapter asks for extractive segments, an Enterprise-edition feature, so a data-store
+    #: search is refused with a 400 that names the engine path as the remedy. Ingestion is
+    #: unaffected either way: documents are written to a data store BRANCH, and an engine has
+    #: none.
+    engine_id: str = ""
 
 
 @dataclass(frozen=True)

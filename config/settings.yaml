@@ -40,6 +40,9 @@ knowledge_base:
   collection_id: ${CDD_KB_COLLECTION:-default_collection}
   branch_id: ${CDD_KB_BRANCH:-default_branch}
   serving_config_id: ${CDD_KB_SERVING_CONFIG:-default_search}
+  # The Discovery Engine ENGINE (app) to search. Empty searches the data store directly, which
+  # is Standard edition and refuses the extractive segments this adapter asks for.
+  engine_id: ${CDD_KB_ENGINE:-}
 
 model_armor:
   template_id: ${CDD_MODEL_ARMOR_TEMPLATE:-cdd-sow-guardrail}   # terraform output model_armor_template

@@ -700,3 +700,17 @@ variable "knowledge_base_data_store_id" {
     error_message = "knowledge_base_data_store_id must be a lowercase DNS-style id."
   }
 }
+
+variable "knowledge_base_engine_id" {
+  type        = string
+  default     = "cdd-case-search"
+  description = <<-EOT
+    Discovery Engine engine (app) id over the case data store; must match CDD_KB_ENGINE in the
+    serving environment. Enterprise tier, because the adapter requests extractive segments and a
+    Standard-tier search refuses them.
+  EOT
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9-]{1,62}$", var.knowledge_base_engine_id))
+    error_message = "knowledge_base_engine_id must be a lowercase DNS-style id."
+  }
+}

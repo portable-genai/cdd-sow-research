@@ -32,3 +32,27 @@ output "knowledge_base_location" {
   description = "Discovery Engine location; NOT the deploy region, which it does not serve."
   value       = google_discovery_engine_data_store.case_kb.location
 }
+
+# The search ENGINE (app) over that data store.
+#
+# A data store alone serves Standard edition, and the adapter asks for extractive segments,
+# which is Enterprise. Searching the data store directly is refused with a 400 whose own remedy
+# is "use the engine/app ID instead", so the engine is not an optimisation here: it is what makes
+# the configured retrieval mode legal.
+resource "google_discovery_engine_search_engine" "case_kb" {
+  project        = var.project_id
+  location       = google_discovery_engine_data_store.case_kb.location
+  collection_id  = "default_collection"
+  engine_id      = var.knowledge_base_engine_id
+  display_name   = "CDD case search"
+  data_store_ids = [google_discovery_engine_data_store.case_kb.data_store_id]
+
+  search_engine_config {
+    search_tier = "SEARCH_TIER_ENTERPRISE"
+  }
+}
+
+output "knowledge_base_engine" {
+  description = "Discovery Engine engine id; the serving config the adapter must search."
+  value       = google_discovery_engine_search_engine.case_kb.engine_id
+}

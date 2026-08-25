@@ -36,6 +36,7 @@ class AgentSearchKnowledgeBaseAdapter:
         self._settings = settings
         cfg = settings.knowledge_base
         self._location = cfg.location
+        self._engine_id = cfg.engine_id
         self._data_store_id = cfg.data_store_id
         self._top_k = cfg.top_k
         self._collection_id = cfg.collection_id
@@ -76,9 +77,23 @@ class AgentSearchKnowledgeBaseAdapter:
         )
 
     def _serving_config(self) -> str:
+        """The serving config to search: the ENGINE's when one is configured.
+
+        A data store's own serving config is Standard edition, and this adapter asks for
+        extractive segments, which is an Enterprise-edition feature. Searching the data store
+        directly therefore fails with a 400 telling the caller, in so many words, to address the
+        engine instead. Ingestion still targets the data store, because documents are written to
+        a branch and an engine has none.
+        """
+
+        base = f"projects/{self._settings.project_id}/locations/{self._location}"
+        if self._engine_id:
+            return (
+                f"{base}/collections/{self._collection_id}/engines/{self._engine_id}"
+                f"/servingConfigs/{self._serving_config_id}"
+            )
         return (
-            f"projects/{self._settings.project_id}/locations/{self._location}"
-            f"/collections/{self._collection_id}/dataStores/{self._data_store_id}"
+            f"{base}/collections/{self._collection_id}/dataStores/{self._data_store_id}"
             f"/servingConfigs/{self._serving_config_id}"
         )
 
