@@ -117,3 +117,4 @@ scratch/
 
 # Completed deployment dossiers: real institution values, never tracked
 *.local.md
+infra/terraform/*.tfplan

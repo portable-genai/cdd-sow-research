@@ -46,6 +46,11 @@ gcp = [
   "google-cloud-documentai>=2.31",
   "google-cloud-discoveryengine>=0.13",
   "google-cloud-dlp>=3.20",
+  # The gcp guardrail binding is ModelArmorGuardrailAdapter, which imports
+  # google.cloud.modelarmor_v1. It was never in this extra, so the gcp profile could not run its
+  # own guardrail: the adapter raised ImportError on the first screened request, and the offline
+  # gate never noticed because it binds the local heuristic guardrail instead.
+  "google-cloud-modelarmor>=0.2",
   "google-cloud-logging>=3.11",
   "google-cloud-firestore>=2.21",
   "google-cloud-kms>=3.5",

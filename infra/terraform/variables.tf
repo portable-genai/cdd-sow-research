@@ -633,6 +633,27 @@ variable "edge_max_instances" {
   }
 }
 
+variable "additional_serving_service_accounts" {
+  type        = list(string)
+  default     = []
+  description = <<-EOT
+    Service-account emails, other than this stack's own, that SERVE this application and must
+    therefore hold the same project roles.
+
+    Exists for embedding hosts, which run this app under a runtime identity of their own making.
+    The list is deliberately granted the whole serving role set rather than a subset: a subset
+    assembled from whichever 403 was hit last is how an identity ends up permissioned by
+    outage history instead of by what the app does.
+  EOT
+  validation {
+    condition = alltrue([
+      for email in var.additional_serving_service_accounts :
+      can(regex("^[a-z0-9-]+@[a-z0-9-]+\\.iam\\.gserviceaccount\\.com$", email))
+    ])
+    error_message = "each additional_serving_service_accounts entry must be a service-account email."
+  }
+}
+
 variable "document_writer_service_accounts" {
   type        = list(string)
   default     = []
