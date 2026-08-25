@@ -58,6 +58,24 @@ from .serialization import to_jsonable
 from .sow_service import SourceOfWealthService, all_citations
 
 
+def _own_text(content: bytes) -> bytes:
+    """The document's own bytes when they ARE the text, else empty.
+
+    Extraction is built for scanned and laid-out documents, and returns nothing for a plain
+    text, CSV or Markdown upload -- which is the honest answer for an extractor and the wrong
+    thing to hand a knowledge base, because the text was there all along. A document that is
+    already text does not need extracting; it needs indexing.
+    """
+
+    if not content:
+        return b""
+    try:
+        content.decode("utf-8")
+    except UnicodeDecodeError:
+        return b""
+    return content
+
+
 class CddService:
     """Build a cited CDD dossier for a subject. Constructor takes explicit ports."""
 
@@ -276,7 +294,10 @@ class CddService:
             text = extract.text if extract is not None else ""
             page_texts = extract.page_texts if extract is not None else ()
             self._knowledge_base.ingest(
-                document, text.encode("utf-8"), acl_tags, page_texts=page_texts
+                document,
+                text.encode("utf-8") or _own_text(content),
+                acl_tags,
+                page_texts=page_texts,
             )
         except Exception:  # noqa: BLE001 - ingestion is best-effort; retrieval is the gate
             return

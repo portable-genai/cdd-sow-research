@@ -51,3 +51,30 @@ def test_unrecognised_binary_falls_back_to_the_previous_behaviour() -> None:
     so an unknown format is no worse off than it was and every known one is now correct."""
 
     assert _ingest_mime_type(b"\x00\x01\x02\x03\xff\xfe") == "application/pdf"
+
+
+# --------------------------------------------------------------------------------------- #
+# What gets ingested when extraction has nothing to say.
+# --------------------------------------------------------------------------------------- #
+def test_a_document_that_is_already_text_is_ingested_as_itself() -> None:
+    """Extraction is built for scanned and laid-out documents.
+
+    For a plain text, CSV or Markdown upload it returns nothing, which is the honest answer
+    for an extractor and the wrong thing to hand a knowledge base: the text was there all
+    along. Ingesting the empty result had the store accept the document and then report "the
+    parsed result is empty" in an index status nothing surfaces, so retrieval found no evidence
+    for a case whose evidence had been uploaded and stored.
+    """
+
+    from cdd_sow_research.domain.cdd_service import _own_text
+
+    assert _own_text(b"MERIDIAN HARBOUR HOLDINGS\nSource of wealth statement\n").startswith(
+        b"MERIDIAN"
+    )
+
+
+def test_binary_a_text_extractor_could_not_read_is_not_passed_off_as_text() -> None:
+    from cdd_sow_research.domain.cdd_service import _own_text
+
+    assert _own_text(b"%PDF-1.7\n\x80\x81\x82") == b""
+    assert _own_text(b"") == b""
