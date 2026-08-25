@@ -1,7 +1,7 @@
 """MCP tool-catalog adapter (ToolCatalogPort, A3, rule R4).
 
 Exposes the governed, least-privilege tools B1 makes available over **MCP** (Model
-Context Protocol 2025-11-25). For a standalone deployment this adapter serves a static,
+Context Protocol 2026-07-28). For a standalone deployment this adapter serves a static,
 in-process catalog describing the four CDD skills; in the full platform the governed MCP
 catalog is hosted by the A3 registry. The tool schemas here are the contract surface a
 peer agent sees.
@@ -13,6 +13,10 @@ from __future__ import annotations
 
 from ...config import Settings
 from ...domain.models import ToolSpec
+
+# MCP protocol revision this catalog conforms to. The stateless era: the initialize
+# handshake this catalog once assumed was removed in this revision.
+MCP_PROTOCOL_VERSION = "2026-07-28"
 
 _TOOLS: tuple[ToolSpec, ...] = (
     ToolSpec(
