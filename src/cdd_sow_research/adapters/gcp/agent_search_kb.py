@@ -91,6 +91,25 @@ def _ingest_mime_type(content: bytes) -> str:
     return "text/plain"
 
 
+#: Discovery Engine refuses ``max_extractive_segment_count`` above this value with
+#: ``400 InvalidArgument``. It is an API limit rather than a policy number, which is why it
+#: lives here and not in settings: no deployment may raise it.
+_MAX_EXTRACTIVE_SEGMENTS = 10
+
+
+def _extractive_segment_count(top_k: int) -> int:
+    """How many extractive segments a search may ask for, clamped to what the API accepts.
+
+    ``top_k`` was passed through unbounded, so a retrieval configured above the API ceiling
+    failed the whole search with ``400 max_extractive_segment_count must be between 0 and 10``.
+    Because empty retrieval is a hard error here rather than an ungrounded answer, that turned
+    a tuning value into a total refusal to produce a dossier. Clamping asks for as much as the
+    API allows and lets the caller keep its own wider ``top_k`` for ranking.
+    """
+
+    return min(max(top_k, 1), _MAX_EXTRACTIVE_SEGMENTS)
+
+
 class AgentSearchKnowledgeBaseAdapter:
     """Direct Agent Search governed-RAG adapter (standalone fallback for A2)."""
 
@@ -210,7 +229,7 @@ class AgentSearchKnowledgeBaseAdapter:
         content_spec = discoveryengine_v1.SearchRequest.ContentSearchSpec(
             extractive_content_spec=(
                 discoveryengine_v1.SearchRequest.ContentSearchSpec.ExtractiveContentSpec(
-                    max_extractive_segment_count=max(query.top_k, 1),
+                    max_extractive_segment_count=_extractive_segment_count(query.top_k),
                     return_extractive_segment_score=True,
                 )
             ),

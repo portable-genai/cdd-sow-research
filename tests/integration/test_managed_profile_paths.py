@@ -35,6 +35,7 @@ in this repository.
 from __future__ import annotations
 
 import os
+import time
 import uuid
 
 import pytest
@@ -127,6 +128,36 @@ def case_tags() -> tuple[str, ...]:
     return (f"case:managed-probe-{_RUN}",)
 
 
+#: How long a freshly ingested document may take to become searchable before that counts as a
+#: failure rather than as latency. Discovery Engine indexes asynchronously: ``ingest`` returning
+#: ``indexed`` means the document was accepted, not that a search can find it. Measured against
+#: this deployment on 2026-08-26, a probe document became searchable after 34 seconds, so a test
+#: that ingested and searched in the same breath asserted a consistency model the store does not
+#: offer and failed every run for a reason that was never a defect.
+#:
+#: The bound is what keeps this honest. Polling forever would turn a store that never indexes
+#: anything into a hang, and polling zero times is what was wrong before. A document that has not
+#: arrived within this window is a real failure and is reported as one.
+_INDEX_VISIBILITY_TIMEOUT_SECONDS = 180.0
+_INDEX_POLL_INTERVAL_SECONDS = 5.0
+
+
+def _search_once_indexed(kb, query: RetrievalQuery):  # type: ignore[no-untyped-def]
+    """Search, retrying until the store has caught up or the bound expires.
+
+    Returns whatever the last search returned, including nothing, so the caller's assertion is
+    unchanged. This does not weaken any claim: it removes a race the assertions never meant to
+    make, and a document that never becomes searchable still fails the test it belongs to.
+    """
+
+    deadline = time.monotonic() + _INDEX_VISIBILITY_TIMEOUT_SECONDS
+    passages = kb.search(query)
+    while not passages and time.monotonic() < deadline:
+        time.sleep(_INDEX_POLL_INTERVAL_SECONDS)
+        passages = kb.search(query)
+    return passages
+
+
 # --------------------------------------------------------------------------------------- #
 # The knowledge base: what comes back carries what went in.
 # --------------------------------------------------------------------------------------- #
@@ -146,11 +177,14 @@ def test_a_cited_document_comes_back_carrying_its_name(settings, case_tags) -> N
     result = kb.ingest(document, _TEXT.encode(), case_tags, page_texts=(_TEXT,))
     assert result.ok, f"managed ingest refused the probe document: {result.status}"
 
-    passages = kb.search(
-        RetrievalQuery(text=f"asset sale {_RUN}", acl_principals=case_tags, top_k=5)
+    passages = _search_once_indexed(
+        kb, RetrievalQuery(text=f"asset sale {_RUN}", acl_principals=case_tags, top_k=5)
     )
 
-    assert passages, "the managed store returned nothing for a document it had just indexed"
+    assert passages, (
+        "the managed store returned nothing for a document it had just indexed, after waiting "
+        f"{_INDEX_VISIBILITY_TIMEOUT_SECONDS:.0f}s for indexing to catch up"
+    )
     citation = passages[0].citation
     assert citation.title == citation_title(DocType.BANK_STATEMENT), (
         f"the managed citation is named {citation.title!r}. A citation named after its own "
@@ -179,8 +213,8 @@ def test_re_ingesting_the_same_document_does_not_make_a_second_one(settings, cas
     assert second.ok, "a repeated ingest must be success, not an error the caller swallows"
     assert second.status == "already-indexed"
 
-    passages = kb.search(
-        RetrievalQuery(text=f"asset sale {_RUN}", acl_principals=case_tags, top_k=20)
+    passages = _search_once_indexed(
+        kb, RetrievalQuery(text=f"asset sale {_RUN}", acl_principals=case_tags, top_k=20)
     )
     assert len({p.citation.source_id for p in passages}) == 1, (
         "one document ingested twice produced more than one document in the managed store"
