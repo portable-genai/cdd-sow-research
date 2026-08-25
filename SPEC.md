@@ -85,7 +85,7 @@ checker) applies: the dossier always requires human review.
   `aiplatform.googleapis.com`. Region pinned `us-central1`.
 - Models: reasoning `gemini-3.5-flash` (thinking=high), triage `gemini-3.1-flash-lite`.
   Never a floating default or `gemini-2.0-flash`.
-- Unified SDK `google-genai`. ADK `google-adk==2.3.0`. A2A v1.0 + MCP 2025-11-25. One
+- Unified SDK `google-genai`. ADK `google-adk==2.7.1`. A2A v1.0 + MCP 2026-07-28. One
   built-in tool per agent: `google_search` lives in its own adverse-media sub-agent.
 - Document extraction: **Document AI**. Audit: Cloud Logging locked WORM bucket, retention
   180 days by default (six months), with a longer reviewed period supported. The WORM lock
