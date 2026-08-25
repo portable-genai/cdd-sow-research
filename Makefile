@@ -23,7 +23,7 @@ TF_DIR      := infra/terraform
 export CDD_PROFILE := $(PROFILE)
 
 .DEFAULT_GOAL := help
-.PHONY: help install install-gcp install-oidc lock fmt lint test test-oidc eval check ui-install ui-check run-api run-ui demo demo-selftest laptop-demo laptop-demo-selftest deploy-env-check deploy-preflight deploy-verify-secrets tf-plan clean
+.PHONY: test-managed help install install-gcp install-oidc lock fmt lint test test-oidc eval check ui-install ui-check run-api run-ui demo demo-selftest laptop-demo laptop-demo-selftest deploy-env-check deploy-preflight deploy-verify-secrets tf-plan clean
 
 help: ## Show this help.
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -52,6 +52,12 @@ lint: ## Lint (ruff) and type-check (mypy).
 
 test: ## Run unit + contract tests on the local profile (no GCP SDK required).
 	CDD_PROFILE=local pytest -m 'not integration' -q
+
+test-managed: ## Managed round-trip suite against a NAMED deployment (needs live credentials).
+	@# Three states, never two: CDD_MANAGED_TEST_PROJECT unset skips (so an offline gate is
+	@# unaffected), named-and-reachable runs, named-and-unusable FAILS. A managed suite that
+	@# skips when its configuration is wrong reports the same green as one that ran.
+	CDD_PROFILE=gcp pytest -m integration -q tests/integration/test_managed_profile_paths.py -rs
 
 test-oidc: ## Run the PyJWT-dependent tests (needs `make install-oidc` first).
 	CDD_PROFILE=local pytest -m 'not integration' -q \
