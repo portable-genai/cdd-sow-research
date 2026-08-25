@@ -310,11 +310,11 @@ The final evidence pack must contain:
 |---|---|---|
 | Repository and reusable infrastructure | Ready | Local gates and Terraform validation |
 | Doc1 Mode 5 code for a Google subject | Ready | Section 3a's three changes are implemented: per-installation subject token type, the Google ID-token profile verifier with its negative matrix, and scope derived from reviewed installation policy |
-| Named institution inputs | PARTIAL | Section 2 is filled with real, created resources (see the 2026-08-24 record below). Sections 3 and 5 still need a portal origin and identity providers this deployment does not run |
+| Named institution inputs | PARTIAL | Section 2 is filled with real, created resources (see the 2026-08-24 record below). Section 3's portal origin is settled: Hrz9 is deployed and serving with this system embedded same-origin at `/agent`, so the parent origin exists. Sections 3 and 5 still need the dedicated Google OAuth client id, the browser-policy rows, and the standalone Mode 6 domain |
 | Identity provider capability | PARTIAL | Google Cloud Identity can serve Mode 5 and Mode 6; Mode 4 is not applicable and the preflight does not demand it |
-| Hrz9 portal half | Ready (code) | `journey-portal` implements `private_key_jwt` signing behind a signing-key port with non-exportable Cloud KMS custody, the BFF JWKS route, CSRF plus exact `Origin` plus Fetch Metadata enforcement before any credential is minted, and a host authorization proof built from the verified principal. A cross-repo fixture verifies a portal-minted assertion against this repo's actual `PrivateKeyJwtVerifier`, with the replay, tamper, expiry, audience, client and foreign-key negatives refused. Its deployment inputs are tracked in its own dossier |
+| Hrz9 portal half | **DEPLOYED** | Serving behind IAP in the shared named project with this system mounted as an embedded app; the RM journey has been driven end to end in a browser against it. The code below is therefore no longer a claim about a repository but about a running system. `journey-portal` implements `private_key_jwt` signing behind a signing-key port with non-exportable Cloud KMS custody, the BFF JWKS route, CSRF plus exact `Origin` plus Fetch Metadata enforcement before any credential is minted, and a host authorization proof built from the verified principal. A cross-repo fixture verifies a portal-minted assertion against this repo's actual `PrivateKeyJwtVerifier`, with the replay, tamper, expiry, audience, client and foreign-key negatives refused. Its deployment inputs are tracked in its own dossier |
 | Base stack applied | **DONE 2026-08-24** | 77 resources live in `portable-genai-prod`: Org Policy, CMEK, dry-run VPC-SC perimeter, WORM sink and log bucket, Model Armor, DLP, Document AI, Firestore, four posture alerts. See the record below |
-| Named Modes 4/5 edge | BLOCKED | Not on inputs that could be invented, but on a portal and identity providers that must actually exist. See "What the named edge still needs" |
+| Named Modes 4/5 edge | BLOCKED, on less | The portal half is no longer among the blockers: it exists and serves. What remains is the dedicated Google OAuth client id, a portal OIDC session holding its ID token, and a separate standalone domain for Mode 6. See "What the named edge still needs" |
 | Production-complete gate | BLOCKED | All eight conditions in `embedding-implementation-plan.md` Section 15.2 must pass |
 
 ## 9a. The 2026-08-24 reference deployment: what was applied, and what it proves
@@ -352,26 +352,40 @@ for a reader to notice.
 
 ## 9b. What the named edge still needs
 
-The Modes 4/5 edge did not stop for want of inputs that could be typed in. It stops on three
-things that have to genuinely exist, and the preflight is right to demand them:
+The Modes 4/5 edge did not stop for want of inputs that could be typed in. It stopped on three
+things that had to genuinely exist. **Hrz9's deployment has since happened, and it closed the
+first and most of the third.** What is recorded below is what each was, and what it is now.
 
-1. **A parent origin that is not the agent origin.** The manifest schema explicitly refuses an
+1. **A parent origin that is not the agent origin. CLOSED.** The manifest schema refuses an
    installation whose `parent_origins` contains its own agent origin, so a self-embed cannot
-   stand in for a host portal. The intended parent is the Hrz9 `journey-portal` shell.
-2. **A second, separate standalone domain.** Mode 6 is a distinct service and cookie boundary
-   and may not share the agent domain.
-3. **Working identity providers.** Mode 5 needs a BFF publishing a real JWKS — that is Hrz9's
-   BFF — and Mode 6 needs an OIDC client with a callback on the standalone domain. This is the
-   same rule as the adverse-news carve-out in the header: a JWKS URI that serves nothing makes
-   token validation a vacuous pass, so a fictional issuer is NOT acceptable here.
+   stand in for a host portal. The intended parent was the Hrz9 `journey-portal` shell, and that
+   shell is now deployed and serving behind IAP in the named project with this system mounted as
+   an embedded app at `/agent`, same-origin. The portal supplies the parent origin this row
+   wanted. The origin itself is a live identifier and is recorded in the catalog's private
+   topology record, not here.
+2. **A second, separate standalone domain. STILL OPEN.** Mode 6 is a distinct service and cookie
+   boundary and may not share the agent domain. Nothing about the portal deployment provides
+   one, and no fictional value can: a cookie boundary that is not actually a separate origin is
+   not a boundary.
+3. **Working identity providers. NARROWED to one input.** Mode 5 needs a BFF publishing a real
+   JWKS — that is Hrz9's BFF — and that BFF is now BUILT: it signs `private_key_jwt` behind a
+   signing-key port with non-exportable Cloud KMS custody and serves its JWKS route. Neither
+   repository owes code for it. What Mode 5 still waits on is a **dedicated Google OAuth client
+   id** and a portal-side OIDC session holding that client's ID token; the managed subject-token
+   adapter refuses by name until both exist. Mode 6 still needs an OIDC client with a callback on
+   the standalone domain of row 2. The adverse-news carve-out in the header still governs: a JWKS
+   URI that serves nothing makes token validation a vacuous pass, so a fictional issuer remains
+   unacceptable here — which is why row 3 is narrowed and not closed.
 
 The load balancer is not incidental to this and cannot be traded for two `*.run.app` URLs. It
 is what makes `/agent` and `/agent/api` ONE origin, and the same-origin contract is what the
 embed design rests on; two Cloud Run URLs are two origins.
 
-**The reachable next step** is therefore Hrz9's deployment, which supplies the parent origin and
-the Mode 5 BFF JWKS, after which this dossier's sections 3 and 5 can be completed with real
-values rather than invented ones.
+**What remains reachable.** The portal deployment was named here as the reachable next step and
+it has happened, so sections 3 and 5 are no longer waiting on a system that does not exist. They
+wait on inputs a person creates: the dedicated Google OAuth client id, the standalone Mode 6
+domain and its OIDC client, and then the browser-policy and live-evidence rows those inputs
+unblock. The residual code dependency is zero on both sides.
 
 `scripts/deployment_env.py run -- <command>` is the only supported environment-file runner for
 production commands. It validates the complete dossier first, loads both files without

@@ -31,6 +31,7 @@ Every kernel name is re-exported here for backward compatibility, so
 from __future__ import annotations
 
 import enum
+import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -102,6 +103,47 @@ class DocType(enum.StrEnum):
     REGISTRY_EXTRACT = "registry_extract"
     BANK_STATEMENT = "bank_statement"
     OTHER = "other"
+
+
+def document_id(content: bytes, subject_id: str, doc_type: DocType, filename: str) -> str:
+    """The id a stored case document is given: derived from the FILING, not minted.
+
+    ``KycDocument.id`` is documented as "stable doc id within the case" and was a fresh
+    ``uuid4`` on every upload, so the same evidence uploaded twice became two documents.
+    Nothing deduplicated them afterwards, so a case's corpus grew by one copy per upload
+    and every retrieval cited the same page as though it were several independent sources
+    -- the one failure mode a citation count exists to rule out. The managed store had
+    accumulated eight copies of a single synthetic bank statement before a paired run
+    counted them.
+
+    What makes two uploads the same document is the whole filing and not the bytes alone.
+    Scoping by ``subject_id`` keeps idempotence from becoming SHARING: identical bytes
+    filed under two subjects stay two documents with two ACLs, because collapsing them
+    would let one case's access decision reach another's evidence. ``doc_type`` and
+    ``filename`` are in the digest for the converse reason -- the same bytes deliberately
+    filed twice, as a statement and as a registry extract, are two filings, and merging
+    them would silently discard one.
+    """
+    parts = (subject_id, doc_type.value, filename)
+    digest = hashlib.sha256(b"\x00".join(p.encode("utf-8") for p in parts) + b"\x00" + content)
+    return f"doc-{digest.hexdigest()[:12]}"
+
+
+def citation_title(doc_type: DocType) -> str:
+    """The name a cited document carries in a dossier, in EVERY profile.
+
+    The stable cross-profile identity of a cited document is its TITLE, never its id: the
+    same document ingested into a laptop store and into the managed store is minted a
+    different id in each, so an id cannot name a source across profiles. That makes this
+    the one place the name is decided, and a second store cannot answer differently.
+
+    It exists because one did. The managed knowledge base wrote no title at ingest and
+    read ``source_id`` back as the title at search, so every managed citation decayed into
+    its own opaque id: a dossier grounded in ``doc-c9dba9861a1f`` rather than in the bank
+    statement. The link still resolved, which is why nothing failed and nobody noticed --
+    the evidence relationship had degraded while every check stayed green.
+    """
+    return doc_type.value
 
 
 @dataclass(frozen=True, slots=True)
