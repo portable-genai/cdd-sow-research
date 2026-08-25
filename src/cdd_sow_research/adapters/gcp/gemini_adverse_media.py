@@ -19,6 +19,7 @@ from ...domain._grounded import parse_json_object
 from ...domain.models import (
     AdverseMediaCategory,
     AdverseMediaFinding,
+    AdverseMediaScreening,
     Citation,
     Severity,
     SourceType,
@@ -61,10 +62,21 @@ class GeminiAdverseMediaAdapter:
             )
         return self._client
 
-    def search(self, subject_name: str, max_results: int = 10) -> list[AdverseMediaFinding]:
-        """Return adverse-media findings for ``subject_name`` (empty if disabled)."""
+    def search(self, subject_name: str, max_results: int = 10) -> AdverseMediaScreening | None:
+        """Return the adverse-media SCREEN for ``subject_name``, or ``None`` if none ran.
+
+        This returned a bare ``list`` and ``[]`` when disabled, which breaks the port in the
+        exact way its own docstring warns about, twice over. The caller reads ``.findings`` off
+        the result, so a list crashed the whole assessment with
+        ``AttributeError: 'list' object has no attribute 'findings'`` -- and had it not crashed,
+        an empty list would have meant "screened, nothing found" for a search that never ran, so
+        the dossier would have rendered an affirmative "No adverse media found" on the strength
+        of a disabled backend.
+        """
+
         if not self._enabled:
-            return []
+            # No search ran. Say so; an empty screening would claim a clean result.
+            return None
         from google.genai import types
 
         client = self._get_client()
@@ -81,7 +93,12 @@ class GeminiAdverseMediaAdapter:
                 tools=[types.Tool(google_search=types.GoogleSearch())],
             ),
         )
-        return self._parse(getattr(response, "text", "") or "")[:max_results]
+        findings = self._parse(getattr(response, "text", "") or "")[:max_results]
+        return AdverseMediaScreening(
+            subject_name=subject_name,
+            findings=tuple(findings),
+            sources=("google-search",),
+        )
 
     @staticmethod
     def _parse(text: str) -> list[AdverseMediaFinding]:
