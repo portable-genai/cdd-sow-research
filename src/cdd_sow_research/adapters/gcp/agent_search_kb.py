@@ -29,6 +29,46 @@ if TYPE_CHECKING:  # pragma: no cover - typing only, never imported at runtime
     from google.cloud import discoveryengine_v1
 
 
+#: Leading bytes that identify a format, longest first so a prefix cannot shadow a longer one.
+#:
+#: The declared type was hardcoded to ``application/pdf`` for every document, so a text, CSV or
+#: image upload was handed to the PDF parser and failed indexing with "Document parsing stage
+#: failure: Failed to parse the PDF file: FILE_READ_ERROR". The document still LISTED in the data
+#: store, carrying an errored index status that nothing surfaced, so retrieval returned nothing
+#: and the dossier was refused for want of evidence that had in fact been uploaded, stored and
+#: ingested. Three green steps and a silent fourth.
+#:
+#: Sniffed from the CONTENT rather than declared, because the port hands this adapter a
+#: :class:`KycDocument`, which carries no filename and no media type -- and because the bytes are
+#: the thing the parser will actually read, so they are the honest source for what it is.
+_CONTENT_SIGNATURES: tuple[tuple[bytes, str], ...] = (
+    (b"%PDF-", "application/pdf"),
+    (b"\x89PNG\r\n\x1a\n", "image/png"),
+    (b"\xff\xd8\xff", "image/jpeg"),
+    (b"RIFF", "image/webp"),
+)
+
+
+def _ingest_mime_type(content: bytes) -> str:
+    """What Discovery Engine should PARSE these bytes as.
+
+    Unrecognised binary falls back to PDF, which is what everything was declared as before, so
+    nothing is worse off than it was and everything recognisable is now parsed correctly.
+    """
+
+    for signature, mime_type in _CONTENT_SIGNATURES:
+        if content.startswith(signature):
+            # RIFF is also WAV and AVI; only the WEBP form is a document this store indexes.
+            if signature == b"RIFF" and content[8:12] != b"WEBP":
+                continue
+            return mime_type
+    try:
+        content.decode("utf-8")
+    except UnicodeDecodeError:
+        return "application/pdf"
+    return "text/plain"
+
+
 class AgentSearchKnowledgeBaseAdapter:
     """Direct Agent Search governed-RAG adapter (standalone fallback for A2)."""
 
@@ -127,7 +167,7 @@ class AgentSearchKnowledgeBaseAdapter:
             id=document.id,
             struct_data=struct,
             content=discoveryengine_v1.Document.Content(
-                raw_bytes=content, mime_type="application/pdf"
+                raw_bytes=content, mime_type=_ingest_mime_type(content)
             ),
         )
         client.create_document(parent=self._branch(), document=doc, document_id=document.id)
