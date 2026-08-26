@@ -37,7 +37,17 @@ _PROMPT = (
     "sanctions, money laundering, terrorism). For each hit give headline, publisher, "
     "url, published_date (ISO), category (one of fraud, corruption, sanctions, "
     "money_laundering, terrorism, other), severity (low, medium, high, critical) and a "
-    "short snippet. If there is no credible adverse media, return an empty list.\n\n"
+    "short snippet. "
+    # Asked without this, the model answered a query about a company with no coverage by
+    # returning the industry and the jurisdiction: a real prosecution naming real banks, which
+    # the risk policy then turned into a PROHIBITED band for an unrelated subject. The
+    # deterministic gate in the domain is what actually enforces this, because a prompt is a
+    # request and not a guarantee; the instruction is here so the model is not asked to guess.
+    "Every hit MUST be about this specific named subject: the subject's own name must appear "
+    "in the article. An article about the same industry, the same country, or a similarly "
+    "named organisation is NOT a hit and must be omitted. Reporting nothing is the correct "
+    "answer for a subject with no coverage. "
+    "If there is no credible adverse media, return an empty list.\n\n"
     'Return strictly JSON: {{"findings": [ ... ]}}.\n\nSubject: {subject_name}'
 )
 

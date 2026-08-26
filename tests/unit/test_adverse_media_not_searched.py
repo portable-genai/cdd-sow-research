@@ -57,13 +57,13 @@ class _SearchedAndHit:
             subject_name=subject_name,
             findings=(
                 AdverseMediaFinding(
-                    headline="Regulator opens review",
+                    headline="Regulator opens review into Fictional Holdings",
                     publisher="Fictional Wire",
                     url="https://example.invalid/a",
                     severity=Severity.LOW,
                 ),
                 AdverseMediaFinding(
-                    headline="Enforcement action reported",
+                    headline="Enforcement action reported against Fictional Holdings",
                     publisher="Fictional Wire",
                     url="https://example.invalid/b",
                     severity=Severity.CRITICAL,

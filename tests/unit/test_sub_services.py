@@ -134,12 +134,19 @@ def test_ordinary_adverse_media_raises_to_high(llm, tracer):
 # AdverseMediaService
 # --------------------------------------------------------------------------- #
 def test_adverse_media_orders_by_severity():
+    # Each headline names the subject: a finding that does not is discarded before ordering,
+    # which is a different property with its own test.
+    named = "Acme Holdings Pte Ltd (FICTIONAL)"
     findings = (
-        AdverseMediaFinding(headline="low", publisher="p", url="u1", severity=Severity.LOW),
         AdverseMediaFinding(
-            headline="critical", publisher="p", url="u2", severity=Severity.CRITICAL
+            headline=f"{named} low", publisher="p", url="u1", severity=Severity.LOW
         ),
-        AdverseMediaFinding(headline="medium", publisher="p", url="u3", severity=Severity.MEDIUM),
+        AdverseMediaFinding(
+            headline=f"{named} critical", publisher="p", url="u2", severity=Severity.CRITICAL
+        ),
+        AdverseMediaFinding(
+            headline=f"{named} medium", publisher="p", url="u3", severity=Severity.MEDIUM
+        ),
     )
     service = load_service("AdverseMediaService")(
         adverse_media=FakeAdverseMedia(findings=findings), tracer=FakeTracer()
