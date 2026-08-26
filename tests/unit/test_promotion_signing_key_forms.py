@@ -38,22 +38,64 @@ case "$1" in
 esac
 exit 0
 """,
-    "npm": '#!/usr/bin/env bash\necho "npm $*" >> "$STUB_LOG"\nexit 0\n',
+    # `npm run build:loader` emits the embed loader and its SRI; the stub writes both, so
+    # the line that reads them is exercised rather than sidestepped.
+    "npm": """#!/usr/bin/env bash
+echo "npm $*" >> "$STUB_LOG"
+if [[ "$*" == *"build:loader"* ]]; then
+  mkdir -p ui/public/embed/v1
+  printf 'console.log(1)\\n' > ui/public/embed/v1/cdd-agent.js
+  printf 'sha384-stub\\n' > ui/public/embed/v1/cdd-agent.js.sri
+fi
+exit 0
+""",
     "trivy": '#!/usr/bin/env bash\necho "trivy $*" >> "$STUB_LOG"\nexit 0\n',
     "cosign": '#!/usr/bin/env bash\necho "cosign $*" >> "$STUB_LOG"\nexit 0\n',
 }
 
 
-def _run(tmp_path: Path, cosign_key: str) -> tuple[subprocess.CompletedProcess[str], str]:
+def _fixture_repo(tmp_path: Path) -> Path:
+    """A minimal tree the script can run in, so the real repository is never the fixture.
+
+    The first version of this ran with ``cwd`` set to the repository itself and passed only
+    because a previously built loader artifact happened to be lying in the working tree. Hosted
+    CI, checking out a clean tree, failed on the line that reads it -- which is the useful
+    result: a test that depends on an untracked build output is a test that passes for a reason
+    the repository does not carry.
+
+    ``npm run build:loader`` is what produces the loader and its SRI, and the npm stub below
+    writes exactly those two files, so the fixture supplies what the stubbed tool would have.
+    """
+    repo = tmp_path / "repo"
+    (repo / "ui").mkdir(parents=True)
+    (repo / "Dockerfile").write_text("FROM scratch\n", encoding="utf-8")
+    for command in (
+        ["git", "init", "--quiet"],
+        ["git", "config", "user.email", "promotion-fixture@example.invalid"],
+        ["git", "config", "user.name", "promotion fixture"],
+        ["git", "add", "-A"],
+        ["git", "commit", "--quiet", "-m", "fixture"],
+    ):
+        subprocess.run(command, cwd=repo, check=True, capture_output=True)
+    return repo
+
+
+def _stub_dir(tmp_path: Path, log: Path) -> Path:
     stub_dir = tmp_path / "bin"
     stub_dir.mkdir()
     for name, body in _STUBS.items():
         stub = stub_dir / name
         stub.write_text(body)
         stub.chmod(0o755)
-
-    log = tmp_path / "calls.log"
     log.touch()
+    return stub_dir
+
+
+def _run(tmp_path: Path, cosign_key: str) -> tuple[subprocess.CompletedProcess[str], str]:
+    log = tmp_path / "calls.log"
+    stub_dir = _stub_dir(tmp_path, log)
+    repo = _fixture_repo(tmp_path)
+
     env = dict(os.environ)
     env["PATH"] = f"{stub_dir}:{env['PATH']}"
     env["STUB_LOG"] = str(log)
@@ -73,7 +115,7 @@ def _run(tmp_path: Path, cosign_key: str) -> tuple[subprocess.CompletedProcess[s
         capture_output=True,
         text=True,
         env=env,
-        cwd=SCRIPT.parent.parent,
+        cwd=repo,
     )
     return completed, log.read_text()
 
@@ -108,14 +150,9 @@ def test_keyless_stays_the_default_when_no_key_is_named(tmp_path: Path) -> None:
 
 
 def test_an_unsigned_push_is_refused_before_anything_is_built(tmp_path: Path) -> None:
-    stub_dir = tmp_path / "bin"
-    stub_dir.mkdir()
-    for name, body in _STUBS.items():
-        stub = stub_dir / name
-        stub.write_text(body)
-        stub.chmod(0o755)
     log = tmp_path / "calls.log"
-    log.touch()
+    stub_dir = _stub_dir(tmp_path, log)
+    repo = _fixture_repo(tmp_path)
     env = dict(os.environ)
     env["PATH"] = f"{stub_dir}:{env['PATH']}"
     env["STUB_LOG"] = str(log)
@@ -125,7 +162,7 @@ def test_an_unsigned_push_is_refused_before_anything_is_built(tmp_path: Path) ->
         capture_output=True,
         text=True,
         env=env,
-        cwd=SCRIPT.parent.parent,
+        cwd=repo,
     )
 
     assert completed.returncode == 2
@@ -134,24 +171,24 @@ def test_an_unsigned_push_is_refused_before_anything_is_built(tmp_path: Path) ->
 
 
 def test_a_promotion_build_never_reuses_a_cached_security_layer(tmp_path: Path) -> None:
-    """The 2026-08-26 promotion shipped openssl 3.5.6 with 3.5.7 available and fixed.
+    """The 2026-08-26 promotion shipped openssl 3.5.6 with 3.5.7-1~deb13u2 available and fixed.
 
     The runtime stage runs `apt-get update && apt-get upgrade -y` and says in place that a
-    digest pin freezes unpatched packages, so security updates are applied on top. That is
-    true of the instruction and false of the image: the base digest had not changed, so the
-    layer was served from the build cache and the image carried the patch level of whenever
-    that cache was last warmed. `#13 [runtime 3/8] ... CACHED` in the build log, and
-    `dpkg-query` inside the built image, are what proved it — the blocking trivy pass then
-    refused the promotion, which is the one part of this that worked as designed.
+    digest pin freezes unpatched packages, so security updates are applied on top. That is true
+    of the instruction and was false of the image: the base digest had not changed, so the layer
+    was served from the build cache and the image carried the patch level of whenever that cache
+    was last warmed. `#13 [runtime 3/8] ... CACHED` in the build log, and `dpkg-query` inside the
+    built image, are what proved it -- the blocking trivy pass then refused the promotion, which
+    is the one part of this that worked as designed.
 
-    Reproducibility is what the digest pin buys; a promotion build is exactly where it must
-    not also buy staleness.
+    Reproducibility is what the digest pin buys; a promotion build is exactly where it must not
+    also buy staleness.
     """
     completed, calls = _run(tmp_path, KMS_URI)
 
     assert completed.returncode == 0, completed.stderr
-    # `docker buildx imagetools` also starts with "docker build"; the image builds are the
-    # two that carry --platform.
+    # `docker buildx imagetools` also starts with "docker build"; the image builds are the two
+    # that carry --platform.
     builds = [line for line in calls.splitlines() if line.startswith("docker build --platform")]
     assert len(builds) == 2, calls
     assert all("--no-cache" in line for line in builds), builds
