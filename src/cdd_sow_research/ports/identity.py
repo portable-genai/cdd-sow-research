@@ -12,7 +12,7 @@ re-exported here so ``from cdd_sow_research.ports.identity import IdentityPort``
 
 from __future__ import annotations
 
-from hex_service_kit.identity import IdentityPort
+from hex_service_kit.identity import IdentityError, IdentityPort
 
 # --------------------------------------------------------------------------- #
 # What an identity adapter DECLARES about the end-user authentication it provides.
@@ -69,12 +69,32 @@ def declared_end_user_auth(adapter: object) -> str:
     return CLIENT_ASSERTED
 
 
+class EndUserAuthUnavailableError(IdentityError):
+    """This deployment can authenticate NO end user at all, and the message says why.
+
+    A plain :class:`IdentityError` means THIS caller did not authenticate; another one might.
+    This means the bound adapter cannot authenticate anybody: an audience nobody configured, or
+    a verifier that is not installed.
+
+    The distinction is worth a type because the two need different answers.
+    ``api/security.py::get_authenticated_context`` maps every ``IdentityError`` to a bare 401,
+    which sends an operator hunting for a missing credential when the truth is in the
+    configuration and no credential would have helped. Subclasses carry their own
+    :attr:`http_status` and their own message, and the API answers with both.
+    """
+
+    #: The status the API answers with. 401 is right where a caller could have authenticated
+    #: and did not; a subclass meaning "nobody can, here" says so with a different code.
+    http_status: int = 401
+
+
 __all__ = [
     "CLIENT_ASSERTED",
     "END_USER_AUTH_ATTR",
     "END_USER_AUTH_KINDS",
     "UNIMPLEMENTED",
     "VERIFIED",
+    "EndUserAuthUnavailableError",
     "IdentityPort",
     "declared_end_user_auth",
 ]

@@ -17,6 +17,12 @@ from http.cookies import SimpleCookie
 from typing import Annotated, Any, Protocol, runtime_checkable
 
 from fastapi import Depends, HTTPException, Request, status
+from hex_service_kit.federation import (
+    IAP_ASSERTION_HEADER,
+    IAP_ISSUER,
+    IAP_KEYS_URL,
+    PORTAL_ASSERTION_HEADER,
+)
 
 from ..adapters.oidc import session_token
 from ..adapters.oidc.access_token_identity import OAuthAccessTokenAuthenticationAdapter
@@ -26,24 +32,26 @@ from ..adapters.oidc.configured_embed_identity import (
 from ..config import Settings
 from ..domain.identity import IdentityError, Principal, RequestContext
 from ..envread import optional_setting
-from ..ports.identity import IdentityPort
+from ..ports.identity import EndUserAuthUnavailableError, IdentityPort
 from . import deps
 
 _CORRELATION = re.compile(r"^[A-Za-z0-9._:/-]{1,128}$")
 _ACTOR_PREFIX = "issub:"
-_IAP_ISSUER = "https://cloud.google.com/iap"
-_IAP_ASSERTION_HEADER = "x-goog-iap-jwt-assertion"
-#: The same assertion, forwarded by a same-origin embedding host under a name Google's serverless
-#: frontend does not reserve and therefore does not strip.
-#:
-#: Read as a FALLBACK, never as an alternative trust path. The assertion this yields is verified
-#: exactly like the standard one -- signature against Google's published IAP keys, issuer, and the
-#: audience this deployment names -- so a caller gains nothing by choosing the header. What it
-#: solves is transport: ``x-goog-*`` is removed from a request entering a serverless service, so
-#: an embedding host behind IAP cannot hand this service the assertion IAP gave it under the
-#: standard name, and this service would refuse a request that had in fact passed through IAP.
-_PORTAL_ASSERTION_HEADER = "x-portal-iap-assertion"
-_IAP_KEYS_URL = "https://www.gstatic.com/iap/verify/public_key"
+
+# The four transport facts are REBOUND from the commons, not re-declared here. This module and
+# ``adapters/gcp/iap_identity.py`` each kept their own copies until 2026-08-26: the same
+# strings written twice inside one repository, with nothing able to notice a divergence,
+# because a literal always agrees with itself.
+#
+# ``PORTAL_ASSERTION_HEADER`` is the same assertion forwarded by a same-origin embedding host
+# under a name Google's serverless frontend does not reserve and therefore does not strip. Read
+# as a FALLBACK, never as an alternative trust path: the assertion it yields is verified exactly
+# like the standard one, so a caller gains nothing by choosing the header. What it solves is
+# transport, and the commons module owns the full reasoning.
+_IAP_ISSUER = IAP_ISSUER
+_IAP_ASSERTION_HEADER = IAP_ASSERTION_HEADER
+_PORTAL_ASSERTION_HEADER = PORTAL_ASSERTION_HEADER
+_IAP_KEYS_URL = IAP_KEYS_URL
 
 
 def canonical_actor(issuer: str, source_subject: str) -> str:
@@ -124,7 +132,7 @@ class IdentityPortAuthenticationAdapter:
         if decoded is not None:
             issuer, source_subject = decoded
         elif mode == "iap":
-            issuer, source_subject = "https://cloud.google.com/iap", principal.subject
+            issuer, source_subject = _IAP_ISSUER, principal.subject
         elif mode == "local-persona":
             issuer, source_subject = "local://persona", principal.subject
         else:
@@ -373,6 +381,14 @@ def get_authenticated_context(request: Request) -> AuthenticatedContext:
         authenticated = get_authentication_port().authenticate(
             RequestContext(headers=headers), correlation=correlation
         )
+    # The deployment's own failure is answered BEFORE the caller's, and the order is
+    # load-bearing: EndUserAuthUnavailableError is an IdentityError subclass, so the reverse
+    # order silently swallows it and answers the 401 the whole split exists to avoid. Its
+    # message reaches the operator, because no credential would have helped them; an ordinary
+    # refusal still answers a bare 401 that tells an unauthenticated caller nothing they could
+    # use to forge the next attempt.
+    except EndUserAuthUnavailableError as exc:
+        raise HTTPException(exc.http_status, str(exc)) from exc
     except (IdentityError, NotImplementedError) as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(exc)) from exc
     context = AuthenticatedContext(
