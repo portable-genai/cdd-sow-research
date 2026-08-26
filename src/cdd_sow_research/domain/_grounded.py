@@ -247,13 +247,31 @@ def build_llm_request(
     model: str | None,
     response_schema: dict | None,
     thinking: ThinkingLevel = ThinkingLevel.HIGH,
-    temperature: float = 0.2,
+    temperature: float = 0.0,
     max_output_tokens: int = 4096,
 ) -> LlmRequest:
     """Assemble an ``LlmRequest`` with a single user message and a system prompt.
 
     ``model=None`` lets the adapter pick its configured default (the reasoning model,
     ``gemini-3.5-flash``); thinking defaults to HIGH for grounded reasoning per SPEC.
+
+    **Temperature is 0.0 and that is a correctness setting, not a style one.** Every service
+    reached through this builder decides a field the paired demonstration COMPARES -- the risk
+    band and score, the source-of-wealth sources and confidence, the UBO graph, the
+    perpetual-KYC pass. It defaulted to 0.2 until 2026-08-26, and the deployment proved what
+    that costs: two runs of the identical case, same subject and same single-document corpus,
+    minutes apart, returned ``score`` 0.5 then 0.0, ``confidence`` 0.4 then 1.0, and four
+    scorecard factors then none. A dossier the system calls deterministic was sampling.
+
+    Every adapter making its own grounded call had already pinned 0.0 -- adverse media,
+    ownership, the registry lookup, extraction -- so this builder was the outlier rather than
+    the precedent, and the source-of-wealth self-critique pass passed 0.0 explicitly because
+    whoever wrote it knew the scored field needed it.
+
+    This is NOT a claim of determinism. A hosted model can still vary across batching and
+    revisions; 0.0 is the strongest thing a caller controls, and it is a precondition for the
+    pair being a measurement rather than a sample. Whether the deployment is actually
+    reproducible is settled by running it twice, not by this default.
     """
     return LlmRequest(
         messages=(LlmMessage(role="user", content=user_content),),
