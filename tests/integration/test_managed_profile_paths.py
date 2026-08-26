@@ -295,3 +295,47 @@ def test_a_dossier_from_this_deployment_carries_a_screening_result(settings) -> 
         "the wire, which reads as a profile that does not screen rather than as an outage."
     )
     assert screening.lists_version, "a screening result with no list version is not reproducible"
+
+
+def test_every_configured_model_actually_resolves(settings) -> None:  # type: ignore[no-untyped-def]
+    """Call each configured model once and FAIL on a 404.
+
+    Nothing in the fleet checked this, which is how `gemini-3.1-pro` sat in the hard-reasoning
+    slot of twenty repositories resolving in NO location. It broke nothing visible because the
+    hard-reasoning path is feature-flagged off, so the first deployment to switch it on would
+    have been the one to find out.
+
+    An offline gate cannot cover this: what a publisher serves is not a property of the source
+    tree, it is a fact about a project and a location on a given day, and it changes without a
+    commit. This is also why it asserts the CONFIGURED ids rather than a hardcoded list -- a
+    list would go stale exactly the way the pins did.
+
+    The residency half is asserted with it. `global` reaches every model and carries no
+    residency guarantee, so a green run here against `global` would prove availability while
+    silently voiding the in:us-locations claim.
+    """
+    from google import genai
+
+    assert settings.models.location != "global", (
+        "the model client is pointed at the global endpoint, which carries no ML-processing "
+        "residency guarantee; the in:us-locations claim in the dossiers would not survive it"
+    )
+
+    client = genai.Client(
+        vertexai=True, project=settings.project_id, location=settings.models.location
+    )
+    configured = {
+        "reasoning": settings.models.reasoning,
+        "triage": settings.models.triage,
+        "hard_reasoning": settings.models.hard_reasoning,
+    }
+    unreachable: dict[str, str] = {}
+    for slot, model in sorted(configured.items()):
+        try:
+            client.models.generate_content(model=model, contents="ping")
+        except Exception as exc:  # noqa: BLE001 - any failure to reach it is the finding
+            unreachable[slot] = f"{model}: {type(exc).__name__} {str(exc)[:120]}"
+
+    assert not unreachable, (
+        f"configured models that do not resolve in {settings.models.location!r}: {unreachable}"
+    )

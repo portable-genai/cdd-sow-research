@@ -22,11 +22,38 @@ from .models import (
     RiskBand,
     RiskFactor,
     RiskRating,
+    RiskScorecard,
+    ScreeningResult,
     Severity,
     SourceOfWealthNarrative,
     Subject,
 )
 from .prompts import _CITATION_RULES, RISK_SYSTEM, RISK_USER
+from .scorecard_service import RiskScorecardService
+
+
+def _owner_is_pep(ownership: OwnershipSummary | None) -> bool:
+    """Whether any resolved beneficial owner is a politically exposed person."""
+    return any(owner.is_pep for owner in (ownership.owners if ownership else ()))
+
+
+def _factors_from_scorecard(scorecard: RiskScorecard) -> tuple[RiskFactor, ...]:
+    """Present the scorecard's weighted dimensions as the dossier's risk factors.
+
+    ``present`` is whether the dimension actually contributed rather than whether it was
+    considered: every dimension is always scored, so a factor list where all of them read
+    "present" tells a reviewer nothing about which ones drove the band.
+    """
+    return tuple(
+        RiskFactor(
+            name=factor.name,
+            weight=factor.weight,
+            present=factor.score > 0.0,
+            detail=factor.detail,
+        )
+        for factor in scorecard.factors
+    )
+
 
 _RISK_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -60,9 +87,14 @@ _RISK_SCHEMA: dict[str, Any] = {
 class RiskRatingService:
     """Assign a weighted, grounded risk rating. Signature fixed by SPEC §5."""
 
-    def __init__(self, llm: Any, tracer: Any) -> None:
+    def __init__(
+        self, llm: Any, tracer: Any, scorecard: RiskScorecardService | None = None
+    ) -> None:
         self._llm = llm
         self._tracer = tracer
+        # Defaulted rather than required so every existing construction keeps working; a
+        # deployment that carries bank-owned policy passes RiskScorecardService.from_policy.
+        self._scorecard = scorecard or RiskScorecardService()
 
     def rate(
         self,
@@ -72,8 +104,27 @@ class RiskRatingService:
         ownership: OwnershipSummary | None,
         passages: list[Any],
         actor: str,
+        screening: ScreeningResult | None = None,
     ) -> RiskRating:
-        """Assign a risk rating for ``subject`` grounded in the case evidence."""
+        """Assign a risk rating for ``subject`` grounded in the case evidence.
+
+        **The number is the domain's, and the prose is the model's.** The band, the score and
+        the weighted factors come from :class:`RiskScorecardService`, which is pure and
+        replayable: the same inputs always yield the same score and tier, so an auditor can
+        recompute the decision and two profiles cannot disagree about it.
+
+        They used to come from the LLM, and that is why they disagreed. The paired
+        demonstration compares the risk figures across a laptop and a deployment, and the
+        published claim is that policy never changes between profiles -- but a band produced by
+        a model is not policy, it is model output, so two different models gave two different
+        answers to the most consequential field in the dossier. ``pairing.EXEMPT`` has asserted
+        "the model narrates; it never produces the number" since it was written. Until
+        2026-08-27 that sentence was false.
+
+        The LLM call is still made, and still matters: it writes the rationale a reviewer
+        reads and names the passages it relied on, which is what makes the rating grounded
+        rather than merely computed. What it can no longer do is decide the outcome.
+        """
         signals = self._signals_block(sow, adverse_media, ownership)
         subject_block = (
             f"id={subject.id}, name={subject.name}, type={subject.type.value}, "
@@ -92,15 +143,27 @@ class RiskRatingService:
         g.maybe_record_usage(self._tracer, response)
 
         parsed = g.parse_structured(response)
-        band = g.coerce_risk_band(parsed.get("band"))
-        score = g.clamp(parsed.get("score", 0.0))
-        factors = self._build_factors(parsed.get("factors"), list(passages))
         rationale = str(parsed.get("rationale") or "").strip()
         citations = g.citations_for_source_ids(
             g.as_str_list(parsed.get("used_source_ids")), list(passages)
         )
 
-        # Deterministically raise the band on hard signals (never soften the model).
+        # The scorecard decides. Its inputs are the deterministic ones -- the subject's own
+        # attributes, the watchlist screen, the adverse-media findings and whether an owner is
+        # a PEP -- so both profiles compute the same figures from the same evidence.
+        scorecard = self._scorecard.score(
+            subject,
+            screening=screening,
+            adverse_media=adverse_media,
+            is_pep=_owner_is_pep(ownership),
+        )
+        band = scorecard.band
+        score = scorecard.score
+        factors = _factors_from_scorecard(scorecard)
+
+        # Hard signals still raise the band and never soften it. Kept after the scorecard
+        # rather than folded into it: the scorecard weighs, this refuses, and a refusal that
+        # can be outvoted by a weighting is not a refusal.
         band, rationale = self._apply_hard_signals(band, rationale, adverse_media, ownership)
 
         return RiskRating(

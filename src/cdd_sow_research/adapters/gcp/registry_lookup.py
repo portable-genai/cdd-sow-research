@@ -53,7 +53,9 @@ class GroundedRegistryAdapter:
             self._client = genai.Client(
                 vertexai=True,
                 project=self._settings.project_id,
-                location=self._settings.region,
+                # The MODEL location, not the compute region: see models.location in
+                # config/settings.yaml. us-central1 serves no Gemini 3.
+                location=self._settings.models.location,
             )
         return self._client
 

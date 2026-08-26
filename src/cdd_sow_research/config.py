@@ -284,9 +284,16 @@ def _coerce_scalars(cls: type, raw: dict[str, Any]) -> dict[str, Any]:
 
 @dataclass(frozen=True)
 class ModelSettings:
-    reasoning: str = "gemini-3.5-flash"
+    #: The Vertex location the model client calls, deliberately NOT the compute region. See
+    #: the reasoning beside `models.location` in config/settings.yaml: `us` is the United
+    #: States multi-region, which carries an ML-processing residency guarantee, where `global`
+    #: carries none and `us-central1` serves no Gemini 3.
+    location: str = "us"
+    reasoning: str = "gemini-3.7-flash"
     triage: str = "gemini-3.1-flash-lite"
-    hard_reasoning: str = "gemini-3.1-pro"  # Preview — feature-flagged off by default
+    #: No Gemini 3 pro tier serves the `us` multi-region, and the previous default here
+    #: (gemini-3.1-pro) resolves in no location at all.
+    hard_reasoning: str = "gemini-3.7-flash"
     use_hard_reasoning: bool = False
 
 

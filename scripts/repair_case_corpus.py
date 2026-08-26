@@ -88,6 +88,7 @@ def main(argv: list[str] | None = None) -> int:
     kb = container.knowledge_base
     removed = 0
     retracted = 0
+    pending: list[str] = []
     for _group, doc_id in removable:
         try:
             if kb.retract(doc_id, principals):
@@ -96,11 +97,26 @@ def main(argv: list[str] | None = None) -> int:
             print(f"\nREFUSED: this profile cannot retract an indexed document.\n  {exc}")
             print("Nothing was deleted; custody and the index would have disagreed.")
             return 2
+        except Exception as exc:  # noqa: BLE001 - a not-yet-effective retraction is reportable
+            if type(exc).__name__ != "RetractionNotYetEffectiveError":
+                raise
+            # The delete was ACCEPTED; the serving index has not caught up. Custody still goes,
+            # because leaving the bytes behind for an index that will drop the passage anyway
+            # is the worse of the two inconsistencies -- and the caller is told, by name.
+            pending.append(doc_id)
         if store.delete(doc_id, principals):
             removed += 1
         else:
             print(f"  WARN {doc_id}: custody copy already gone")
     print(f"\nretracted {retracted} and removed {removed} of {len(removable)} stale document(s)")
+    if pending:
+        print(
+            f"\n{len(pending)} retraction(s) ACCEPTED BUT NOT YET EFFECTIVE: the serving index "
+            "still discloses them. They are deleted and will stop being citable when it "
+            "refreshes; re-run to confirm."
+        )
+        for doc_id in pending:
+            print(f"  pending: {doc_id}")
     return 0
 
 

@@ -30,7 +30,7 @@ def _adapter() -> RemoteEvaluationAdapter:
 # Every score/threshold/passed row is internally CONSISTENT, because the client
 # re-derives each verdict and raises on contradiction rather than trusting the flag.
 _RESULTS_BODY = {
-    "target": {"model": "gemini-3.5-flash", "prompt_version": "v1", "dataset_id": "golden_cases"},
+    "target": {"model": "gemini-3.7-flash", "prompt_version": "v1", "dataset_id": "golden_cases"},
     "results": [
         {"metric": "sow_groundedness", "score": 0.91, "threshold": 0.80, "passed": True},
         {"metric": "risk_band_accuracy", "score": 0.70, "threshold": 0.85, "passed": False},
@@ -99,7 +99,7 @@ def test_evaluate_sends_structured_target_and_parses_results():
     sent = route.calls.last.request
     body = _json(sent)
     # Structured target, not a bare string.
-    assert body["target"]["model"] == "gemini-3.5-flash"
+    assert body["target"]["model"] == "gemini-3.7-flash"
     assert body["target"]["dataset_id"] == "golden_cases"
     # Top-level dataset_id equals target.dataset_id (Hrz4 422s on divergence).
     assert body["dataset_id"] == body["target"]["dataset_id"] == "golden_cases"

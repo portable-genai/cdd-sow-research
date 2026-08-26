@@ -153,7 +153,11 @@ def test_gcp_region_is_configurable_from_one_selector(monkeypatch):
     assert settings.knowledge_base.location == "us"
     assert settings.model_armor.host == "modelarmor.europe-west4.rep.googleapis.com"
     assert settings.logging.retention_days == 180
-    assert settings.models.reasoning == "gemini-3.5-flash"
+    # The model id moved to gemini-3.7-flash on 2026-08-27; what this line is really
+    # asserting is that ONE selector drives the region without dragging the model
+    # location with it, which is why models.location stays `us` here.
+    assert settings.models.reasoning == "gemini-3.7-flash"
+    assert settings.models.location == "us"
     assert settings.models.triage == "gemini-3.1-flash-lite"
     assert settings.knowledge_base.top_k == 10
     assert set(PORT_PROTOCOLS) <= set(settings.adapters)
