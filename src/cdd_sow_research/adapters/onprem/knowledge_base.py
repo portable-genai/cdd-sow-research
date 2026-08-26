@@ -38,3 +38,9 @@ class OnPremKnowledgeBaseAdapter:
 
     def search(self, query: RetrievalQuery) -> list[RetrievedPassage]:
         raise NotImplementedError(_MESSAGE)
+
+    def retract(self, document_id: str, acl_principals: tuple[str, ...]) -> bool:
+        # Fail-fast like the rest of this placeholder. Returning False would be the dangerous
+        # answer: a caller retracting evidence would be told nothing was indexed, when in truth
+        # nothing here is wired at all.
+        raise NotImplementedError(_MESSAGE)

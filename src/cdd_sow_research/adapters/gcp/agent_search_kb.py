@@ -221,6 +221,31 @@ class AgentSearchKnowledgeBaseAdapter:
             )
         return IngestResult(document_id=document.id, chunks=0, status="indexed", ok=True)
 
+    def retract(self, document_id: str, acl_principals: tuple[str, ...]) -> bool:
+        """Delete the indexed document, after checking the caller may read it.
+
+        The ACL check reads the document first and compares its own tags, rather than trusting
+        the caller's word for what it may reach. Deleting something already absent is False and
+        not an error: a repair that runs twice must be as safe as one that runs once.
+        """
+        from google.api_core import exceptions as gexc
+
+        client = self._documents()
+        name = f"{self._branch()}/documents/{document_id}"
+        try:
+            existing = client.get_document(name=name)
+        except gexc.NotFound:
+            return False
+        struct = self._to_dict(getattr(existing, "struct_data", None))
+        tags = tuple(str(t) for t in (struct.get("acl_tags") or ()))
+        if not self._acl_ok(tags, acl_principals):
+            raise PermissionError(f"not readable, so not retractable: {document_id!r}")
+        try:
+            client.delete_document(name=name)
+        except gexc.NotFound:
+            return False
+        return True
+
     def search(self, query: RetrievalQuery) -> list[RetrievedPassage]:
         """Return ranked passages (ACL-filtered) with page-level citations."""
         from google.cloud import discoveryengine_v1

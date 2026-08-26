@@ -89,6 +89,21 @@ class RemoteKnowledgeBaseAdapter:
         return [self._to_passage(item) for item in (body.get("passages") or ())]
 
     # ----------------------------------------------------------------- helpers
+    def retract(self, document_id: str, acl_principals: tuple[str, ...]) -> bool:
+        """Ask A2 to remove an indexed document. REFUSES rather than pretending to succeed.
+
+        The remote contract for this does not exist yet: `enterprise-knowledge-base` exposes
+        ingest and search, and adding a retraction endpoint is its decision to take, not this
+        client's to assume. Returning False here would be the worst of the options -- a caller
+        retracting evidence would be told there was nothing indexed, and the passage would stay
+        citable. Raising names the gap at the point someone hits it.
+        """
+        raise NotImplementedError(
+            "the A2 knowledge-base service exposes no retraction endpoint, so an indexed "
+            "document cannot be withdrawn through this adapter. Refusing rather than reporting "
+            "a removal that did not happen."
+        )
+
     def _post(self, path: str, payload: dict) -> dict:
         url = f"{self._base_url}{path}"
         try:
