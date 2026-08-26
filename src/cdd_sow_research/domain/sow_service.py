@@ -188,7 +188,6 @@ class SourceOfWealthService:
             ),
             model=None,
             response_schema=_CRITIQUE_SCHEMA,
-            temperature=0.0,
         )
         try:
             response = self._llm.generate(request)
