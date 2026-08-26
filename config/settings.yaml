@@ -14,10 +14,34 @@ grounding_enabled: ${CDD_GROUNDING_ENABLED:-true}
 # Model ids are pinned, never floating. They are env-overridable because model
 # availability is regional: a model that is GA in one region 404s in another, and a
 # deployment must be able to pin the id its own region actually serves without a fork.
+#
+# `location` is the Vertex location the model client calls, and it is DELIBERATELY NOT
+# `region`. It used to be: the client was constructed with the compute region, so a
+# deployment in us-central1 could reach only what us-central1 serves, which is the 2.5
+# family and nothing newer. Probed against the named deployment on 2026-08-27,
+# `gemini-3.7-flash` 404s in us-central1 and us-east5 and answers in `us`.
+#
+# `us` is the United States MULTI-REGION, and choosing it over `global` is the whole point:
+# a multi-region endpoint pools capacity across regions in one geography and Google documents
+# ML processing as staying inside it, whereas the global endpoint carries NO residency
+# guarantee. So this keeps the `in:us-locations` boundary the Org Policy enforces and the
+# dossiers claim, while reaching a model generation us-central1 does not serve. It is the same
+# split, for the same reason, that `knowledge_base.location` already makes for Discovery
+# Engine -- and the same country-granularity residency the deployment record already states.
+#
+# An EU deployment sets `eu`, exactly as it must for knowledge_base.location. Leaving
+# this at `us` while deploying into europe-west4 would send prompts to the United States,
+# which is the same trap that setting carries and the same reason it is env-overridable.
 models:
-  reasoning: ${CDD_REASONING_MODEL:-gemini-3.5-flash}      # GA — SoW + risk reasoning (thinking=high)
+  location: ${CDD_MODEL_LOCATION:-us}                      # US multi-region; NOT `region`, NOT `global`
+  reasoning: ${CDD_REASONING_MODEL:-gemini-3.7-flash}      # GA 2026-08-13 — SoW + risk reasoning (thinking=high)
   triage: ${CDD_TRIAGE_MODEL:-gemini-3.1-flash-lite}       # GA — routing / triage / grounded research
-  hard_reasoning: ${CDD_HARD_REASONING_MODEL:-gemini-3.1-pro}  # Preview — OFF unless use_hard_reasoning=true
+  # No Gemini 3 PRO tier serves the `us` multi-region: 3.7-pro, 3.1-pro and 2.5-pro all 404
+  # there. gemini-3.1-pro was pinned here and resolves in NO location, so the hard-reasoning
+  # path was dead on every deployment that switched it on. The newest GA model the residency
+  # boundary permits is the flash tier, and naming that honestly beats naming a pro tier that
+  # cannot be called.
+  hard_reasoning: ${CDD_HARD_REASONING_MODEL:-gemini-3.7-flash}
   use_hard_reasoning: false
 
 document_ai:

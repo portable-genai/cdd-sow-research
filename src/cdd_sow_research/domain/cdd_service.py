@@ -215,7 +215,7 @@ class CddService:
 
         # 7) Risk rating (LLM + deterministic hard-signal raise).
         rating: RiskRating = self._risk.rate(
-            subject, sow, media_findings, ownership, passages, actor
+            subject, sow, media_findings, ownership, passages, actor, screening=screening
         )
 
         # 8) Check against regulatory CDD/AML expectations via C1 (best-effort).

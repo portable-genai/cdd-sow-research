@@ -86,10 +86,16 @@ class GeminiLLMAdapter:
         if self._client is None:
             from google import genai
 
+            # The MODEL location, not the compute region. Constructed with `region` until
+            # 2026-08-27, which silently capped this deployment at whatever us-central1 serves
+            # -- the 2.5 family -- while settings.yaml pinned Gemini 3 ids that could therefore
+            # never resolve. `models.location` defaults to the `us` multi-region, which keeps
+            # ML processing inside the United States and so inside the residency boundary the
+            # Org Policy enforces.
             self._client = genai.Client(
                 vertexai=True,
                 project=self._settings.project_id,
-                location=self._settings.region,
+                location=self._settings.models.location,
             )
         return self._client
 

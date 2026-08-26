@@ -110,6 +110,15 @@ def _extractive_segment_count(top_k: int) -> int:
     return min(max(top_k, 1), _MAX_EXTRACTIVE_SEGMENTS)
 
 
+class RetractionNotYetEffectiveError(RuntimeError):
+    """A document was deleted, and the serving index is still disclosing it.
+
+    Deliberately not a subclass of anything the caller already swallows. A retraction that is
+    accepted but not effective must not be reportable as success, because the difference is the
+    entire content of an erasure claim.
+    """
+
+
 class AgentSearchKnowledgeBaseAdapter:
     """Direct Agent Search governed-RAG adapter (standalone fallback for A2)."""
 
@@ -124,6 +133,13 @@ class AgentSearchKnowledgeBaseAdapter:
         self._branch_id = cfg.branch_id
         self._serving_config_id = cfg.serving_config_id
         self._endpoint = f"{self._location}-discoveryengine.googleapis.com"
+        # How long a retraction waits for the SERVING index to stop disclosing the
+        # document before it reports itself as not yet effective. Bounded on purpose:
+        # the observed lag has been hours, so a caller must get an answer rather than
+        # a hang, and 'accepted but not yet effective' is a real, reportable state.
+        self._retraction_timeout_seconds = float(
+            getattr(cfg, "retraction_timeout_seconds", 0) or 30.0
+        )
         self._search_client: Any | None = None
         self._doc_client: Any | None = None
 
@@ -240,11 +256,56 @@ class AgentSearchKnowledgeBaseAdapter:
         tags = tuple(str(t) for t in (struct.get("acl_tags") or ()))
         if not self._acl_ok(tags, acl_principals):
             raise PermissionError(f"not readable, so not retractable: {document_id!r}")
+        # The query is captured BEFORE the delete, because afterwards there is nothing left to
+        # derive one from and a retraction that cannot be checked is the thing being fixed.
+        probe = str(struct.get("title") or struct.get("doc_type") or "").strip()
         try:
             client.delete_document(name=name)
         except gexc.NotFound:
             return False
+        self._await_retraction(document_id, probe, acl_principals)
         return True
+
+    def _await_retraction(
+        self, document_id: str, probe: str, acl_principals: tuple[str, ...]
+    ) -> None:
+        """Wait until the SERVING index stops returning the document, or say that it did not.
+
+        Deleting from the document branch is immediate; being un-citable is not. Measured on the
+        named deployment: with the branch holding exactly one document, search kept returning
+        five for hours and had settled by the next day. For a duplicate that is untidy. For an
+        erasure request it is the whole question, because "deleted" and "no longer disclosed to
+        anyone" are different claims and only the second is what was asked for.
+
+        So this does not pretend. It polls for a bounded window and, if the passage is still
+        being served when that expires, raises with how long it waited -- the deletion IS
+        accepted and the caller is told it is not yet effective, which is the fact an auditor
+        needs and the one a bare ``return True`` would have hidden.
+        """
+        import time
+
+        if not probe:
+            return
+        deadline = time.monotonic() + self._retraction_timeout_seconds
+        attempt = 0
+        while True:
+            still_served = any(
+                passage.citation.source_id == document_id
+                for passage in self.search(
+                    RetrievalQuery(text=probe, acl_principals=acl_principals, top_k=25)
+                )
+            )
+            if not still_served:
+                return
+            if time.monotonic() >= deadline:
+                raise RetractionNotYetEffectiveError(
+                    f"{document_id!r} was deleted from the document branch, but the serving "
+                    f"index still returns it after {self._retraction_timeout_seconds:.0f}s. "
+                    "The deletion is accepted and is not yet effective: until the index "
+                    "refreshes, the passage remains retrievable and citable."
+                )
+            attempt += 1
+            time.sleep(min(2.0 * attempt, 5.0))
 
     def search(self, query: RetrievalQuery) -> list[RetrievedPassage]:
         """Return ranked passages (ACL-filtered) with page-level citations."""
