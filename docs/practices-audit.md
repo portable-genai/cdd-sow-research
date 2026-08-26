@@ -21,7 +21,7 @@ A1-A6, C1-C5, D1-D3 and E1; all are PASS here.
 | **A6** Contract tests enforce the hexagon; port map cannot drift `[all]` **(load-bearing)** | PASS | `test_port_parity.py` (incl. `test_port_protocols_matches_settings_adapters`) + `test_behavioral_parity.py` both present. |
 | **A7** Kernel vs vertical split in the domain `[all]` | PASS | `domain/kernel.py` (neutral machinery) vs `domain/models.py`; `models.py` imports `from .kernel import (...)`, not vice versa. |
 | **A8** Consume platform horizontals via thin delegates `[all]` | PASS | `adapters/platform/remote_*.py` are 54-124 lines, marshalling only; each horizontal concern (guardrail, redaction, KB, compliance, audit, evaluation, registry, tracer) has a `platform` binding. |
-| **B1** Consequential math is deterministic, pure, replayable `[agentic]` | PASS | `domain/gap_analysis.py`, `scorecard_service.py`, `source_of_funds_service.py`, `periodic_review_service.py`, `screening.py`, `perpetual_kyc.py`: pure stdlib, unit-tested; LLM narrates only. `perpetual_kyc.py` takes no clock (the caller supplies `as_of`), so a run is byte-identical on replay (`test_perpetual_kyc.py::test_assessment_is_replayable`). |
+| **B1** Consequential math is deterministic, pure, replayable `[agentic]` | PASS | `domain/gap_analysis.py`, `scorecard_service.py`, `source_of_funds_service.py`, `periodic_review_service.py`, `screening.py`, `perpetual_kyc.py`: pure stdlib, unit-tested; LLM narrates only. `perpetual_kyc.py` takes no clock (the caller supplies `as_of`), so a run is byte-identical on replay (`test_perpetual_kyc.py::test_assessment_is_replayable`). **Corrected 2026-08-26: "LLM narrates only" was not fully true, and a live run proved it.** Adverse-media findings came back from a grounded web search and their `severity` reached the risk band with nothing deterministic in between, so a model-returned article could force a PROHIBITED verdict. It did: the deployment attached a real money-laundering prosecution naming real banks to a fictional subject. `adverse_media_service.finding_names_subject` now makes that decision in the domain, pure and stdlib, requiring every distinctive token of the subject's name to appear in the finding. Observed failing first against the pre-fix admit-everything behaviour, including on the exact article (`tests/unit/test_adverse_media_names_the_subject.py`). |
 | **B2** Every claim carries a citation; empty retrieval is a hard error `[agentic]` | PASS | `Citation` (kernel) on claim-bearing models; `domain/_grounded.py`; empty passages raise rather than answer ungrounded. |
 | **B3** Maker-checker on every consequential output `[agentic]` | PASS | `requires_human_review: bool = True` default on the output models (including `PerpetualKycAssessment` and `ReviewQueueItem`); `review_policy.requires_review()` always True; escalation only raises the bar; the perpetual-KYC outcome is routed via `ReviewRouterPort.route_monitoring` and never acted on. Asserted in `test_cdd_service.py`, `test_sub_services.py`, `test_perpetual_kyc.py`, `test_perpetual_kyc_routes.py`, `test_review_routing.py`. |
 | **B4** Bank-owned policy numbers in config, defaults = reference `[all]` | PASS | `domain/policy.py` frozen dataclasses (incl. `PerpetualKycPolicy`); `from_policy(...)` constructors across engines; `settings.yaml policy:`; `tests/unit/test_risk_policy.py` covers default + override, `test_perpetual_kyc.py` proves the pKYC uplifts, cap and SLA days come from policy. |
@@ -57,6 +57,26 @@ A1-A6, C1-C5, D1-D3 and E1; all are PASS here.
 
 **Verdict counts:** 40 PASS, 0 PARTIAL, 0 FAIL, 1 N-A (G7 flagged as minor drift, still PASS). Every
 load-bearing check (A1-A6, C1-C5, D1-D3, E1) is a full PASS.
+
+## What the managed profile proved by running, 2026-08-26
+
+`make test-managed` had never been run against a deployment. Running it reached **5 passed**, and
+the route there is the evidence: four defects that no offline profile reaches, each observed
+failing before it was fixed.
+
+| What ran wrong | Why offline could not see it |
+|---|---|
+| The API service carried no `CDD_SANCTIONS_BUCKET`, so it read a default bucket name that exists in no project | The local profile resolves a file path, never a bucket |
+| The sanctions bucket granted write to the sync job and read to nobody, so the serving identity was refused | There is no IAM in an offline run |
+| `max_extractive_segment_count` passed an unbounded `top_k` into a field Discovery Engine caps at ten, failing the whole search with a 400 | The shipped default is `top_k: 10`, exactly the ceiling, so the one value that could not fail was the one everybody ran |
+| The round-trip tests ingested a document and searched for it in the same breath | A local index is synchronous; the managed store indexed a probe document in 34 seconds |
+
+The suite's three states were re-proved after the fixes: unset skips, set-and-empty refuses with
+an assertion naming the rendered-template failure it exists to catch, and set-and-valid runs.
+
+**The honest limit.** These ran from a laptop against the deployment's resources, not inside the
+deployment, and nothing re-runs them. This is again evidence that those paths worked at the
+moment they were run.
 
 ## Gaps carried to systems/
 
