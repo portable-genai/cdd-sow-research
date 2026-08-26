@@ -240,6 +240,26 @@ class LocalKnowledgeBaseAdapter:
             detail=f"indexed {n} passages into local FTS5",
         )
 
+    def retract(self, document_id: str, acl_principals: tuple[str, ...]) -> bool:
+        """Remove every passage indexed from ``document_id``, ACL-checked first.
+
+        A document is retractable only by a caller who can read it, so the tags are read back
+        and compared rather than taken on trust. Removing nothing returns False; running a
+        repair twice must be as safe as running it once.
+        """
+        rows = list(
+            self._conn.execute("SELECT acl_tags FROM passages WHERE source_id = ?", (document_id,))
+        )
+        if not rows:
+            return False
+        for (raw,) in rows:
+            tags = tuple(t for t in str(raw or "").split(_ACL_SEP) if t)
+            if tags and not set(tags) <= set(acl_principals):
+                raise PermissionError(f"not readable, so not retractable: {document_id!r}")
+        self._conn.execute("DELETE FROM passages WHERE source_id = ?", (document_id,))
+        self._conn.commit()
+        return True
+
     def search(self, query: RetrievalQuery) -> list[RetrievedPassage]:
         """Return ranked, ACL-filtered passages with page-level citations for ``query``.
 

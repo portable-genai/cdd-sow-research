@@ -49,3 +49,25 @@ class KnowledgeBaseClientPort(Protocol):
     def search(self, query: RetrievalQuery) -> list[RetrievedPassage]:
         """Retrieve ranked passages (ACL-filtered) for grounding the dossier."""
         ...
+
+    def retract(self, document_id: str, acl_principals: tuple[str, ...]) -> bool:
+        """Remove every indexed passage belonging to ``document_id``. Returns whether any went.
+
+        This port carried ``ingest`` and ``search`` and nothing else until 2026-08-26, which
+        meant **evidence could enter retrieval and never leave it**. The custody store has always
+        had ``delete``, so removing a document there left its passages indexed and citable: the
+        two halves disagreed, and retrieval -- the half a dossier actually quotes -- kept the
+        copy. That is how 21 pre-fix duplicate copies of one bank statement survived a repair
+        that reported success, and it is why the paired demonstration's citation counts kept
+        diverging on history rather than on any disagreement between the profiles.
+
+        It is more than a duplicate-cleanup gap. A CDD system that cannot retract an indexed
+        document cannot honour an erasure request, cannot withdraw evidence filed against the
+        wrong case, and cannot correct a document it later learns is forged -- while continuing
+        to cite all three.
+
+        ACL principals are required and checked for the same reason they are on every read: a
+        retraction is a write against evidence, and a caller who cannot read a document must not
+        be able to remove it.
+        """
+        ...
