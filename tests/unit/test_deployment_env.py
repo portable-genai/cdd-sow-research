@@ -1124,3 +1124,40 @@ def test_an_omitted_posture_is_treated_as_production() -> None:
     values["DOC1_WORM_LOCK_APPROVED"] = "false"
     errors = deployment_env.validate_environment(values, require_ready=True)
     assert any("DOC1_WORM_LOCK_APPROVED" in error for error in errors)
+
+
+def test_an_unapproved_worm_lock_is_not_asked_for_in_terraform() -> None:
+    """The irreversible one. An unapproved lock must not reach Terraform as `true`.
+
+    `TF_VAR_worm_locked` was the literal string "true", so a reference stack that had
+    deliberately not approved the lock still asked Terraform for it. The preflight printed
+    "audit retention is applied but NOT locked" while the same run requested the lock, and the
+    only thing that stopped the apply was the variable's own
+    `worm_locked ? retention_days >= 180` validation failing on a NON-compliant 3-day retention.
+    Raising retention to the compliant 180, which the reference-posture disclosure nudges
+    toward, would have armed a 180-day irreversible lock nobody approved.
+    """
+
+    values = _ready_values()
+    values["DOC1_WORM_LOCK_APPROVED"] = "false"
+
+    assert deployment_env.terraform_environment(values)["TF_VAR_worm_locked"] == "false"
+
+
+def test_an_approved_worm_lock_still_reaches_terraform() -> None:
+    """The other direction, so the fix cannot become "never lock anything"."""
+
+    values = _ready_values()
+    values["DOC1_WORM_LOCK_APPROVED"] = "true"
+
+    assert deployment_env.terraform_environment(values)["TF_VAR_worm_locked"] == "true"
+
+
+def test_a_non_boolean_worm_approval_is_not_read_as_approval() -> None:
+    """Anything that is not an affirmative is not an approval, for this flag especially."""
+
+    for value in ("", "maybe", "TRUE-ish", "0", "no"):
+        values = _ready_values()
+        values["DOC1_WORM_LOCK_APPROVED"] = value
+        mapped = deployment_env.terraform_environment(values)
+        assert mapped["TF_VAR_worm_locked"] == "false", f"{value!r} was read as approval"

@@ -1187,7 +1187,20 @@ def terraform_environment(values: dict[str, str]) -> dict[str, str]:
         "TF_VAR_access_policy_id": values["DOC1_ACCESS_POLICY_ID"],
         "TF_VAR_retention_days": values["DOC1_AUDIT_RETENTION_DAYS"],
         "TF_VAR_existing_locked_retention_days": values["DOC1_EXISTING_LOCKED_RETENTION_DAYS"],
-        "TF_VAR_worm_locked": "true",
+        # Derived from the approval, never hardcoded. This was the literal "true", so a
+        # reference stack that had deliberately NOT approved the lock still passed
+        # worm_locked=true to Terraform: the preflight printed "audit retention is applied but
+        # NOT locked" while the same run asked for the irreversible lock. What actually stopped
+        # it was an accident, not a safeguard. `retention_days` of 3 fails the variable's own
+        # `worm_locked ? retention_days >= 180` validation, so the apply was refused for being
+        # NON-compliant. Raising retention to the compliant 180, which the reference-posture
+        # disclosure explicitly nudges toward, would have removed the only thing standing
+        # between an unapproved reference stack and a 180-day irreversible lock.
+        #
+        # `DOC1_WORM_LOCK_APPROVED` is a required key, so unset is already a refusal upstream
+        # and this never silently defaults either way. The Terraform default stays `true`, which
+        # is what a fork inherits; the deployment says what it approved.
+        "TF_VAR_worm_locked": str(_is_true(values["DOC1_WORM_LOCK_APPROVED"])).lower(),
         "TF_VAR_vpc_sc_enforce": values["DOC1_VPC_SC_ENFORCE"].lower(),
         "TF_VAR_alert_notification_channels": json.dumps(
             [
