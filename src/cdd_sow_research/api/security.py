@@ -8,8 +8,6 @@ channel.
 
 from __future__ import annotations
 
-import base64
-import json
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -32,6 +30,13 @@ from ..adapters.oidc.configured_embed_identity import (
 from ..config import Settings
 from ..domain.identity import IdentityError, Principal, RequestContext
 from ..envread import optional_setting
+from ..identity_policy import (
+    canonical_actor,
+    decode_canonical_actor,
+    reviewed_groups_for,
+    reviewed_principal_from_iap_claims,
+    reviewed_tenant_for,
+)
 from ..ports.identity import EndUserAuthUnavailableError, IdentityPort
 from . import deps
 
@@ -52,31 +57,6 @@ _IAP_ISSUER = IAP_ISSUER
 _IAP_ASSERTION_HEADER = IAP_ASSERTION_HEADER
 _PORTAL_ASSERTION_HEADER = PORTAL_ASSERTION_HEADER
 _IAP_KEYS_URL = IAP_KEYS_URL
-
-
-def canonical_actor(issuer: str, source_subject: str) -> str:
-    """Deterministically encode the immutable ``(iss, sub)`` pair as the audit actor."""
-    pair = json.dumps([issuer, source_subject], separators=(",", ":")).encode()
-    encoded = base64.urlsafe_b64encode(pair).decode("ascii").rstrip("=")
-    return f"{_ACTOR_PREFIX}{encoded}"
-
-
-def decode_canonical_actor(actor: str) -> tuple[str, str] | None:
-    if not actor.startswith(_ACTOR_PREFIX):
-        return None
-    raw = actor.removeprefix(_ACTOR_PREFIX)
-    try:
-        padding = "=" * (-len(raw) % 4)
-        value = json.loads(base64.urlsafe_b64decode(raw + padding))
-    except (ValueError, UnicodeDecodeError, json.JSONDecodeError):
-        return None
-    if (
-        not isinstance(value, list)
-        or len(value) != 2
-        or not all(isinstance(item, str) and item for item in value)
-    ):
-        return None
-    return value[0], value[1]
 
 
 @dataclass(frozen=True, slots=True)
@@ -223,36 +203,10 @@ class IapAuthenticationAdapter:
         self._audience = optional_setting("CDD_IAP_AUDIENCE") or ""
 
     def _groups_for(self, claims: Mapping[str, object]) -> tuple[str, ...]:
-        """The reviewed group principals a VERIFIED identity domain holds here.
-
-        Without this the IAP path granted ``user:<subject>`` alone, which satisfies no
-        case-access role, so every signed-in analyst was refused every case they named. The
-        groups are the same strings the entitlement rules already recognise; naming a domain here
-        states who holds them, and grants nothing that was not already grantable.
-        """
-
-        hosted_domain = str(claims.get("hd") or "").strip().lower()
-        email = str(claims.get("email") or "").strip().lower()
-        domain = hosted_domain or email.rpartition("@")[2]
-        return tuple(self._settings.identity.iap_groups_by_domain.get(domain, ()))
+        return reviewed_groups_for(claims, self._settings)
 
     def _tenant_for(self, claims: Mapping[str, object]) -> str:
-        """Resolve the reviewed tenant for a VERIFIED assertion, or the empty string.
-
-        ``hd`` is a Google hosted domain, not a tenant id, and it is absent entirely on a
-        machine identity. The reviewed map is what turns the one into the other; with no map
-        configured this returns ``hd`` exactly as before, so an existing deployment is unchanged.
-        """
-
-        hosted_domain = str(claims.get("hd") or "").strip().lower()
-        # A service account presents no hosted domain, so its email domain is the closest thing
-        # to one; naming that domain in the map is how a deployment admits a machine caller.
-        email = str(claims.get("email") or "").strip().lower()
-        domain = hosted_domain or email.rpartition("@")[2]
-        mapping = self._settings.identity.iap_tenant_by_domain
-        if not mapping:
-            return hosted_domain
-        return str(mapping.get(domain, "")).strip()
+        return reviewed_tenant_for(claims, self._settings)
 
     def authenticate(self, ctx: RequestContext, *, correlation: str = "") -> AuthenticatedIdentity:
         assertion = ctx.header(_IAP_ASSERTION_HEADER) or ctx.header(_PORTAL_ASSERTION_HEADER)
@@ -261,20 +215,8 @@ class IapAuthenticationAdapter:
         if not self._audience:
             raise IdentityError("CDD_IAP_AUDIENCE is not configured; cannot verify IAP assertion")
         claims = self._verify(assertion)
-        issuer = str(claims.get("iss") or "").strip()
-        source_subject = str(claims.get("sub") or "").strip()
-        tenant = self._tenant_for(claims)
-        if issuer != _IAP_ISSUER or not source_subject:
-            raise IdentityError("IAP assertion is missing the exact issuer/sub identity")
-        if not tenant:
-            raise IdentityError("IAP assertion did not resolve a policy-mapped tenant")
-        subject = canonical_actor(issuer, source_subject)
-        principal = Principal(
-            subject=subject,
-            principals=(f"user:{subject}", *self._groups_for(claims)),
-            tenant=tenant,
-            assurance="iap",
-            source="gcp-iap",
+        principal, issuer, source_subject = reviewed_principal_from_iap_claims(
+            claims, self._settings, expected_issuer=_IAP_ISSUER
         )
         evidence = IdentityEvidence(
             issuer=issuer,

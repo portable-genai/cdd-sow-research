@@ -1,18 +1,14 @@
-"""This repository has TWO IAP claim halves, and they disagree. Recorded, not normalised.
-
-Adopting ``hex_service_kit.federation`` here meant executing it against the shipped adapter,
-and the first thing execution turned up was not a kit gap. It was that
-``adapters/gcp/iap_identity.py`` is not the code that authenticates an IAP request.
+"""This repository had TWO IAP claim halves, and they disagreed. Now there is one.
 
 ``config/settings.yaml`` binds ``identity.bindings.iap`` to
-:class:`~cdd_sow_research.adapters.gcp.iap_identity.IapIdentityAdapter`, so that adapter is
-what ``container.identity`` holds, and its ``end_user_auth = VERIFIED`` class attribute is what
+:class:`~cdd_sow_research.adapters.gcp.iap_identity.IapIdentityAdapter`, so that adapter is what
+``container.identity`` holds, and its ``end_user_auth = VERIFIED`` class attribute is what
 stands the exposure guard down. But ``api/security.py::get_authentication_port`` intercepts
 ``identity_mode == "iap"`` and returns ``IapAuthenticationAdapter``, a SECOND implementation
-living in the API layer. So on the request path the bound adapter's ``resolve`` is never
-called, while its declaration is still what licenses the service to bind every interface.
+living in the API layer -- so on the request path the bound adapter's ``resolve`` was never
+called, while its declaration was still what licensed the service to bind every interface.
 
-The two do not agree about who the caller is:
+Until 2026-08-26 the two did not agree about who the caller was:
 
 ===================  ==========================================  ==============================
                      ``adapters/gcp/iap_identity.py``            ``api/security.py``
@@ -24,14 +20,19 @@ principals           ``user:<email>``                            ``user:<canonic
 portal header        not read                                    read as a fallback
 ===================  ==========================================  ==============================
 
-Only one of them can be adopted onto the commons as it stands. The claim half in the adapter
-now is; the one in the API layer cannot be, because ``principal_from_iap_claims`` reads
-``email or sub`` as the subject and offers no knob for a canonical ``(iss, sub)`` actor, and
-because refusing an unmapped tenant outright is a policy the commons expresses as an empty
-string rather than as a refusal.
+**The decision, and what this module now guards.** The API-layer half won, on the grounds
+recorded in :mod:`cdd_sow_research.identity_policy`: it is the stricter half on every axis that
+carries authority. It moved into that module and BOTH implementations now call it, so the
+question is no longer which one runs but whether they can drift apart again. They cannot
+silently: the tests below execute both and compare every ``Principal`` field.
 
-Neither half is changed here. What is added is this module, so that a divergence two files
-apart is a thing the suite states rather than a thing somebody has to find twice.
+The interception itself is deliberately still asserted. It is not a defect once both halves
+decide identically -- the API layer needs richer evidence than ``IdentityPort.resolve`` returns
+-- but it IS the mechanism that made a divergence invisible for as long as one existed, so it
+stays visible in a test rather than being something a reader has to rediscover.
+
+**Observed failing first:** against the pre-change tree,
+``test_both_implementations_now_name_the_same_caller`` failed on every compared field.
 """
 
 from __future__ import annotations
@@ -78,10 +79,15 @@ def _claims(**overrides: Any) -> dict[str, Any]:
     return {name: value for name, value in claims.items() if value is not None}
 
 
-def _bound_adapter(claims: dict[str, Any]) -> Any:
-    """The adapter ``config/settings.yaml`` binds to the identity port."""
+def _bound_adapter(claims: dict[str, Any], mapping: dict[str, str] | None = None) -> Any:
+    """The adapter ``config/settings.yaml`` binds to the identity port.
+
+    It now reads the same two reviewed maps the API-layer half reads, so the fixture has to
+    supply them. Passing ``_settings = None`` was possible only while this half decided the
+    tenant from the assertion alone, which is the behaviour that was retired.
+    """
     adapter = object.__new__(IapIdentityAdapter)
-    adapter._settings = None
+    adapter._settings = _Settings({} if mapping is None else mapping)
     adapter._audience = _AUDIENCE
     object.__setattr__(adapter, "_verify", lambda assertion: dict(claims))
     return adapter.resolve(RequestContext(headers={IAP_ASSERTION_HEADER: _token()}))
@@ -124,38 +130,54 @@ def test_the_bound_identity_adapter_is_not_what_authenticates_an_iap_request() -
 
 
 # --------------------------------------------------------------------------------------- #
-# The disagreement, executed.
+# The agreement, executed. Both halves are run and compared field by field.
 # --------------------------------------------------------------------------------------- #
-def test_the_two_implementations_name_the_same_caller_differently() -> None:
+def _compared(principal: Any) -> tuple[Any, ...]:
+    return (
+        principal.subject,
+        principal.principals,
+        principal.tenant,
+        principal.assurance,
+        principal.source,
+    )
+
+
+def test_both_implementations_now_name_the_same_caller() -> None:
     claims = _claims()
-    bound = _bound_adapter(claims)
-    served = _api_adapter(claims).principal
+    mapping = {"example-bank.test": "reference-bank"}
 
-    assert bound.subject == _EMAIL
-    assert decode_canonical_actor(bound.subject) is None
+    bound = _bound_adapter(claims, mapping)
+    served = _api_adapter(claims, mapping).principal
 
-    assert served.subject == canonical_actor(IAP_ISSUER, _SUB)
-    assert decode_canonical_actor(served.subject) == (IAP_ISSUER, _SUB)
+    assert _compared(bound) == _compared(served)
+    assert bound.subject == canonical_actor(IAP_ISSUER, _SUB)
+    assert decode_canonical_actor(bound.subject) == (IAP_ISSUER, _SUB)
+    # The email claim is no longer anybody's subject, on either path.
+    assert _EMAIL not in bound.subject and _EMAIL not in served.subject
 
-    assert bound.principals == (f"user:{_EMAIL}",)
-    assert served.principals == (f"user:{served.subject}",)
 
-
-def test_the_two_implementations_resolve_the_tenant_differently() -> None:
-    """With no map the two agree by accident; with one configured they part."""
+def test_both_implementations_resolve_the_same_tenant_from_the_same_map() -> None:
     claims = _claims()
+    mapping = {"example-bank.test": "reference-bank"}
+
+    assert _bound_adapter(claims, mapping).tenant == "reference-bank"
+    assert _api_adapter(claims, mapping).principal.tenant == "reference-bank"
+
+    # And with no map configured, both fall back to the hosted domain identically.
     assert _bound_adapter(claims).tenant == "example-bank.test"
     assert _api_adapter(claims).principal.tenant == "example-bank.test"
 
-    mapping = {"example-bank.test": "reference-bank"}
-    assert _bound_adapter(claims).tenant == "example-bank.test"
-    assert _api_adapter(claims, mapping).principal.tenant == "reference-bank"
 
+def test_both_implementations_refuse_an_unmapped_tenant() -> None:
+    """The refusal the commons expresses as an empty string, now held on BOTH paths.
 
-def test_only_the_api_implementation_refuses_an_unmapped_tenant() -> None:
-    """A refusal the commons expresses as an empty string, which is why it cannot adopt it."""
+    This is the one that mattered. The bound adapter used to hand back a principal partitioned
+    by whatever ``hd`` said, so an assertion from a domain nobody reviewed still got a tenant.
+    """
     claims = _claims(hd="somewhere-else.test")
     mapping = {"example-bank.test": "reference-bank"}
-    assert _bound_adapter(claims).tenant == "somewhere-else.test"
+
+    with pytest.raises(IdentityError, match="did not resolve a policy-mapped tenant"):
+        _bound_adapter(claims, mapping)
     with pytest.raises(IdentityError, match="did not resolve a policy-mapped tenant"):
         _api_adapter(claims, mapping)

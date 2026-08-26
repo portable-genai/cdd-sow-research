@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 --image-prefix REGISTRY/PROJECT/REPOSITORY [--tag TAG] [--push] [--sign] [--cosign-key PATH]"
+  echo "Usage: $0 --image-prefix REGISTRY/PROJECT/REPOSITORY [--tag TAG] [--push] [--sign] [--cosign-key PATH|KMS_URI]"
 }
 
 image_prefix=""
@@ -16,6 +16,14 @@ sign=false
 # real, verifiable signature; what differs is who vouches for the identity behind it: Fulcio
 # ties the signature to an authenticated identity with a transparency-log entry, a local key
 # ties it only to whoever holds the file. A reference deployment says which one it used.
+#
+# --cosign-key also accepts a KMS URI ("gcpkms://projects/..."), and that is the third
+# answer rather than a convenience: the private key never leaves the KMS, so signing is an
+# IAM-controlled, audit-logged call instead of custody of a file, which is the one property a
+# local key cannot offer and keyless cannot deliver without a browser. A URI is not a path,
+# so the -f check below is scoped to the file form; asserting a file that exists for a
+# gcpkms:// value would refuse the stronger option for failing a test that does not apply to
+# it. The scheme is what distinguishes them, and a bare relative path carries none.
 cosign_key=""
 
 while [[ $# -gt 0 ]]; do
@@ -71,8 +79,16 @@ npm --prefix ui run build:loader
 # exactly that: an arm64-only image that pushes, scans, signs and promotes without complaint
 # and is then rejected at deploy time by the one system that matters. Pinning the platform
 # here means the artefact a maintainer builds locally is the artefact that can actually run.
-docker build --platform linux/amd64 --pull --tag "$api_tag" .
-docker build --platform linux/amd64 --pull --tag "$ui_tag" --file ui/Dockerfile ui
+# --no-cache is as load-bearing as --platform above, and for a neighbouring reason. The
+# runtime stage applies Debian security updates on top of a digest-pinned base, precisely
+# because a digest pin freezes unpatched packages. But the instruction that does it is
+# unchanged from build to build, so with a warm cache Docker reuses the layer and the image
+# ships the patch level of whenever that cache was filled -- while the Dockerfile comment
+# claims the opposite in place. That is what the 2026-08-26 promotion did: openssl 3.5.6
+# with 3.5.7-1~deb13u2 released and fixed, and only the blocking trivy pass caught it.
+# A cached security layer is a stale one, so a release build resolves every layer again.
+docker build --platform linux/amd64 --pull --no-cache --tag "$api_tag" .
+docker build --platform linux/amd64 --pull --no-cache --tag "$ui_tag" --file ui/Dockerfile ui
 
 loader_sri="$(tr -d '\r\n' < ui/public/embed/v1/cdd-agent.js.sri)"
 loader_sha256="$(sha256sum ui/public/embed/v1/cdd-agent.js | awk '{print $1}')"
@@ -110,7 +126,9 @@ if [[ "$push" == true ]]; then
   trivy image --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL "$api_digest"
   trivy image --exit-code 1 --ignore-unfixed --severity HIGH,CRITICAL "$ui_digest"
   if [[ -n "$cosign_key" ]]; then
-    test -f "$cosign_key"
+    if [[ "$cosign_key" != *"://"* ]]; then
+      test -f "$cosign_key"
+    fi
     cosign sign --yes --key "$cosign_key" "$api_digest"
     cosign sign --yes --key "$cosign_key" "$ui_digest"
   else

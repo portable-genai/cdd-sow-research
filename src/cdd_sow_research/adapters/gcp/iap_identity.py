@@ -19,13 +19,12 @@ from hex_service_kit.federation import (
     IAP_ASSERTION_HEADER,
     IAP_ISSUER,
     IAP_KEYS_URL,
-    FederationPolicy,
-    principal_from_iap_claims,
 )
 
 from ...config import Settings
 from ...domain.identity import IdentityError, Principal, RequestContext
 from ...envread import optional_setting
+from ...identity_policy import reviewed_principal_from_iap_claims
 from ...ports.identity import VERIFIED, EndUserAuthUnavailableError
 
 # The three transport facts are REBOUND from the kit, not re-declared here. This module kept
@@ -46,22 +45,17 @@ _IAP_ISSUER = IAP_ISSUER
 #: an assertion carrying only one of them and could not tell an absent claim from an empty one.
 _REQUIRED_CLAIMS = ("iss", "sub", "email", "exp")
 
-#: The reviewed policy the CLAIM half is evaluated under, and the whole of what this binding
-#: decides about a verified caller once its signature has been checked.
+#: The CLAIM half no longer lives here. It lives in ``identity_policy.py``, and this adapter
+#: and ``api/security.py`` are now the same code rather than two implementations that happened
+#: to agree. Until 2026-08-26 they did not agree, and this adapter's ``resolve`` was never on
+#: the request path anyway: ``get_authentication_port`` intercepted ``identity_mode == "iap"``
+#: and returned the other one, so what stood the exposure guard down and what actually decided
+#: who the caller was were different files. The reviewed answer is the API-layer one, and
+#: ``identity_policy`` records why on each axis.
 #:
-#: ``tenant_from_hosted_domain`` is ON, and it is an OPT-IN rather than a fallback. This
-#: binding configures no domain map of its own, and IAP restricts the audience to one
-#: organisation, so the ``hd`` claim IS the tenant id here. Left OFF, these same assertions
-#: would resolve to no tenant at all, and ``api/security.py::IdentityPortAuthenticationAdapter``
-#: refuses a non-local identity that resolved no tenant, so the binding would authenticate
-#: nobody. Fail-closed and closed for everyone, and no offline gate would see it, because the
-#: local profile never constructs this adapter.
-#:
-#: ``config.identity.iap_tenant_by_domain`` is a reviewed map this deployment CAN configure, and
-#: it is deliberately not read here: it belongs to the other IAP implementation, the one on the
-#: API request path, and wiring one reviewed map into two places that already disagree is the
-#: defect ``tests/unit/test_iap_two_implementations.py`` exists to record rather than deepen.
-_FEDERATION_POLICY = FederationPolicy(tenant_from_hosted_domain=True)
+#: What that changes here, if this ``resolve`` is ever called: the subject is the immutable
+#: ``(iss, sub)`` pair rather than the ``email`` claim, and an unmapped domain is a REFUSAL
+#: rather than the raw ``hd`` claim used as a partition key. Both are narrowings.
 
 _VERIFIER_UNAVAILABLE = (
     "the IAP assertion verifier is not installed, so this deployment can authenticate nobody. "
@@ -152,12 +146,10 @@ class IapIdentityAdapter:
         # saying whether that had been reviewed. It has been, it agrees with the IAP
         # implementation on the API request path, and ``tests/unit/test_iap_claim_half.py``
         # asserts it directly so a one-character edit cannot quietly change who holds what.
-        return principal_from_iap_claims(
-            claims,
-            _FEDERATION_POLICY,
-            source="gcp-iap",
-            include_subject_principal=True,
+        principal, _issuer, _source_subject = reviewed_principal_from_iap_claims(
+            claims, self._settings, expected_issuer=_IAP_ISSUER
         )
+        return principal
 
     def _refuse_unpinned_algorithm(self, assertion: str) -> None:
         """Refuse an assertion signed with an algorithm this deployment does not accept.
