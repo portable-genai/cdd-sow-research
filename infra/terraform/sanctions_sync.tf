@@ -68,6 +68,34 @@ resource "google_storage_bucket_iam_member" "sync_writer" {
   member = "serviceAccount:${google_service_account.sanctions_sync.email}"
 }
 
+# ...and something has to READ it. Only the writer was ever granted, so the bucket existed, the
+# snapshot existed, and every screening call from the serving identity was refused. The dossier
+# then reported `screening: null`, which reads as "this profile does not screen" rather than as an
+# outage, and no call anywhere failed loudly. Found on 2026-08-26 by comparing a deployment run
+# against a laptop run: the laptop screened six lists and the deployment screened none.
+#
+# Read-only on purpose. The application never writes the snapshot; only the sync job does, and
+# granting the serving identity write access here would let a compromised request rewrite the
+# watchlist it is about to be screened against.
+resource "google_storage_bucket_iam_member" "sanctions_app_reader" {
+  bucket = google_storage_bucket.sanctions.name
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${google_service_account.app.email}"
+}
+
+# The embedding host's runtime identity, for the same reason documents.tf carries the equivalent
+# grant: a portal that mounts this app same-origin runs it under an identity of the PORTAL's
+# making, which this stack cannot know, so the serving-identity grant above misses it entirely.
+# That reasoning was applied to case documents and not to the watchlist, which is precisely how
+# the deployment came to screen nobody. The variable is named for its first use; the identities
+# are the same serving identities.
+resource "google_storage_bucket_iam_member" "sanctions_embedded_readers" {
+  for_each = toset(var.document_writer_service_accounts)
+  bucket   = google_storage_bucket.sanctions.name
+  role     = "roles/storage.objectViewer"
+  member   = "serviceAccount:${each.value}"
+}
+
 # Cloud Run Job that runs scripts/sync_sanctions.py --gcs <bucket>/snapshot/current.json.
 # Created only when var.sanctions_sync_image is supplied (see gating note above).
 resource "google_cloud_run_v2_job" "sanctions_sync" {

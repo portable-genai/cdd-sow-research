@@ -236,7 +236,7 @@ def test_normal_path_queries_compliance(cdd_service, compliance):
 def _sanctions_media() -> tuple[AdverseMediaFinding, ...]:
     return (
         AdverseMediaFinding(
-            headline="Subject named in alleged sanctions-evasion scheme (FICTIONAL)",
+            headline="Acme Holdings Pte Ltd named in alleged sanctions-evasion scheme (FICTIONAL)",
             publisher="Example Wire",
             url="https://example.test/news/sanctions",
             category=AdverseMediaCategory.SANCTIONS,
