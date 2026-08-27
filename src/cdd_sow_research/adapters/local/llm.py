@@ -48,7 +48,7 @@ class LocalDeterministicLLMAdapter:
     """Deterministic LLM whose ``generate`` returns JSON matching the request schema."""
 
     REASONING_MODEL = "gemini-3.5-flash"
-    TRIAGE_MODEL = "gemini-3.1-flash-lite"
+    TRIAGE_MODEL = "gemini-3.5-flash"
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings

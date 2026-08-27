@@ -289,11 +289,11 @@ class ModelSettings:
     #: States multi-region, which carries an ML-processing residency guarantee, where `global`
     #: carries none and `us-central1` serves no Gemini 3.
     location: str = "us"
-    reasoning: str = "gemini-3.7-flash"
-    triage: str = "gemini-3.1-flash-lite"
+    reasoning: str = "gemini-3.5-flash"
+    triage: str = "gemini-3.5-flash"
     #: No Gemini 3 pro tier serves the `us` multi-region, and the previous default here
     #: (gemini-3.1-pro) resolves in no location at all.
-    hard_reasoning: str = "gemini-3.7-flash"
+    hard_reasoning: str = "gemini-3.5-flash"
     use_hard_reasoning: bool = False
 
 
