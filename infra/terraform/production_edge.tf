@@ -95,7 +95,7 @@ resource "google_cloud_run_v2_service" "api" {
   location = var.region
   ingress  = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 
-  deletion_protection = true
+  deletion_protection = var.cloud_run_deletion_protection
 
   template {
     service_account = google_service_account.app.email
@@ -300,7 +300,7 @@ resource "google_cloud_run_v2_service" "ui" {
   location = var.region
   ingress  = "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
 
-  deletion_protection = true
+  deletion_protection = var.cloud_run_deletion_protection
 
   template {
     service_account = google_service_account.ui[0].email

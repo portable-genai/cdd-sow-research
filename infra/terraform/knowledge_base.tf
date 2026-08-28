@@ -20,6 +20,16 @@ resource "google_discovery_engine_data_store" "case_kb" {
   solution_types              = ["SOLUTION_TYPE_SEARCH"]
   create_advanced_site_search = false
 
+  # The API attaches a default document_processing_config to every content store at create
+  # time. Leaving it undeclared makes a later plan read that server-added block as a removal,
+  # and removing it FORCES REPLACEMENT of the store — destroying the indexed corpus. Observed
+  # 2026-08-28 against the live store; the posture record blocked all applies on it.
+  document_processing_config {
+    default_parsing_config {
+      digital_parsing_config {}
+    }
+  }
+
   depends_on = [google_project_service.required]
 }
 

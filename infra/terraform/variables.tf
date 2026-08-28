@@ -764,3 +764,16 @@ variable "firestore_delete_protection_enabled" {
     out. Declining it is how a deployment stops holding two opposite postures at once.
   EOT
 }
+
+variable "cloud_run_deletion_protection" {
+  type        = bool
+  default     = true
+  description = <<-EOT
+    Deletion protection on the production-edge Cloud Run services. Default true.
+
+    This was a hardcoded `true`, which meant a teardown needed a source edit before it could
+    even plan. The protection is right for a production stack; a reference stack that records
+    itself as replaceable must be able to decline it in tfvars like every other destroy guard
+    here (firestore_delete_protection_enabled, worm_locked).
+  EOT
+}
