@@ -338,7 +338,7 @@ def test_production_mode5_requires_non_exportable_kms_signer(
                 active,
                 private_key_env="",
                 kms_key_version=(
-                    "projects/demo/locations/us-central1/keyRings/doc1/"
+                    "projects/demo/locations/asia-southeast1/keyRings/doc1/"
                     "cryptoKeys/embed-signing/cryptoKeyVersions/1"
                 ),
             ),
@@ -359,7 +359,9 @@ def test_production_mode5_requires_non_exportable_kms_signer(
 
     wrong_region_key = replace(
         kms_token.keys[0],
-        kms_key_version=kms_token.keys[0].kms_key_version.replace("us-central1", "europe-west2"),
+        kms_key_version=kms_token.keys[0].kms_key_version.replace(
+            "asia-southeast1", "europe-west2"
+        ),
     )
     wrong_region = replace(
         managed,

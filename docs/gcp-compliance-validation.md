@@ -25,7 +25,7 @@ fail-fast validation.
 The controls behind that verdict:
 
 - **Region selectable at deploy, fail fast (P-03).** The region is not hard-pinned. It is
-  chosen at deploy time (`var.region`, default `us-central1`) and
+  chosen at deploy time (`var.region`, default `asia-southeast1`) and
   validated against a residency allowlist (`var.allowed_regions`). An unapproved region fails
   at `terraform plan`, before anything is created. The app reads the same region via
   `CDD_REGION`, and the Model Armor host plus Document AI / KB locations track it.

@@ -32,14 +32,14 @@ worm_locked = false
 #     default to the compliant values; simply omit them).                     #
 # =========================================================================== #
 
-# Deploy region, SELECTED HERE. Defaults to us-central1. Validated
+# Deploy region, SELECTED HERE. Defaults to asia-southeast1. Validated
 # against allowed_regions: an unapproved region fails fast at `terraform plan` (P-03).
-# region = "us-central1"
+# region = "asia-southeast1"
 
 # Residency allowlist. Extend ONLY after confirming the full stack (Document AI, DLP,
 # Model Armor, Vertex, CMEK, Logging) + your obligations are met in that region.
 # Default: SG, HK, Tokyo, Sydney, London.
-# allowed_regions = ["us-central1"]
+# allowed_regions = ["asia-southeast1"]
 
 # Access Context Manager policy id (numeric). REQUIRED when enable_vpc_sc = true (the
 # default); plan fails fast without it. Create once per org with:
@@ -73,7 +73,7 @@ worm_locked = false
 # App image for the scheduled sanctions-sync Cloud Run job. EMPTY (default) skips the job
 # + scheduler (upload snapshots out-of-band via scripts/sync_sanctions.py --gcs); set it
 # to enable the daily sync.
-# sanctions_sync_image = "us-central1-docker.pkg.dev/your-project/cdd/cdd-sow-research:v1"
+# sanctions_sync_image = "asia-southeast1-docker.pkg.dev/your-project/cdd/cdd-sow-research:v1"
 
 # Optional named Modes 4/5 edge. Complete the deployment dossier before uncommenting.
 # Both images must be immutable digest references. Secrets must already exist and contain
@@ -81,8 +81,8 @@ worm_locked = false
 #
 # deployment_stage                = "production-edge"
 # production_edge_enabled          = true
-# api_image                         = "us-central1-docker.pkg.dev/your-project/doc1/doc1-api@sha256:REPLACE"
-# ui_image                          = "us-central1-docker.pkg.dev/your-project/doc1/doc1-ui@sha256:REPLACE"
+# api_image                         = "asia-southeast1-docker.pkg.dev/your-project/doc1/doc1-api@sha256:REPLACE"
+# ui_image                          = "asia-southeast1-docker.pkg.dev/your-project/doc1/doc1-ui@sha256:REPLACE"
 # agent_domain                      = "doc1.bank.example"
 # dns_managed_zone                  = "bank-example"
 # installation_manifest_secret_id  = "doc1-installations"
@@ -94,7 +94,7 @@ worm_locked = false
 # production_settings_sha256         = "REPLACE_WITH_64_LOWERCASE_HEX"
 # production_identity_mode          = "embedded-grant"
 # enable_embed_signing_key           = true # Mode 5 only; irreversible key resource
-# embed_signing_key_version          = "projects/PROJECT/locations/us-central1/keyRings/cdd-sow-agent-ring/cryptoKeys/cdd-sow-agent-cmek-embed-signing/cryptoKeyVersions/1"
+# embed_signing_key_version          = "projects/PROJECT/locations/asia-southeast1/keyRings/cdd-sow-agent-ring/cryptoKeys/cdd-sow-agent-cmek-embed-signing/cryptoKeyVersions/1"
 # edge_min_instances                = 2
 # edge_max_instances                = 10
 # additional_secret_env = {
@@ -118,7 +118,7 @@ worm_locked = false
 # Pair the region with a matching scheduler time zone per enterprise, e.g.:
 #   London enterprise:    region = "europe-west2"    scheduler_time_zone = "Europe/London"
 #   Sydney enterprise:    region = "australia-southeast1"  scheduler_time_zone = "Australia/Sydney"
-#   Default:               region = "us-central1" scheduler_time_zone = "UTC"
+#   Default:               region = "asia-southeast1" scheduler_time_zone = "UTC"
 #   Singapore alternative: region = "asia-southeast1" scheduler_time_zone = "Asia/Singapore"
 # region              = "europe-west2"
 # scheduler_time_zone = "Europe/London"

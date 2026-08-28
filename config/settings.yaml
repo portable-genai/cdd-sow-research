@@ -6,7 +6,7 @@
 # with NO Google Cloud SDK and NO emulators required.
 
 project_id: ${GOOGLE_CLOUD_PROJECT:-your-gcp-project}
-region: ${GCP_REGION:-us-central1}     # selected at deploy; must match the Terraform region
+region: ${GCP_REGION:-asia-southeast1}     # selected at deploy; must match the Terraform region
 profile: ${CDD_PROFILE}                # local (SDK-free) | live | gcp | platform | onprem. Deliberately has NO :-local fallback: an unset CDD_PROFILE must stay unset rather than materialising here as a written-down choice, because "nobody chose" and "chose local" get different postures. Prod deploys set CDD_PROFILE=gcp explicitly (Dockerfile).
 kms_key: ${CDD_KMS_KEY:-}              # regional Cloud KMS key for CMEK
 grounding_enabled: ${CDD_GROUNDING_ENABLED:-true}
@@ -49,7 +49,19 @@ models:
 
 document_ai:
   processor_id: ${CDD_DOCAI_PROCESSOR:-}
-  location: ${GCP_REGION:-us-central1}   # tracks the deploy region
+  # NOT the deploy region, and not a silent inheritance of it. Document AI does not run in
+  # every Cloud region: creating a processor in an unsupported one 404s at apply.
+  #
+  # It DOES serve asia-southeast1 -- and notably serves no us-central1 endpoint at all -- but
+  # Singapore is "limited support": a subset of processors, several in Preview, and access is
+  # gated behind Google's Document AI Single Region Request Form. Until that request is
+  # granted this routes to the `us` MULTI-REGION, which is a stated residency deviation:
+  # document bytes are extracted in the United States while the rest of the stack stays in
+  # region. Set CDD_DOCAI_LOCATION to asia-southeast1 the day access lands.
+  #
+  # `us` is a multi-region, not `global`: it names one jurisdiction. Never widen this to a
+  # region the service does not serve just to make an apply succeed.
+  location: ${CDD_DOCAI_LOCATION:-us}
   processor_version: rc
 
 knowledge_base:
@@ -73,7 +85,7 @@ knowledge_base:
 
 model_armor:
   template_id: ${CDD_MODEL_ARMOR_TEMPLATE:-cdd-sow-guardrail}   # terraform output model_armor_template
-  host: modelarmor.${GCP_REGION:-us-central1}.rep.googleapis.com   # regional endpoint tracks the deploy region
+  host: modelarmor.${GCP_REGION:-asia-southeast1}.rep.googleapis.com   # regional endpoint tracks the deploy region
 
 dlp:
   inspect_template: ${CDD_DLP_INSPECT_TEMPLATE:-}

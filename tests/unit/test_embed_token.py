@@ -293,12 +293,12 @@ def test_embed_token_can_sign_with_non_exportable_kms_key() -> None:
         algorithm="RS256",
         public_key_env="KMS_PUBLIC",
         kms_key_version=(
-            "projects/demo/locations/us-central1/keyRings/doc1/"
+            "projects/demo/locations/asia-southeast1/keyRings/doc1/"
             "cryptoKeys/embed-signing/cryptoKeyVersions/1"
         ),
     )
     signer = KmsEmbedTokenSigner(Settings.load("config/settings.yaml"))
-    assert signer._api_endpoint == "us-central1-cloudkms.googleapis.com"
+    assert signer._api_endpoint == "asia-southeast1-cloudkms.googleapis.com"
 
     class _Response:
         signature: bytes
@@ -360,7 +360,7 @@ def test_kms_signer_constructs_client_with_regional_endpoint(
     signer = KmsEmbedTokenSigner(Settings.load("config/settings.yaml"))
 
     assert signer._kms().__class__ is _Client
-    assert captured["endpoint"] == "us-central1-cloudkms.googleapis.com"
+    assert captured["endpoint"] == "asia-southeast1-cloudkms.googleapis.com"
 
 
 def test_embedded_identity_adapter_requires_exact_installation() -> None:

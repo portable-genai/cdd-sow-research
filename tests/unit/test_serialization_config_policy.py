@@ -136,14 +136,19 @@ def test_to_jsonable_audit_event_is_worm_serialisable():
 # --------------------------------------------------------------------------- #
 def test_settings_load_parses_yaml():
     settings = Settings.load(CONFIG_PATH)
-    assert settings.region == "us-central1"
+    assert settings.region == "asia-southeast1"
 
 
 def test_gcp_region_is_configurable_from_one_selector(monkeypatch):
     monkeypatch.setenv("GCP_REGION", "europe-west4")
     settings = Settings.load(CONFIG_PATH)
     assert settings.region == "europe-west4"
-    assert settings.document_ai.location == "europe-west4"
+    # Document AI is DELIBERATELY not on this selector either, as of 2026-08-27. It does not run
+    # in every Cloud region, and creating a processor in one it does not serve 404s at apply, so
+    # `document_ai.location` is its own input: the `us` multi-region until Google grants
+    # single-region access for the deploy region. A deployment that really wants extraction in
+    # europe-west4 sets CDD_DOCAI_LOCATION; GCP_REGION must not decide it silently.
+    assert settings.document_ai.location == "us"
     # The knowledge base is DELIBERATELY not on this selector. Discovery Engine serves `global`,
     # `us` and `eu` and no Cloud region, so tracking GCP_REGION produced
     # `europe-west4-discoveryengine.googleapis.com` -- a hostname that does not exist -- and
@@ -178,7 +183,7 @@ def test_settings_allows_reviewed_longer_audit_retention(monkeypatch):
 def test_settings_file_is_bound_to_reviewed_digest(monkeypatch):
     exact_bytes = Path(CONFIG_PATH).read_bytes()
     monkeypatch.setenv("CDD_EXPECTED_SETTINGS_SHA256", hashlib.sha256(exact_bytes).hexdigest())
-    assert Settings.load(CONFIG_PATH).region == "us-central1"
+    assert Settings.load(CONFIG_PATH).region == "asia-southeast1"
 
     monkeypatch.setenv("CDD_EXPECTED_SETTINGS_SHA256", "0" * 64)
     with pytest.raises(ValueError, match="settings digest does not match"):

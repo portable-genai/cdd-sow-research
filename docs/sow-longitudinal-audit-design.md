@@ -77,7 +77,7 @@ flowchart LR
    functions (*not* an LLM judgement), so an auditor can recompute them. The LLM only
    *narrates* and *drafts RFI wording*.
 5. **No invariant regression.** Redaction, guardrail screening both directions, WORM
-   audit, case ACL, maker-checker, and `us-central1`/CMEK residency all still hold.
+   audit, case ACL, maker-checker, and `asia-southeast1`/CMEK residency all still hold.
 
 **Non-goals**
 
@@ -161,13 +161,13 @@ starts a new iteration rather than mutating the sealed snapshot.
 
 ### 5.1 What is stored where
 
-The defining residency rule (R1/R2, `us-central1`, CMEK, VPC-SC) and the
+The defining residency rule (R1/R2, `asia-southeast1`, CMEK, VPC-SC) and the
 redact-before-everything invariant (P-04) drive a **three-tier** split. Each tier has a
 different sensitivity and a different store:
 
 | Tier | Holds | Store (gcp profile) | PII? | Mutability |
 |------|-------|---------------------|------|------------|
-| **Case state** | `SowCase` aggregate, iterations, ledger metadata, gaps, RFIs, reconciliation, current audit view. | Regional document store (Firestore-in-Datastore-mode or Spanner) in `us-central1`, CMEK-encrypted, ACL-scoped to case principals. | Operational PII allowed **inside the perimeter** (the RM works the real client). | Mutable, **versioned** (optimistic concurrency). |
+| **Case state** | `SowCase` aggregate, iterations, ledger metadata, gaps, RFIs, reconciliation, current audit view. | Regional document store (Firestore-in-Datastore-mode or Spanner) in `asia-southeast1`, CMEK-encrypted, ACL-scoped to case principals. | Operational PII allowed **inside the perimeter** (the RM works the real client). | Mutable, **versioned** (optimistic concurrency). |
 | **Evidence bytes** | Raw KYC documents the client sends each round. | Case vault object store (existing pattern) + ingested into **Hrz2** with `case:<subject_id>` ACL tags (R3). | Yes (encrypted at rest, CMEK). | Append-only. |
 | **Audit trail** | Every transition + analysis as an `AuditEvent`. | Cloud Logging locked WORM bucket (existing, 180-day default retention). | **Redacted only** (P-04). | Immutable / WORM. |
 
@@ -587,7 +587,7 @@ reads before disposing.
 | **R2 WORM audit** | Every transition and analysis emits an immutable, redacted `AuditEvent`; snapshots are sealed write-once. The iteration log + WORM trail reconstruct any past state. |
 | **R3 case ACL / governed RAG** | Evidence bytes are still ingested into **Hrz2** with `case:<subject_id>` tags and retrieved by case principals only; the case store is ACL-scoped to the same principals. |
 | **P-06 maker-checker** | `APPROVED` requires four-eyes (checker ≠ maker); HIGH/PROHIBITED or sanctions/terrorism still escalate via the same policy logic. |
-| **Residency** | The case-state and snapshot stores are regional (`us-central1`), CMEK-encrypted, inside VPC-SC, same posture as the existing services. |
+| **Residency** | The case-state and snapshot stores are regional (`asia-southeast1`), CMEK-encrypted, inside VPC-SC, same posture as the existing services. |
 | **P-02 no lock-in** | `CaseStorePort` follows the 18-port convention (gcp / platform / onprem adapters); the domain stays pure stdlib. |
 | **Auditability** | Gap math and reconciliation are **deterministic pure functions**: recomputable by an auditor; the LLM is confined to narration and RFI wording, both citation-checked. |
 

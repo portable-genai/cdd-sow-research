@@ -70,7 +70,7 @@ the human decisions below.
 ## 4. The human decisions (the script can't make these)
 
 1. **Region / residency.** Set `CDD_REGION` (now `<PREFIX>_REGION`) and the Terraform
-   `region`/`tfvars` to your in-country region. The build defaults to `us-central1`
+   `region`/`tfvars` to your in-country region. The build defaults to `asia-southeast1`
    (MAS / Singapore). See [`docs/runbook.md`](runbook.md).
 2. **Identity / IdP.** `identity.trusted_issuers` is empty by default (Mode 6 login is
    disabled until you configure an issuer). Wire your OIDC issuer(s) and set the session

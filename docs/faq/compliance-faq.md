@@ -50,7 +50,7 @@ integrate them rather than hand-maintain the table.
 
 ### Is data residency enforced?
 
-Yes, at deploy time: a single approved region (default `us-central1`),
+Yes, at deploy time: a single approved region (default `asia-southeast1`),
 validated to fail fast, with regional endpoints, a `gcp.resourceLocations` Org Policy
 allowlist, CMEK, and a VPC-SC perimeter (P-03, P-09). The residency-violation CI gate is the
 sibling **Rsk4 residency validator**; the exit/concentration-risk plan is **Rsk5**. This repo

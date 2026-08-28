@@ -13,8 +13,9 @@ adverse media into a cited **CDD dossier** (`CDDCase`): a source-of-wealth narra
 risk rating, adverse-media findings, and a beneficial-ownership/UBO summary, every claim
 carrying a source-and-page `Citation`, with a full WORM audit trail. It is a
 ports-and-adapters reference build targeting the Gemini Enterprise Agent Platform on GCP,
-pinned to `us-central1` (USA) for data residency (not all GCP services this repo depends on
-are available in `asia-southeast1`).
+defaulting to `asia-southeast1` (Singapore) for data residency since 2026-08-27. The earlier
+`us-central1` pin rested on the claim that not all services this repo depends on run in
+`asia-southeast1`; the availability check falsified it.
 
 It is an engineering portfolio piece, not affiliated with Google.
 
@@ -144,10 +145,14 @@ gate. Break them and CI fails:
   **redact before everything** (R1: PII removed at the boundary before any model/index/
   registry/audit call), and **maker-checker** (P-06: a dossier always sets
   `requires_human_review=True`).
-- **Region pinning:** every service/SDK call targets the one deploy region (default
-  `us-central1`); never use a floating/global endpoint or the floating ADK default
-  model. Models are pinned in `config/settings.yaml` (`gemini-3.5-flash` reasoning,
-  `gemini-3.1-flash-lite` triage).
+- **Region pinning:** every REGIONAL service/SDK call targets the one deploy region (default
+  `asia-southeast1`); never use a floating/global endpoint or the floating ADK default
+  model. Three locations are deliberately NOT the deploy region and have their own selectors,
+  because the services do not serve every region: `models.location`, `document_ai.location`
+  (the `us` multi-region until the Single Region Request Form is granted) and
+  `knowledge_base.location` (Agent Search serves only `global`/`us`/`eu`). Each is a stated
+  deviation, not a fallback to take silently. Models are pinned in `config/settings.yaml`
+  (`gemini-3.5-flash` reasoning, `gemini-3.1-flash-lite` triage).
 - **Markdown:** validate any mermaid diagram before committing.
 
 ## Adding an adapter

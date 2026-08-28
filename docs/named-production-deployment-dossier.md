@@ -79,12 +79,25 @@ of these roles:
 
 ## 2. Cloud, residency and edge
 
-`us-central1` (USA) is the repo's stated residency pin (`AGENTS.md`), matches
-`infra/terraform/variables.tf`'s default `region`, and is what every regional endpoint in
-`config/settings.yaml` (Document AI, Discovery Engine, Model Armor) tracks via `GCP_REGION`. Not
-all GCP services this repo depends on are available in `asia-southeast1`, which is why
-`us-central1` is the pin. An institution deploying under a residency obligation sets its own
-in-country region explicitly rather than inheriting this default.
+`us-central1` (USA) is this installation's region. It is **no longer the repository default**:
+since 2026-08-27 `infra/terraform/variables.tf` and `config/settings.yaml` default to
+`asia-southeast1`, and this deployment is held on `us-central1` by an explicit deploy-time
+override through the same reviewed input an institution would use. The override runs this way
+round because the applied project cannot follow a region change: see [what does not
+move](https://github.com/portable-genai/org-metadata/blob/main/docs/deployment-region-alignment.md).
+
+The justification this section used to give — that not all services this repo depends on are
+available in `asia-southeast1` — was **false**, and was retired on 2026-08-27 when the
+per-service availability check was finally run. `asia-southeast1` serves `gemini-3.5-flash` with
+a documented Singapore ML-processing commitment and serves Document AI; `us-central1` serves
+neither. Two services still do not follow any Cloud region and are stated as deviations rather
+than absorbed: Agent Search serves only `global`/`us`/`eu`, and Document AI routes to the `us`
+multi-region until the Single Region Request Form is granted.
+
+Not every regional endpoint tracks `GCP_REGION`: the model location, the Document AI location
+and the retrieval location are each their own selector, precisely so the deploy region cannot
+silently decide them. An institution deploying under a residency obligation sets its own
+in-country region explicitly rather than inheriting any default.
 
 The reference deployment's own values are created and confirmed, and are recorded in the
 gitignored local copy of this file rather than here. This published copy carries placeholders on
@@ -98,8 +111,8 @@ carries a live identifier. Rows reading `PENDING` are genuinely not created; row
 | GCP organization and project | `REPLACE_ME_ORGANIZATION` / `REPLACE_ME_ORG_ID`, project `REPLACE_ME_PROJECT_ID` (number `REPLACE_ME_PROJECT_NUMBER`) | Shared deployment project, approved in [gcp-org-and-project-topology.md](https://github.com/portable-genai/org-metadata/blob/main/docs/gcp-org-and-project-topology.md) |
 | Credential reachability | `REPLACE_ME_ORG_ADMIN`, holding `roles/resourcemanager.organizationAdmin`, `roles/resourcemanager.projectCreator` and `roles/accesscontextmanager.policyAdmin` | See the note below |
 | Billing and quota owner | `REPLACE_ME_BILLING_ACCOUNT` (`REPLACE_ME_BILLING_ORG`), linked and enabled; owner `REPLACE_ME_BILLING_OWNER` | Quotas cover HSM, Firestore and Cloud Run, plus IAP for the separate Mode 6 edge |
-| Approved region | `us-central1` (USA) | Must be in `allowed_regions` |
-| Allowed regions | `["us-central1"]` | Reference deployment under no residency obligation; see the region record. **Satisfies no APAC residency regime** |
+| Approved region | `us-central1` (USA) | Must be in `allowed_regions`. A deploy-time override of the `asia-southeast1` repository default, not an inherited value |
+| Allowed regions | `["us-central1"]` | Reference deployment under no residency obligation; see the region record. **Satisfies no APAC residency regime**, and is not the portfolio's target region |
 | Access Context Manager policy | `REPLACE_ME_ACCESS_POLICY_ID` (org-scoped) | Dry-run VPC-SC before enforcement |
 | Agent origin | `PENDING` | Dedicated HTTPS origin |
 | Standalone fallback origin | `PENDING` | Separate Mode 6 service and cookie boundary |

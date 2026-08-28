@@ -35,7 +35,7 @@ from .envread import (
 )
 
 _ENV_PATTERN = re.compile(r"\$\{([A-Z0-9_]+)(?::-(.*?))?\}")
-DEFAULT_GCP_REGION = "us-central1"
+DEFAULT_GCP_REGION = "asia-southeast1"
 
 _LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 RUNTIME_PROFILES = frozenset({"local", "live", "gcp", "platform", "onprem"})
@@ -285,9 +285,14 @@ def _coerce_scalars(cls: type, raw: dict[str, Any]) -> dict[str, Any]:
 @dataclass(frozen=True)
 class ModelSettings:
     #: The Vertex location the model client calls, deliberately NOT the compute region. See
-    #: the reasoning beside `models.location` in config/settings.yaml: `us` is the United
-    #: States multi-region, which carries an ML-processing residency guarantee, where `global`
-    #: carries none and `us-central1` serves no Gemini 3.
+    #: the reasoning beside `models.location` in config/settings.yaml. This is the DATACLASS
+    #: fallback, reached only when no settings file supplies the key: `us` is the United
+    #: States multi-region, which names a jurisdiction and carries an ML-processing residency
+    #: guarantee, where `global` carries none. The shipped config/settings.yaml pins
+    #: `asia-southeast1` instead, which since 2026-08-27 is the stronger answer -- it serves
+    #: `gemini-3.5-flash` with a documented Singapore ML-processing commitment. It is
+    #: `us-central1` that serves no Gemini 3, which is why the compute region is never the
+    #: model location here.
     location: str = "us"
     reasoning: str = "gemini-3.5-flash"
     triage: str = "gemini-3.5-flash"
