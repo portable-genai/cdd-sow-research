@@ -89,7 +89,7 @@ dev = [
   "pillow>=10.0",
   # Pinned exactly: ruff's formatter output changes between releases, so an unpinned
   # version drifts from CI and fails `ruff format --check`. Bump deliberately.
-  "ruff==0.16.3",
+  "ruff==0.16.4",
   "mypy>=1.10",
   "types-PyYAML",
   "respx>=0.21",
