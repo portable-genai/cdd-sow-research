@@ -58,7 +58,7 @@ gcp = [
   "opentelemetry-exporter-gcp-trace>=1.7",
   "opentelemetry-exporter-otlp>=1.27",  # platform tracer -> Hrz5 OTel collector (OTLP)
   "requests>=2.31",  # authenticated OTLP/HTTP session for a private Cloud Run collector
-  "a2a-sdk>=1.1",
+  "a2a-sdk[http-server]>=1.1",
   "mcp>=2.1",
 ]
 # The `live` profile: real uploaded documents read on the operator's own machine, and
