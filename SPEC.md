@@ -53,7 +53,7 @@ checker) applies: the dossier always requires human review.
   no Google Cloud, ADK, FastAPI, httpx or pydantic imports. Everything external is a port
   (`ports/`, a `@runtime_checkable typing.Protocol`).
 - **Region selected at deploy** from a residency allowlist (`var.allowed_regions`), defaulting
-  to the selected deployment region (default `us-central1`) for data residency. An unapproved region
+  to the selected deployment region (default `asia-southeast1`) for data residency. An unapproved region
   fails fast at `terraform plan`; the app reads the same region via `CDD_REGION`.
 - **Profile-switchable.** The `Container` (`config.py`) binds each runtime/data port from
   one exact `CDD_PROFILE` map and binds identity from one exact
@@ -82,7 +82,7 @@ checker) applies: the dossier always requires human review.
 - Python 3.12+, `from __future__ import annotations`, full type hints, ruff line-length 100,
   ruff lint `["E","F","I","UP","B","SIM"]`, target py312, build backend hatchling.
 - The product is Gemini Enterprise Agent Platform; the API host is still
-  `aiplatform.googleapis.com`. Region pinned `us-central1`.
+  `aiplatform.googleapis.com`. Region pinned `asia-southeast1`.
 - Models: reasoning `gemini-3.5-flash` (thinking=high), triage `gemini-3.1-flash-lite`.
   Never a floating default or `gemini-2.0-flash`.
 - Unified SDK `google-genai`. ADK `google-adk==2.7.1`. A2A v1.0 + MCP 2026-07-28. One

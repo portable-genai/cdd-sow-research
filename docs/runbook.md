@@ -1,7 +1,7 @@
 # Runbook: Doc1 CDD + Source-of-Wealth Agent
 
 Operational notes for deploying and running Doc1 on the Gemini Enterprise Agent Platform in
-`us-central1`. This is a reference build; adapt to your own change-management and
+`asia-southeast1`. This is a reference build; adapt to your own change-management and
 model-risk sign-off before any live use.
 
 ## 1. Deploy
@@ -85,7 +85,7 @@ integration contract in [`embedding-and-identity.md`](embedding-and-identity.md)
 ## 2. Region selection and fail-fast
 
 The Terraform `region` is selected at deploy time and validated against the residency
-allowlist `allowed_regions` (default member: `us-central1`); an apply against a region
+allowlist `allowed_regions` (default member: `asia-southeast1`); an apply against a region
 not in that list fails immediately at `terraform plan`, before anything is created. Set
 `CDD_REGION` for the app and `scheduler_time_zone` to match. Document AI, DLP, Model Armor
 and the WORM bucket are all created in the selected region, and a `gcp.resourceLocations`

@@ -3,7 +3,7 @@
 # General Principle map:
 #   P-03 (residency): `region` is SELECTED AT DEPLOY TIME and validated against an
 #         allowlist (var.allowed_regions) so a caller fails fast rather than deploying to
-#         an unvetted, out-of-jurisdiction region. The default is us-central1, which is
+#         an unvetted, out-of-jurisdiction region. The default is asia-southeast1, which is
 #         the UNITED STATES and satisfies no Asia-Pacific residency regime. An adopter
 #         under MAS, HKMA or APRA must set `region` and `allowed_regions` to its own
 #         in-country region (asia-southeast1 for Singapore, which is what the rest of
@@ -59,7 +59,7 @@ variable "allowed_regions" {
     CMEK, Logging) and your residency obligations are satisfied in that region.
   EOT
   type        = list(string)
-  default     = ["us-central1"]
+  default     = ["asia-southeast1"]
 
   validation {
     condition     = length(var.allowed_regions) > 0
@@ -69,12 +69,12 @@ variable "allowed_regions" {
 
 variable "region" {
   description = <<-EOT
-    Deployment region, SELECTED AT DEPLOY TIME. Defaults to us-central1
+    Deployment region, SELECTED AT DEPLOY TIME. Defaults to asia-southeast1
     but is overridable. Validated against var.allowed_regions so an unapproved region fails
     fast at `terraform plan` rather than deploying data out of jurisdiction (P-03).
   EOT
   type        = string
-  default     = "us-central1"
+  default     = "asia-southeast1"
 
   validation {
     # Cross-variable validation (Terraform >= 1.9). Fails at plan time = setup time.
@@ -90,8 +90,8 @@ variable "resource_location_values" {
     else.
 
     Widen it only when a service the stack genuinely needs has NO presence at single-region
-    granularity. Document AI is the worked example: it serves no us-central1 endpoint, so a
-    us-central1 deployment must reach the `us` multi-region, and `in:us-central1-locations`
+    granularity. Document AI is the worked example: it serves no asia-southeast1 endpoint, so a
+    asia-southeast1 deployment must reach the `us` multi-region, and `in:asia-southeast1-locations`
     correctly refuses that — observed on the first apply, 2026-08-24, where the policy blocked
     processor creation with "us violates constraint 'constraints/gcp.resourceLocations'".
 
@@ -117,7 +117,7 @@ variable "documentai_location" {
 
     Document AI does NOT run in every GCP region, so its location cannot simply track the
     deploy region: creating a processor in an unsupported one 404s at apply
-    (`/v1/projects/../locations/us-central1/processors` was not found — found by execution
+    (`/v1/projects/../locations/asia-southeast1/processors` was not found — found by execution
     2026-08-24). As of that date the service reports: us, eu, asia-south1, asia-southeast1,
     australia-southeast1, europe-west2, europe-west3, northamerica-northeast1, us-east7,
     cloud-regional. Re-read it with:
@@ -312,7 +312,7 @@ variable "sanctions_sync_image" {
     its entrypoint runs scripts/sync_sanctions.py). Empty (the default) SKIPS creating the
     sync job and its scheduler; supply the app image to enable them. The snapshot bucket is
     created either way (upload out-of-band while empty, e.g. scripts/sync_sanctions.py --gcs).
-    e.g. us-central1-docker.pkg.dev/PROJECT/cdd/cdd-sow-research:TAG
+    e.g. asia-southeast1-docker.pkg.dev/PROJECT/cdd/cdd-sow-research:TAG
   EOT
   type        = string
   default     = ""

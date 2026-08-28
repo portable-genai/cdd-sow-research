@@ -9,7 +9,7 @@ Step-by-step scripts for demoing Doc1 five ways:
 - **Demo B: One-shot CDD dossier on the managed GCP stack**: a single cited dossier
   (source-of-wealth narrative, risk rating, adverse media, UBO) produced against real
   Document AI / Gemini / Model Armor / DLP in the selected region (default
-  `us-central1`, configurable).
+  `asia-southeast1`, configurable).
 - **Demo C: Current portability-seam tour**: one offline script exercises a one-line runtime
   profile swap, interface parity across all 18 runtime/data ports, a separately selected
   local identity, a tamper-evident hash-chained audit trail, and an open-format
@@ -48,7 +48,7 @@ Install/setup references (read these once):
 
 - Local install & profiles → [README §4.1 `local`](README.md#41-local-profile-a-working-offline-run-no-gcp)
 - The live profile (real documents, local models) → [README §4.2 `live`](README.md#42-live-profile-real-documents-real-subjects-on-your-own-machine)
-- GCP install & deploy → [README §4.4 `gcp`](README.md#44-gcp-profile-real-managed-stack-in-us-central1) and [`docs/runbook.md`](docs/runbook.md#1-deploy)
+- GCP install & deploy → [README §4.4 `gcp`](README.md#44-gcp-profile-real-managed-stack-in-asia-southeast1) and [`docs/runbook.md`](docs/runbook.md#1-deploy)
 - Running the surfaces (API / CLI / UI) → [README §5](README.md#5-running-the-surfaces)
 - Deployment profiles explained → [SPEC §1 “Deployment profiles”](SPEC.md#deployment-profiles)
 - The demo scripts → [`scripts/README.md`](scripts/README.md)
@@ -227,7 +227,7 @@ bundled fixture. A fixture hit is never a sanctions determination about a real p
 ## 3. Demo B: One-shot CDD dossier on the managed GCP stack
 
 Shows the same domain producing a cited dossier against **real managed services** in
-`us-central1`. Follow [`docs/runbook.md`](docs/runbook.md#1-deploy) for the
+`asia-southeast1`. Follow [`docs/runbook.md`](docs/runbook.md#1-deploy) for the
 authoritative deploy steps; the short version:
 
 ### 3.1 GCP setup
@@ -238,7 +238,7 @@ pip install -e ".[gcp,dev]"                 # adds google-adk, google-genai, doc
 
 export GOOGLE_CLOUD_PROJECT=your-sg-project
 export CDD_PROFILE=gcp
-export CDD_KMS_KEY="projects/.../locations/us-central1/keyRings/.../cryptoKeys/..."
+export CDD_KMS_KEY="projects/.../locations/asia-southeast1/keyRings/.../cryptoKeys/..."
 gcloud auth application-default login
 ```
 
@@ -293,7 +293,7 @@ make run-ui           # http://localhost:3000
 
 **What to highlight:** every claim carries a source-and-page **citation**; PII is redacted
 before any model/index/audit call; the dossier is **always** marked human-review
-(maker-checker); everything stays in `us-central1` with CMEK + VPC-SC
+(maker-checker); everything stays in `asia-southeast1` with CMEK + VPC-SC
 ([README §8](README.md#8-security-and-residency-posture)).
 
 > **Note on the SoW *case* flow under GCP.** The managed `FirestoreCaseStoreAdapter` is

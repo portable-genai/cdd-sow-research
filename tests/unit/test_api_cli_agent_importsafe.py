@@ -84,7 +84,7 @@ def client():
 def test_healthz(client):
     response = client.get("/healthz")
     assert response.status_code == 200
-    assert response.json()["region"] == "us-central1"
+    assert response.json()["region"] == "asia-southeast1"
     assert response.json()["demo_only"] is True
     assert response.json()["production_ready"] is False
 

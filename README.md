@@ -6,7 +6,7 @@
 > adverse media into a cited **CDD dossier**: a source-of-wealth narrative, a risk
 > rating, adverse-media findings, and a beneficial-ownership / UBO summary, with a full
 > audit trail. Built ports-and-adapters on the **Gemini Enterprise Agent Platform**,
-> with a configurable deployment region defaulting to `us-central1`.
+> with a configurable deployment region defaulting to `asia-southeast1`.
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](pyproject.toml)
@@ -136,7 +136,7 @@ sequence diagram, and the runtime topology.
 
 > Platform note: the product is **Gemini Enterprise Agent Platform**; the API host is
 > still `aiplatform.googleapis.com`. Everything is pinned to
-> the selected deployment region (default `us-central1`). The authoritative source for
+> the selected deployment region (default `asia-southeast1`). The authoritative source for
 > the stack is [`SPEC.md`](SPEC.md) §3.
 
 | Concern | Service (current name) | Identifier |
@@ -149,13 +149,13 @@ sequence diagram, and the runtime topology.
 | Governed RAG store | **Hrz2 Enterprise KB** (Agent Search behind it) | `google-cloud-discoveryengine` |
 | Adverse media | Gemini API `google_search` tool | `google-genai` (own sub-agent) |
 | Runtime | **Agent Runtime** (ex-Agent Engine) | `google-cloud-aiplatform[agent_engines,adk]` |
-| Guardrail | Model Armor | `modelarmor.us-central1.rep.googleapis.com` |
+| Guardrail | Model Armor | `modelarmor.asia-southeast1.rep.googleapis.com` |
 | PII redaction | Sensitive Data Protection / DLP | `google-cloud-dlp` `deidentifyContent` |
 | Audit (WORM) | Cloud Logging locked bucket | retention 180 days (six months) |
 | Tracing | Cloud Trace via OpenTelemetry | content capture **OFF** |
 | Eval gate | Gen AI evaluation service + Hrz4 | `vertexai.Client(...).evals` |
 | Interop | A2A v1.0 + MCP 2026-07-28 | AgentCard `/.well-known/agent-card.json` |
-| Sovereignty | VPC-SC, regional CMEK, Org Policy | `us-central1` |
+| Sovereignty | VPC-SC, regional CMEK, Org Policy | `asia-southeast1` |
 
 **Gotchas honoured by the build** (SPEC §3): regional endpoints plus per-service CMEK for
 residency (the *global* endpoint gives none); message-content capture is **OFF** in spans
@@ -284,14 +284,14 @@ export CDD_PROFILE=onprem
 cdd-sow assess "Acme Holdings Pte Ltd (FICTIONAL)" --type entity   # exits 2, migration note
 ```
 
-### 4.4 `gcp` profile: real managed stack in `us-central1`
+### 4.4 `gcp` profile: real managed stack in `asia-southeast1`
 
 ```bash
 pip install -e ".[gcp,dev]"      # adds google-adk, google-genai, documentai, dlp, ...
 
 export GOOGLE_CLOUD_PROJECT=your-sg-project
 export CDD_PROFILE=gcp                       # real managed stack. Always set a profile: an unset CDD_PROFILE binds the offline adapters but refuses the no-auth dev personas
-export CDD_KMS_KEY="projects/.../locations/us-central1/keyRings/.../cryptoKeys/..."
+export CDD_KMS_KEY="projects/.../locations/asia-southeast1/keyRings/.../cryptoKeys/..."
 gcloud auth application-default login
 
 make tf-plan                      # review, then terraform apply (see docs/runbook.md)
@@ -382,7 +382,7 @@ at promotion the live Hrz4 service (`EvaluationGatePort.gate`) is the authority.
 
 | Control | How it is enforced |
 |---------|--------------------|
-| **Region** (selectable, default `us-central1`) | Region is chosen at deploy from a residency allowlist and validated to fail fast at `terraform plan`; every service and SDK call targets that one region; a `gcp.resourceLocations` Org Policy hard-restricts resource creation to it. |
+| **Region** (selectable, default `asia-southeast1`) | Region is chosen at deploy from a residency allowlist and validated to fail fast at `terraform plan`; every service and SDK call targets that one region; a `gcp.resourceLocations` Org Policy hard-restricts resource creation to it. |
 | **VPC Service Controls** | All managed services sit inside a service perimeter (dry-run first, then enforced) so case data cannot egress. |
 | **CMEK** (regional) | Customer-managed Cloud KMS keys (`CDD_KMS_KEY`) encrypt Document AI outputs, the KB, and the log bucket. |
 | **PII redaction before model** (**P-04**) | `DlpRedactionAdapter` de-identifies inbound text before it reaches the model, the index, a span or the audit sink. |
@@ -441,7 +441,7 @@ flowchart LR
     srcconfig["config.py<br/>Settings + Container (DI for the hexagon)"]
     config["config/settings.yaml<br/>port -> adapter bindings, region, models"]
     eval["eval/<br/>run_eval.py + golden dataset (the Hrz4 gate)"]
-    terraform["infra/terraform/<br/>us-central1 infra (Document AI, DLP, WORM)"]
+    terraform["infra/terraform/<br/>asia-southeast1 infra (Document AI, DLP, WORM)"]
     ui["ui/<br/>React / Next.js app"]
     tests["tests/<br/>contract + unit tests (driven by the local adapters)"]
     docs["docs/<br/>onprem-migration.md, runbook.md"]

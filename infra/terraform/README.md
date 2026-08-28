@@ -2,7 +2,7 @@
 
 In-region infrastructure for the Doc1 agent, built to deploy quickly and repeatedly to
 multiple separate enterprises. The deploy **region is selected at deploy time**
-(`var.region`, default `us-central1`) and validated against a residency
+(`var.region`, default `asia-southeast1`) and validated against a residency
 allowlist (`var.allowed_regions`) so an unapproved region fails fast at `terraform plan`
 (P-03). Every resource name derives from **`var.name_prefix`** (`naming.tf`), so a second
 instance (same project, or a second enterprise) deploys cleanly with a new prefix.
@@ -42,7 +42,7 @@ Policy (`org_policy.tf`, gated by `enable_org_policies`), and the VPC-SC perimet
 |----------|------|---------|-------------------------|
 | `project_id` | string | (required) | Always: the target project. |
 | `name_prefix` | string | `"cdd-sow"` | Second instance in one project, or redeploy after a destroy (the KMS key ring is indestructible; a fresh prefix avoids the collision). Default reproduces the historical names. 3-19 chars (`^[a-z][a-z0-9-]{2,18}$`); keep <= 14 chars when enabling the sanctions job (30-char SA id cap, see `naming.tf`). |
-| `region` | string | `"us-central1"` | Deploying to another approved jurisdiction. Must be in `allowed_regions` (fails fast). |
+| `region` | string | `"asia-southeast1"` | Deploying to another approved jurisdiction. Must be in `allowed_regions` (fails fast). |
 | `allowed_regions` | list(string) | SG, HK, Tokyo, Sydney, London | Approving a new region after residency review. |
 | `scheduler_time_zone` | string | `"Asia/Singapore"` | Pair with `region` (e.g. `europe-west2` + `Europe/London`). |
 | `retention_days` | number | `180` (six months) | Longer retention obligations (>= 180 enforced). |

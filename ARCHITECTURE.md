@@ -219,12 +219,12 @@ Key invariants:
 ## 4. Runtime topology on Agent Runtime
 
 In the `gcp` profile, the ADK agent is hosted on **Agent Runtime** (a `reasoningEngine`
-resource) inside a VPC-SC perimeter in `us-central1`. The `google_search` adverse-media
+resource) inside a VPC-SC perimeter in `asia-southeast1`. The `google_search` adverse-media
 tool lives in its **own sub-agent** because only one built-in tool is allowed per agent.
 
 ```mermaid
 flowchart TB
-    subgraph perimeter["VPC Service Controls perimeter, us-central1"]
+    subgraph perimeter["VPC Service Controls perimeter, asia-southeast1"]
         subgraph runtime["Agent Runtime (reasoningEngine)"]
             ROOT["Root ADK agent<br/>gemini-3.5-flash (thinking=high)"]
             GSUB["Adverse-media sub-agent<br/>google_search tool"]
@@ -254,7 +254,7 @@ flowchart TB
     KMS -. encrypts .-> LOG
 ```
 
-- **One region for everything** (`us-central1`); regional endpoints plus per-service
+- **One region for everything** (`asia-southeast1`); regional endpoints plus per-service
   CMEK give the residency guarantee a global endpoint would not.
 - **The governed RAG store is Hrz2**, not a Doc1-owned backend; case documents are ingested with
   `case:<subject_id>` ACL tags and retrieved only by case principals (R3).
