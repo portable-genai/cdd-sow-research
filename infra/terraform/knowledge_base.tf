@@ -48,7 +48,7 @@ resource "google_discovery_engine_search_engine" "case_kb" {
   data_store_ids = [google_discovery_engine_data_store.case_kb.data_store_id]
 
   search_engine_config {
-    search_tier = "SEARCH_TIER_ENTERPRISE"
+    search_tier = var.knowledge_base_search_tier
   }
 }
 

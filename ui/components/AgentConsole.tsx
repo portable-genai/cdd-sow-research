@@ -67,8 +67,12 @@ function AgentConsoleContent({ embedded }: { embedded: boolean }) {
   const [profile, setProfile] = useState("");
   const [transportReady, setTransportReady] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+  // Three states, not two. `undefined` is "not asked yet" and renders nothing;
+  // `null` is "asked and could not answer" and MUST render, because a readiness
+  // panel that disappears on error reports a demonstration as a production
+  // deployment by omission.
   const [capabilityManifest, setCapabilityManifest] =
-    useState<CapabilityManifest | null>(null);
+    useState<CapabilityManifest | null | undefined>(undefined);
 
   const caseId = caseIdFor(name);
   const loadedCaseId = useRef("");
@@ -260,9 +264,7 @@ function AgentConsoleContent({ embedded }: { embedded: boolean }) {
 
   return (
     <div className="space-y-6">
-      {capabilityManifest ? (
-        <CapabilityPanel manifest={capabilityManifest} />
-      ) : null}
+      <CapabilityPanel manifest={capabilityManifest} />
 
       {!embedded && personas.length > 0 ? (
         <Panel title="Demo identity">

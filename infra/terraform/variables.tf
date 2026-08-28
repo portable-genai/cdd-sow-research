@@ -718,3 +718,49 @@ variable "knowledge_base_engine_id" {
     error_message = "knowledge_base_engine_id must be a lowercase DNS-style id."
   }
 }
+
+variable "knowledge_base_search_tier" {
+  type        = string
+  default     = "SEARCH_TIER_ENTERPRISE"
+  description = <<-EOT
+    Discovery Engine search tier for the case engine. Default Enterprise.
+
+    This is a variable so the tier is a decision a deployment states rather than a literal it
+    inherits, but it is NOT a cost knob to reach for casually: this adapter requests extractive
+    segments, and a Standard-tier search refuses them. Dropping to Standard here does not serve
+    a cheaper answer, it serves no answer, and the failure arrives at the first live retrieval
+    rather than at apply. Set Standard only for a deployment whose retrieval mode does not ask
+    for segments, and check the adapter before assuming it does not.
+  EOT
+  validation {
+    condition     = contains(["SEARCH_TIER_STANDARD", "SEARCH_TIER_ENTERPRISE"], var.knowledge_base_search_tier)
+    error_message = "knowledge_base_search_tier must be SEARCH_TIER_STANDARD or SEARCH_TIER_ENTERPRISE."
+  }
+}
+
+variable "firestore_pitr_enabled" {
+  type        = bool
+  default     = true
+  description = <<-EOT
+    Point-in-time recovery on the case store. Default true.
+
+    PITR bills continuous backup storage and buys a recovery window nothing in this deployment
+    has ever exercised: DR rehearsal is an open Track C item, and no RTO or RPO may be quoted
+    until it runs. A reference stack that has declined the WORM lock to stay destroyable is
+    entitled to decline this too, and to say so here rather than pay for a guarantee it does
+    not evidence. A stack holding real customer material keeps the default.
+  EOT
+}
+
+variable "firestore_delete_protection_enabled" {
+  type        = bool
+  default     = true
+  description = <<-EOT
+    Firestore delete protection on the case store. Default true.
+
+    Delete protection refuses `terraform destroy` of the database. That is correct for a
+    production stack and contradictory in a reference one that has already recorded, in its own
+    tfvars, that it must stay replaceable and destroyable while the deployment is being worked
+    out. Declining it is how a deployment stops holding two opposite postures at once.
+  EOT
+}
