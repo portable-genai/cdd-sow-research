@@ -26,10 +26,13 @@ locals {
     "secretmanager.googleapis.com",        # App secrets (no secrets in code, P-04)
     "cloudkms.googleapis.com",             # Regional CMEK key ring (P-09)
     "accesscontextmanager.googleapis.com", # VPC Service Controls perimeter (P-03)
+    "artifactregistry.googleapis.com",     # Promoted image registry (artifact_registry.tf)
+    "cloudscheduler.googleapis.com",       # Sanctions snapshot refresh schedule (sanctions_sync.tf)
     # Supporting services the above transitively require.
     "compute.googleapis.com",   # VPC
     "iam.googleapis.com",       # Service accounts / least-privilege IAM
     "orgpolicy.googleapis.com", # Org Policy residency constraints (P-03)
+    "storage.googleapis.com",   # GCS: case documents, sanctions snapshot, agent staging buckets
   ]
 }
 
