@@ -1001,7 +1001,7 @@ class UboGraphResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str = "ok"
     profile: str = "local"
-    region: str = "us-central1"
+    region: str = "asia-southeast1"
     mode: str = "application"  # Deprecated control-ownership compatibility state.
     identity_mode: str = "local-persona"
     channel_mode: str = "standalone"

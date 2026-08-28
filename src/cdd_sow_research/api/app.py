@@ -12,7 +12,7 @@ Design constraints:
 * **Guardrail blocks are not 500s.** A :class:`GuardrailBlockedError` from a service is
   translated to an HTTP 200 carrying an explicit blocked envelope flagged for human
   review, never a 500.
-* **Region selected at deploy time**, defaulting to ``us-central1`` (SPEC §2).
+* **Region selected at deploy time**, defaulting to ``asia-southeast1`` (SPEC §2).
 
 Run locally with ``python -m cdd_sow_research.api.app`` (uvicorn on :8090).
 """
@@ -480,7 +480,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             "and adverse media into a cited CDD dossier (source-of-wealth narrative, risk "
             "rating, adverse-media findings, and a UBO summary), with a full audit trail, on "
             "the Gemini Enterprise Agent Platform. Region is configurable and defaults to "
-            "us-central1."
+            "asia-southeast1."
         ),
     )
     application.state.configured_settings = settings

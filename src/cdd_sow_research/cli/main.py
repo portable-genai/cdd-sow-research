@@ -41,7 +41,7 @@ app = typer.Typer(
     help=(
         "B1 CDD + Source-of-Wealth Agent — cited customer due-diligence dossiers from a "
         "KYC pack, corporate registries and adverse media, on the Gemini Enterprise Agent "
-        "Platform (configurable region; default us-central1)."
+        "Platform (configurable region; default asia-southeast1)."
     ),
 )
 
