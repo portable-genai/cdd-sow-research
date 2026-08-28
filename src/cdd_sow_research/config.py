@@ -37,6 +37,11 @@ from .envread import (
 _ENV_PATTERN = re.compile(r"\$\{([A-Z0-9_]+)(?::-(.*?))?\}")
 DEFAULT_GCP_REGION = "asia-southeast1"
 
+#: Multi-regions Document AI may use as a STATED residency deviation from the deploy region.
+#: Each names one jurisdiction and carries an ML-processing commitment for it. `global` is
+#: deliberately absent: it names no jurisdiction at all.
+_DOCUMENT_AI_MULTI_REGIONS = frozenset({"us", "eu"})
+
 _LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 RUNTIME_PROFILES = frozenset({"local", "live", "gcp", "platform", "onprem"})
 #: Profiles whose adapters bind real Google Cloud SDKs and therefore need a real project.
@@ -1101,6 +1106,29 @@ class Settings:
     policy: RiskPolicy = field(default_factory=RiskPolicy)
     # port_name -> { profile -> "module.path:ClassName" }
     adapters: dict[str, dict[str, str]] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        # Document AI may sit in the deploy region, or in a NAMED MULTI-REGION as a stated
+        # deviation, and in nothing else. Singapore is "limited support" for Document AI and
+        # access is gated behind Google's Single Region Request Form, so until that is granted
+        # the bytes are extracted in the `us` multi-region while the rest of the stack stays in
+        # region. That is a disclosed residency deviation, not a widening: a multi-region names
+        # one jurisdiction and carries an ML-processing commitment for it.
+        #
+        # `global` is refused by name because it names NO jurisdiction, and it is precisely what
+        # someone reaches for to make an apply succeed. A different single region is refused too:
+        # it is neither the deploy region nor a multi-region commitment. `infra/terraform`
+        # validates `docai_location` by the same rule; this is the runtime half of it, so
+        # setting CDD_DOCAI_LOCATION cannot reach a location the processor half refused. The
+        # deploy region itself is a runtime input here (GCP_REGION), so the guard compares
+        # against the configured region rather than pinning one.
+        if self.document_ai.location not in {self.region, *_DOCUMENT_AI_MULTI_REGIONS}:
+            raise ValueError(
+                f"Document AI location {self.document_ai.location!r} must be the deploy region "
+                f"({self.region}) or a named multi-region "
+                f"({', '.join(sorted(_DOCUMENT_AI_MULTI_REGIONS))}). `global` names no "
+                "jurisdiction and is never acceptable here."
+            )
 
     @property
     def identity_mode(self) -> str:

@@ -70,8 +70,10 @@ knowledge_base:
   # NOT the deploy region. Discovery Engine serves `global`, `us` and `eu`, so tracking
   # GCP_REGION produced `us-central1-discoveryengine.googleapis.com`, a hostname that does not
   # exist, and grounded retrieval failed with a 501 blaming the api_endpoint configuration.
-  # `us` is the residency-preserving choice for a United States deployment; an EU deployment
-  # sets `eu`. Terraform's knowledge_base_location carries the same value and the same reason.
+  # `us` confines the index to one named jurisdiction, and the 2026-08-27 region decision
+  # keeps it for the asia-southeast1 target as well: stronger than `global`, which names no
+  # jurisdiction. Terraform's knowledge_base_location carries the same value and the same
+  # reason.
   location: ${CDD_KB_LOCATION:-us}
   top_k: 10
   # Discovery Engine path segments (standalone GCP adapter). The API defaults fit most
