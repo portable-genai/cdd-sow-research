@@ -161,6 +161,7 @@ def main() -> int:
                 f"(> {int(MAX_SHRINK_FRACTION * 100)}%); refusing to overwrite. "
                 "Re-run with --allow-shrink after verifying the publishers."
             )
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(snapshot, indent=2), encoding="utf-8")
         print(f"Wrote {path}  (+{added} / -{removed} vs previous)")
 
