@@ -6,7 +6,7 @@ run "named_edge_contract" {
 
   variables {
     project_id                           = "fictional-doc1-production"
-    documentai_location                  = "us"
+    docai_location                       = "us"
     enable_org_policies                  = false
     enable_vpc_sc                        = false
     worm_locked                          = false
@@ -130,7 +130,7 @@ run "default_omits_irreversible_mode5_key" {
 
   variables {
     project_id          = "fictional-doc1-production"
-    documentai_location = "us"
+    docai_location      = "us"
     enable_org_policies = false
     enable_vpc_sc       = false
     worm_locked         = false
@@ -147,7 +147,7 @@ run "mode5_key_bootstrap_omits_edge" {
 
   variables {
     project_id                     = "fictional-doc1-production"
-    documentai_location            = "us"
+    docai_location                 = "us"
     enable_org_policies            = false
     enable_vpc_sc                  = false
     worm_locked                    = false
@@ -174,7 +174,7 @@ run "reject_bootstrap_with_edge_enabled" {
 
   variables {
     project_id                           = "fictional-doc1-production"
-    documentai_location                  = "us"
+    docai_location                       = "us"
     enable_org_policies                  = false
     enable_vpc_sc                        = false
     worm_locked                          = false
@@ -212,7 +212,7 @@ run "default_retention_keeps_worm_lock_enabled" {
 
   variables {
     project_id          = "fictional-doc1-production"
-    documentai_location = "us"
+    docai_location      = "us"
     enable_org_policies = false
     enable_vpc_sc       = false
     standalone          = false
@@ -234,7 +234,7 @@ run "reject_retention_below_six_months" {
 
   variables {
     project_id          = "fictional-doc1-production"
-    documentai_location = "us"
+    docai_location      = "us"
     enable_org_policies = false
     enable_vpc_sc       = false
     standalone          = false
@@ -250,7 +250,7 @@ run "unlocked_stack_accepts_short_retention" {
 
   variables {
     project_id          = "fictional-doc1-production"
-    documentai_location = "us"
+    docai_location      = "us"
     enable_org_policies = false
     enable_vpc_sc       = false
     standalone          = false
@@ -269,7 +269,7 @@ run "unlocked_stack_still_requires_a_positive_retention" {
 
   variables {
     project_id          = "fictional-doc1-production"
-    documentai_location = "us"
+    docai_location      = "us"
     enable_org_policies = false
     enable_vpc_sc       = false
     standalone          = false
@@ -285,7 +285,7 @@ run "reject_reducing_existing_locked_retention" {
 
   variables {
     project_id                     = "fictional-doc1-production"
-    documentai_location            = "us"
+    docai_location                 = "us"
     enable_org_policies            = false
     enable_vpc_sc                  = false
     standalone                     = false
@@ -301,7 +301,7 @@ run "reject_mutable_api_image" {
 
   variables {
     project_id                           = "fictional-doc1-production"
-    documentai_location                  = "us"
+    docai_location                       = "us"
     enable_org_policies                  = false
     enable_vpc_sc                        = false
     worm_locked                          = false
@@ -329,7 +329,7 @@ run "reject_reserved_secret_override" {
 
   variables {
     project_id          = "fictional-doc1-production"
-    documentai_location = "us"
+    docai_location      = "us"
     enable_org_policies = false
     enable_vpc_sc       = false
     worm_locked         = false
@@ -349,7 +349,7 @@ run "reject_region_secret_override" {
 
   variables {
     project_id          = "fictional-doc1-production"
-    documentai_location = "us"
+    docai_location      = "us"
     enable_org_policies = false
     enable_vpc_sc       = false
     worm_locked         = false
@@ -369,7 +369,7 @@ run "reject_edge_limit_that_can_exhaust_shared_capacity" {
 
   variables {
     project_id                            = "fictional-doc1-production"
-    documentai_location                   = "us"
+    docai_location                        = "us"
     enable_org_policies                   = false
     enable_vpc_sc                         = false
     worm_locked                           = false
@@ -442,10 +442,12 @@ run "unbound_stage_ignores_key_version_pin" {
   }
 }
 
-# Document AI does not serve every region, and the failure mode without this guard is a 404
-# at apply after the rest of the stack is already up. Proved red on 2026-08-24: the whole
-# suite ran green against a config whose real apply could not create the processor.
-run "reject_a_region_document_ai_does_not_serve" {
+# Until 2026-08-28 this variable DERIVED the processor location from var.region, while the
+# runtime routed to `us`: Terraform would have created the processor in one location and the
+# adapter looked for it in another, a 404 at request time rather than at apply. The variable
+# now takes the fleet rule (the deploy region or a named multi-region, `global` refused by
+# name), so the refusal moves from a resource precondition to the variable validation.
+run "reject_an_unlocated_docai_location" {
   command = plan
 
   variables {
@@ -453,18 +455,37 @@ run "reject_a_region_document_ai_does_not_serve" {
     enable_org_policies = false
     enable_vpc_sc       = false
     worm_locked         = false
-    region              = "us-central1"
-    allowed_regions     = ["us-central1"]
-    documentai_location = ""
+    region              = "asia-southeast1"
+    allowed_regions     = ["asia-southeast1"]
+    docai_location      = "global"
   }
 
-  expect_failures = [google_document_ai_processor.kyc]
+  expect_failures = [var.docai_location]
 }
 
-# The deploy region is used unchanged when Document AI DOES serve it, so an in-country
-# deployment never widens by accident. asia-southeast1 is served, which is worth pinning:
-# it is the region the original alignment record chose, and the reason that record deferred
-# a per-service check was uncertainty about exactly this.
+# Another single region is refused by the same condition: it is neither the deploy region
+# nor a multi-region commitment, so accepting it would be a silent jurisdiction change
+# dressed as a fix.
+run "reject_a_foreign_single_region_docai_location" {
+  command = plan
+
+  variables {
+    project_id          = "fictional-doc1-production"
+    enable_org_policies = false
+    enable_vpc_sc       = false
+    worm_locked         = false
+    region              = "asia-southeast1"
+    allowed_regions     = ["asia-southeast1"]
+    docai_location      = "europe-west2"
+  }
+
+  expect_failures = [var.docai_location]
+}
+
+# The deploy region itself is allowed and used unchanged, so an in-country deployment never
+# widens by accident. asia-southeast1 is served (access-gated), which is worth pinning: it is
+# the region the alignment record chose, and setting it here is the whole migration the day
+# Google grants single-region access.
 run "a_served_region_needs_no_widening" {
   command = plan
 
@@ -475,11 +496,11 @@ run "a_served_region_needs_no_widening" {
     worm_locked         = false
     region              = "asia-southeast1"
     allowed_regions     = ["asia-southeast1"]
-    documentai_location = ""
+    docai_location      = "asia-southeast1"
   }
 
   assert {
     condition     = google_document_ai_processor.kyc.location == "asia-southeast1"
-    error_message = "A region Document AI serves must be used as-is, never widened to a multi-region."
+    error_message = "The deploy region must be used as-is, never widened to a multi-region."
   }
 }

@@ -20,8 +20,8 @@ output "documentai_processor_id" {
   value       = google_document_ai_processor.kyc.id
 }
 
-output "documentai_location" {
-  description = "Confirms Document AI residency: must equal the selected var.region (fail-fast check)."
+output "docai_location" {
+  description = "Where the processor was created: var.docai_location, the deploy region or a named multi-region (a stated residency deviation until single-region access lands)."
   value       = google_document_ai_processor.kyc.location
 }
 

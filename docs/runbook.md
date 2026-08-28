@@ -87,10 +87,12 @@ integration contract in [`embedding-and-identity.md`](embedding-and-identity.md)
 The Terraform `region` is selected at deploy time and validated against the residency
 allowlist `allowed_regions` (default member: `asia-southeast1`); an apply against a region
 not in that list fails immediately at `terraform plan`, before anything is created. Set
-`CDD_REGION` for the app and `scheduler_time_zone` to match. Document AI, DLP, Model Armor
-and the WORM bucket are all created in the selected region, and a `gcp.resourceLocations`
-Org Policy hard-restricts resource creation to it. Confirm `documentai_location` in the
-outputs equals your chosen region.
+`CDD_REGION` for the app and `scheduler_time_zone` to match. DLP, Model Armor and the WORM
+bucket are created in the selected region, and a `gcp.resourceLocations` Org Policy
+hard-restricts resource creation to the approved width. Document AI is the stated exception:
+it is created at `docai_location` (default the `us` multi-region, a disclosed residency
+deviation until Google grants single-region access; see `infra/terraform/variables.tf`).
+Confirm `docai_location` in the outputs equals the value you decided, not the deploy region.
 
 ## 3. Key rotation
 

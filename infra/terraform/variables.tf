@@ -111,38 +111,40 @@ variable "resource_location_values" {
   }
 }
 
-variable "documentai_location" {
+variable "docai_location" {
   description = <<-EOT
-    Document AI processor location. Empty (the default) derives it from var.region.
+    Where the Document AI processor is CREATED. Deliberately NOT var.region.
 
-    Document AI does NOT run in every GCP region, so its location cannot simply track the
-    deploy region: creating a processor in an unsupported one 404s at apply
-    (`/v1/projects/../locations/asia-southeast1/processors` was not found — found by execution
-    2026-08-24). As of that date the service reports: us, eu, asia-south1, asia-southeast1,
-    australia-southeast1, europe-west2, europe-west3, northamerica-northeast1, us-east7,
-    cloud-regional. Re-read it with:
-      GET https://documentai.googleapis.com/v1/projects/PROJECT/locations
+    Document AI does not serve every Cloud region, and creating a processor in one it does not
+    serve 404s at apply (found by execution 2026-08-24). It DOES serve asia-southeast1 -- and
+    serves no us-central1 endpoint at all -- but Singapore is "limited support": a subset of
+    processors, several in Preview, and access is gated behind Google's Document AI Single
+    Region Request Form. Until that request is granted this routes to the `us` MULTI-REGION,
+    which is a stated residency deviation: KYC document bytes are extracted in the United
+    States while the rest of the stack stays in region. Set this to asia-southeast1 the day
+    access lands.
 
-    Derivation is deliberately NARROW: if var.region is itself a supported location it is used
-    unchanged, and OTHERWISE THE PLAN FAILS asking for an explicit value. It does not quietly
-    fall back to the `us` or `eu` multi-region, because that would move KYC document bytes to
-    a broader jurisdiction than the one the operator selected and validated against the
-    residency allowlist — silently, in the one repository whose headline claim is deploy-time
-    residency. Widening to a multi-region is a residency decision and must be typed out.
+    Keep it equal to the runtime's CDD_DOCAI_LOCATION, which selects the same location for the
+    adapter. If the two disagree, Terraform creates the processor in one location and the
+    adapter looks for it in another, and the failure surfaces as a confusing 404 at request
+    time rather than at apply. Until 2026-08-28 this variable instead DERIVED the location
+    from var.region, which is exactly how the two halves disagreed.
+
+    `us` and `eu` are multi-regions, not `global`: each names ONE jurisdiction. Never widen
+    this to a location the service does not serve just to make an apply succeed. Whichever is
+    chosen, gcp.resourceLocations must be wide enough to permit it, and the residency claim
+    must be stated at that width rather than at var.region's.
   EOT
   type        = string
-  default     = ""
+  default     = "us"
 
   validation {
-    condition = var.documentai_location == "" || contains(
-      [
-        "us", "eu", "asia-south1", "asia-southeast1", "australia-southeast1",
-        "europe-west2", "europe-west3", "northamerica-northeast1", "us-east7",
-        "cloud-regional",
-      ],
-      var.documentai_location
-    )
-    error_message = "documentai_location must be a location Document AI actually serves. Query the live list at https://documentai.googleapis.com/v1/projects/PROJECT/locations rather than assuming the deploy region is one."
+    # Mirrors the runtime rule in src/cdd_sow_research/config.py: the deploy region, or a
+    # NAMED multi-region. `global` is refused by name because it names no jurisdiction, and so
+    # is any other single region -- an out-of-region single region would be a silent
+    # jurisdiction change dressed as a fix.
+    condition     = contains(["us", "eu"], var.docai_location) || var.docai_location == var.region
+    error_message = "docai_location must be the deploy region (var.region) or a named Document AI multi-region (us, eu). `global` names no jurisdiction and is refused."
   }
 }
 
@@ -682,8 +684,10 @@ variable "knowledge_base_location" {
 
     NOT the deploy region: Discovery Engine serves `global`, `us` and `eu`, so a Cloud region
     resolves to a hostname that does not exist and grounded retrieval fails with a 501 blaming
-    the api_endpoint. `us` is the residency-preserving choice for a United States deployment and
-    matches the country-granular resourceLocations policy this project already carries.
+    the api_endpoint. `us` confines the index to one named jurisdiction, and the 2026-08-27
+    region decision keeps it for the asia-southeast1 target as well: it is stronger than
+    `global`, which names no jurisdiction at all. Whichever is chosen, gcp.resourceLocations
+    must be wide enough to permit it.
   EOT
   validation {
     condition     = contains(["global", "us", "eu"], var.knowledge_base_location)
