@@ -90,19 +90,44 @@ class RemoteKnowledgeBaseAdapter:
 
     # ----------------------------------------------------------------- helpers
     def retract(self, document_id: str, acl_principals: tuple[str, ...]) -> bool:
-        """Ask A2 to remove an indexed document. REFUSES rather than pretending to succeed.
+        """Ask A2 to withdraw an indexed document through its governed retraction route.
 
-        The remote contract for this does not exist yet: `enterprise-knowledge-base` exposes
-        ingest and search, and adding a retraction endpoint is its decision to take, not this
-        client's to assume. Returning False here would be the worst of the options -- a caller
-        retracting evidence would be told there was nothing indexed, and the passage would stay
-        citable. Raising names the gap at the point someone hits it.
+        This raised ``NotImplementedError`` until 2026-08-28, and refusing was right while it
+        lasted: A2 exposed ingest and search and nothing else, so returning False would have
+        told a caller withdrawing evidence that nothing was indexed while the passage stayed
+        citable. A2 now serves ``POST /v1/documents/{id}/retract``, entitled separately from
+        reading and from the pipeline ingest path, so the refusal would now itself be the lie.
+
+        Three answers, kept apart deliberately, because collapsing any two of them is how a
+        retraction reports success it did not have:
+
+        * removed -> True, matching the local adapter;
+        * nothing indexed under that id -> False, so a repair run twice is as safe as once;
+        * refused -> ``PermissionError``, never False. "You may not remove this" and "there was
+          nothing to remove" are the two answers this port exists to distinguish, and A2 is the
+          one deciding the first of them: the entitlement lives on the verified principal there,
+          not on this client, which is why this method does not screen ``acl_principals`` itself
+          and must not pretend to.
         """
-        raise NotImplementedError(
-            "the A2 knowledge-base service exposes no retraction endpoint, so an indexed "
-            "document cannot be withdrawn through this adapter. Refusing rather than reporting "
-            "a removal that did not happen."
-        )
+        url = f"{self._base_url}/v1/documents/{document_id}/retract"
+        try:
+            response = httpx.post(
+                url,
+                json={},
+                timeout=_TIMEOUT,
+                headers=_s2s.headers(settings=self._settings, base_url=self._base_url),
+            )
+        except httpx.HTTPError as exc:
+            raise RemoteKnowledgeBaseError(f"A2 request to {url} failed: {exc}") from exc
+        if response.status_code == 403:
+            raise PermissionError(f"A2 refused the retraction of {document_id!r}: not entitled")
+        if response.status_code == 404:
+            return False
+        if response.status_code // 100 != 2:
+            raise RemoteKnowledgeBaseError(
+                f"A2 {url} returned {response.status_code}: {response.text[:500]}"
+            )
+        return True
 
     def _post(self, path: str, payload: dict) -> dict:
         url = f"{self._base_url}{path}"
