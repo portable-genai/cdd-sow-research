@@ -78,7 +78,13 @@ eval: ## Run the A4 eval gate (sow_groundedness / risk_band / citations / pii_sa
 portability: ## Execute the bounded offline/profile portability proof.
 	PYTHONPATH=src $(PYTHON) scripts/portability_demo.py
 
-check: lint test eval portability ## The full offline Python gate (no node, no cloud).
+plugin: ## Render the Agent Plugins 1.0.0 directory from this repo's own declarations.
+	python scripts/render_plugin.py --dest dist/plugin
+
+mcp-serve: ## Serve the governed tool catalog over MCP 2026-07-28 (stdio; needs the [gcp] extra).
+	python -m cdd_sow_research.mcp
+
+check: lint test eval portability plugin ## The full offline Python gate (no node, no cloud).
 
 ui-install: ## Install the console's locked node dependencies.
 	npm ci --prefix $(UI_DIR)

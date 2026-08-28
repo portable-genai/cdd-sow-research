@@ -18,7 +18,7 @@ dependencies = [
   # Shared commons, pinned by tag; no build-time coupling. Public repos, so CI
   # installs them with zero credentials. hex-service-kit: identity / S2S / fail-closed defaults /
   # WORM audit. agent-eval-kit: the promotion-gate client the platform eval adapter uses.
-  "hex-service-kit @ git+https://github.com/portable-genai/hex-service-kit@v0.0.4",
+  "hex-service-kit @ git+https://github.com/portable-genai/hex-service-kit@v0.0.5",
   "agent-eval-kit @ git+https://github.com/portable-genai/agent-eval-kit@v0.0.1",
   # review-kit: the producer half of rule R8 (route a requires_human_review escalation to the
   # Hrz7 maker-checker console the same way from every producer). Public, pinned by tag, zero-cred.
@@ -75,6 +75,10 @@ dev = [
   "pytest>=8.2",
   "pytest-asyncio>=0.23",
   "pytest-cov>=5.0",
+  # Validates the rendered Agent Plugins manifest against the vendored specification
+  # schemas. A hard dev dependency, not optional: with it optional the manifest test skips,
+  # and a permanently skipped test reports the same green as a passing one.
+  "jsonschema>=4.26",
   # The document-reading half of the [live] extra. In dev too, so the gate actually
   # exercises PDF parsing and page rendering against real PDF bytes rather than skipping
   # the tests that cover them. These are ordinary Python wheels, not cloud SDKs, so the
