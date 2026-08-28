@@ -339,3 +339,110 @@ def test_every_configured_model_actually_resolves(settings) -> None:  # type: ig
     assert not unreachable, (
         f"configured models that do not resolve in {settings.models.location!r}: {unreachable}"
     )
+
+
+# --------------------------------------------------------------------------------------- #
+# The non-model services: is each one actually served where the configuration points?
+# --------------------------------------------------------------------------------------- #
+
+
+def test_every_configured_non_model_service_is_served_where_configured(settings) -> None:  # type: ignore[no-untyped-def]
+    """Reach each configured non-model service once at its configured location, FAIL on none.
+
+    The model half of this check exists above and the non-model half did not, which is how two
+    region defects survived it. Retrieval bound to the compute region produced
+    `us-central1-discoveryengine.googleapis.com`, a hostname that does not exist, and grounded
+    retrieval failed with a 501 blaming the api_endpoint. Seven sibling trees then pinned
+    Agent Search to a location the service has never served, and their Terraform
+    pre-rationalised the failing apply as the residency control working. Both defects were
+    invisible offline for the same reason the model pins were: what a publisher serves is a
+    fact about a project and a location on a given day, not a property of the source tree.
+    org-metadata's docs/gcp-service-region-availability.md records the per-service facts; this
+    test is the live half that keeps them honest.
+
+    Three locations are configuration here and each is probed as CONFIGURED, never as derived
+    from the region, because "the config and the serving reality disagree" is exactly the
+    finding: Discovery Engine at `knowledge_base.location`, Document AI at
+    `document_ai.location`, and Model Armor at its regional `host` with the template the
+    guardrail actually screens through. A refused or unresolved endpoint FAILS; nothing here
+    skips, because a probe that skips when a location is wrong reports the same green as one
+    that ran.
+
+    The residency posture is asserted with it, like the model check above: `global` retrieval
+    would prove availability while silently voiding the jurisdiction claim, so it is refused
+    here as well as at settings load.
+    """
+    from google.api_core.client_options import ClientOptions
+    from google.cloud import discoveryengine_v1, documentai_v1, modelarmor_v1
+
+    assert settings.knowledge_base.location != "global", (
+        "retrieval is pointed at the global endpoint, which names no jurisdiction; the "
+        "residency claim in the dossiers would not survive it"
+    )
+
+    unserved: dict[str, str] = {}
+
+    kb = settings.knowledge_base
+    kb_endpoint = f"{kb.location}-discoveryengine.googleapis.com"
+    branch = (
+        f"projects/{settings.project_id}/locations/{kb.location}"
+        f"/collections/{kb.collection_id}/dataStores/{kb.data_store_id}"
+        f"/branches/{kb.branch_id}"
+    )
+    try:
+        documents = discoveryengine_v1.DocumentServiceClient(
+            client_options=ClientOptions(api_endpoint=kb_endpoint),
+        )
+        next(
+            iter(
+                documents.list_documents(
+                    request=discoveryengine_v1.ListDocumentsRequest(parent=branch, page_size=1)
+                )
+            ),
+            None,
+        )
+    except Exception as exc:  # noqa: BLE001 - any failure to reach it is the finding
+        unserved["knowledge_base"] = (
+            f"{kb_endpoint} / {branch}: {type(exc).__name__} {str(exc)[:160]}"
+        )
+
+    docai_endpoint = f"{settings.document_ai.location}-documentai.googleapis.com"
+    try:
+        processors = documentai_v1.DocumentProcessorServiceClient(
+            client_options=ClientOptions(api_endpoint=docai_endpoint),
+        )
+        # list_processors answers the pure "is this location served for this project"
+        # question even before a processor id is configured; a configured id is then held
+        # to exist by name, because the adapter will address exactly that resource.
+        parent = f"projects/{settings.project_id}/locations/{settings.document_ai.location}"
+        next(
+            iter(
+                processors.list_processors(
+                    request=documentai_v1.ListProcessorsRequest(parent=parent, page_size=1)
+                )
+            ),
+            None,
+        )
+        if settings.document_ai.processor_id:
+            processors.get_processor(name=settings.document_ai.processor_id)
+    except Exception as exc:  # noqa: BLE001 - any failure to reach it is the finding
+        unserved["document_ai"] = f"{docai_endpoint}: {type(exc).__name__} {str(exc)[:160]}"
+
+    template = (
+        f"projects/{settings.project_id}/locations/{settings.region}"
+        f"/templates/{settings.model_armor.template_id}"
+    )
+    try:
+        armor = modelarmor_v1.ModelArmorClient(
+            client_options=ClientOptions(api_endpoint=settings.model_armor.host),
+        )
+        armor.get_template(name=template)
+    except Exception as exc:  # noqa: BLE001 - any failure to reach it is the finding
+        unserved["model_armor"] = (
+            f"{settings.model_armor.host} / {template}: {type(exc).__name__} {str(exc)[:160]}"
+        )
+
+    assert not unserved, (
+        f"configured non-model services that are not served where the configuration points: "
+        f"{unserved}"
+    )
