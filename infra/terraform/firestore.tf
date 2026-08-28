@@ -57,8 +57,16 @@ resource "google_firestore_database" "sow_cases" {
       kms_key_name = google_kms_crypto_key.cdd.id
     }
   }
-  delete_protection_state           = "DELETE_PROTECTION_ENABLED"
-  point_in_time_recovery_enablement = "POINT_IN_TIME_RECOVERY_ENABLED"
+  delete_protection_state = (
+    var.firestore_delete_protection_enabled
+    ? "DELETE_PROTECTION_ENABLED"
+    : "DELETE_PROTECTION_DISABLED"
+  )
+  point_in_time_recovery_enablement = (
+    var.firestore_pitr_enabled
+    ? "POINT_IN_TIME_RECOVERY_ENABLED"
+    : "POINT_IN_TIME_RECOVERY_DISABLED"
+  )
 
   depends_on = [
     google_project_service.firestore,
@@ -69,6 +77,18 @@ resource "google_firestore_database" "sow_cases" {
     precondition {
       condition     = var.firestore_cmek_enabled || !var.worm_locked
       error_message = "A locked (production) stack must keep Firestore CMEK enabled: the case store holds the same customer material as the audit trail, so exempting it while claiming an immutable audit posture would be incoherent."
+    }
+    # Same shape, same reason: these are declinable because a reference stack is
+    # deliberately destroyable, and that argument evaporates the moment the stack
+    # locks its trail. A deployment that has committed to keeping evidence for
+    # seven years may not also be one whose case store can be dropped by an apply.
+    precondition {
+      condition     = var.firestore_delete_protection_enabled || !var.worm_locked
+      error_message = "A locked (production) stack must keep Firestore delete protection enabled: a stack that cannot delete its audit trail must not be able to delete the cases that trail is about."
+    }
+    precondition {
+      condition     = var.firestore_pitr_enabled || !var.worm_locked
+      error_message = "A locked (production) stack must keep Firestore point-in-time recovery enabled: seven-year evidence retention over a case store with no recovery window is a guarantee about the trail alone."
     }
   }
 }
