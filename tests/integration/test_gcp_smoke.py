@@ -50,7 +50,7 @@ def container(gcp_settings):
     return Container(gcp_settings)
 
 
-def test_region_is_singapore(gcp_settings):
+def test_region_is_the_reference_deployment(gcp_settings):
     assert gcp_settings.region == "us-central1"
 
 
