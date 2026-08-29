@@ -1,10 +1,12 @@
 name: Eval gate
 
-# The pre-merge eval SMOKE check (not the promotion authority). Runs eval/run_eval.py
-# --mode smoke over the golden case set and fails (non-zero exit) if any metric —
-# sow_groundedness, risk_band_accuracy, citation_accuracy, pii_safety — is below
-# threshold. The promotion VERDICT is Hrz4's, run separately by promotion-gate.yaml at
-# release time (--mode gate). Workflow name kept stable for branch protection.
+# The pre-merge eval SMOKE check, and NOT the promotion authority. Runs
+# `eval/run_eval.py --mode smoke` over the golden case set and fails (non-zero exit) if any
+# gated metric is below its threshold. The metric list and the thresholds have one home,
+# `eval/rubrics/*.yaml`, which `load_thresholds_from_rubrics()` reads, so they are not
+# restated here (the list that used to sit in this comment had already lost two metrics).
+# The promotion VERDICT is Hrz4's, run separately by promotion-gate.yaml at release time
+# (`--mode gate`). Workflow name kept stable for branch protection.
 
 on:
   pull_request:

@@ -358,10 +358,10 @@ sequenceDiagram
 
 ## 7. The eval gate (Hrz4 / P-08)
 
-No build is promoted without passing a quality gate. `eval/run_eval.py` scores a synthetic
-golden set on **sow_groundedness** (>= 0.80), **risk_band_accuracy** (>= 0.80),
-**citation_accuracy** (>= 0.90), **pii_safety** (>= 0.99), and **pkyc_priority** (>= 0.90).
-The report passes only if every metric clears its threshold.
+No build is promoted without passing a quality gate. `eval/run_eval.py --mode smoke` scores a
+synthetic golden set before merge, and the report passes only if every gated metric clears its
+threshold. The metrics and their thresholds are not restated here: each one has a rubric of its
+own in [`eval/rubrics/`](eval/rubrics/), which is what `run_eval.py` reads.
 
 `pkyc_priority` is deliberately scored against an independent oracle: each golden case
 declares the change to simulate and the queue priority plus re-score direction that change
@@ -369,11 +369,12 @@ must produce, so a mis-tuned perpetual-KYC engine turns the metric red instead o
 with itself.
 
 ```bash
-make eval        # runs eval/run_eval.py; non-zero exit fails the gate
+make eval        # runs eval/run_eval.py; non-zero exit fails the smoke check
 ```
 
-CI enforces it in [`.github/workflows/eval-gate.yaml`](.github/workflows/eval-gate.yaml);
-at promotion the live Hrz4 service (`EvaluationGatePort.gate`) is the authority. See
+The pre-merge run is [`.github/workflows/eval-gate.yaml`](.github/workflows/eval-gate.yaml);
+the promotion verdict is the live Hrz4 service's (`EvaluationGatePort.gate`), run by
+[`.github/workflows/promotion-gate.yaml`](.github/workflows/promotion-gate.yaml). See
 [`COMPLIANCE.md`](COMPLIANCE.md) for how this maps to the model-risk principle.
 
 ---
