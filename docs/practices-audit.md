@@ -78,6 +78,21 @@ an assertion naming the rendered-template failure it exists to catch, and set-an
 deployment, and nothing re-runs them. This is again evidence that those paths worked at the
 moment they were run.
 
+## Two more the rebuilt deployment found, 2026-08-29
+
+Driving a dossier through the rebuilt `asia-southeast1` stack found two defects of the same
+class — configuration and IAM, invisible to every offline profile — and both are closed.
+
+| What ran wrong | Why offline could not see it |
+|---|---|
+| The serving identity held `roles/dlp.user`, which grants `inspectContent` and `deidentifyContent` and does **not** grant `dlp.inspectTemplates.get`. It could ask DLP to redact and could not read the reviewed template saying what to redact. Closed with `roles/dlp.reader`, the narrowest predefined role covering both the inspect and deidentify template reads | There is no IAM in an offline run, and the 403 names the TEMPLATE rather than the role, so it reads as a template that was never created |
+| The two halves disagreed about where the knowledge base lives: Terraform creates it at `us`, the application queried `global`. The same request returned both `404 unable to find an engine` and `400 LOCATION_ORG_POLICY_VIOLATED` | The local profile resolves an in-process index, so there is no location to disagree about |
+
+The second is the same shape as the Document AI alignment this repository already closed once —
+one service, two halves, two different answers about where it lives — and it settled a question
+the portfolio had recorded as unverified: a `global` Agent Search location **is** subject to
+`constraints/gcp.resourceLocations`, refused at request time rather than only at create time.
+
 ## Gaps carried to systems/
 
 One combined production-enablement and exit gap remains, already recorded on the Doc1 row of
