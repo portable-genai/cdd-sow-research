@@ -198,7 +198,7 @@ export function DocumentPanel({
           ))}
         </ul>
       ) : (
-        <p className="mt-3 text-sm text-ink-400">
+        <p className="mt-3 text-sm text-ink-400" data-demo="document-list-empty">
           {seededDemoEvidence
             ? "No uploaded documents. This laptop demo uses a bundled fictional evidence corpus; uploads are optional."
             : "No documents yet. An assessment with nothing to read is refused rather than answered from guesswork."}
