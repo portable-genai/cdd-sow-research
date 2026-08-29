@@ -22,8 +22,15 @@ resource "google_model_armor_template" "cdd_guardrail" {
       filter_enforcement = "ENABLED"
       confidence_level   = "LOW_AND_ABOVE"
     }
-    malicious_uri_filter_settings {
-      filter_enforcement = "ENABLED"
+    # Not every region serves this filter: asia-southeast1 refuses template creation with
+    # "does not support the requested capabilities: 'Malicious URI filter'" (2026-08-29).
+    # A deployment in such a region declines it EXPLICITLY via the variable and discloses
+    # the narrowed guardrail; the default keeps it on.
+    dynamic "malicious_uri_filter_settings" {
+      for_each = var.model_armor_full_capabilities ? [1] : []
+      content {
+        filter_enforcement = "ENABLED"
+      }
     }
     rai_settings {
       rai_filters {
@@ -58,8 +65,13 @@ resource "google_model_armor_template" "cdd_guardrail" {
   # text into ordinary operation logs, which would put the very material this template exists
   # to protect outside the CMEK-encrypted WORM bucket that is supposed to hold it.
   template_metadata {
-    multi_language_detection {
-      enable_multi_language_detection = true
+    # Multi-language detection is a regional capability too (same refusal as the malicious
+    # URI filter); it follows the same variable and the same disclosure.
+    dynamic "multi_language_detection" {
+      for_each = var.model_armor_full_capabilities ? [1] : []
+      content {
+        enable_multi_language_detection = true
+      }
     }
     log_sanitize_operations = true
   }

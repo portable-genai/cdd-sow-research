@@ -765,6 +765,29 @@ variable "firestore_delete_protection_enabled" {
   EOT
 }
 
+variable "docai_kms_location" {
+  type        = string
+  default     = "us-central1"
+  description = <<-EOT
+    KMS location for the Document AI CMEK key when the processor is out of region. Must be
+    a REGION inside the processor's multi-region (us-central1 for `us`): the API refuses a
+    key created in the multi-region KMS location itself with NOT_FOUND, while accepting a
+    regional key inside it — both observed against the live service.
+  EOT
+}
+
+variable "model_armor_full_capabilities" {
+  type        = bool
+  default     = true
+  description = <<-EOT
+    Keep the Model Armor filters that not every region serves: the malicious-URI filter and
+    multi-language detection. Default true. asia-southeast1 refuses template creation with
+    both enabled ("does not support the requested capabilities", 2026-08-29), so a
+    deployment there declines them here — a stated narrowing of the guardrail, disclosed in
+    the deployment record, never a silent regional downgrade.
+  EOT
+}
+
 variable "cloud_run_deletion_protection" {
   type        = bool
   default     = true
