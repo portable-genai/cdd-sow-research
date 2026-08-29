@@ -27,6 +27,14 @@ locals {
     "roles/documentai.apiUser",     # process KYC documents
     "roles/discoveryengine.editor", # ingest case docs into A2 (case-scoped ACL)
     "roles/dlp.user",               # deidentifyContent (P-04, R1)
+    # ...and the role that lets it READ the templates it is configured with. `dlp.user`
+    # grants the CALL (`deidentifyContent`, `inspectContent`) and not `dlp.inspectTemplates.get`
+    # or `dlp.deidentifyTemplates.get`, so a serving identity holding only `dlp.user` can ask
+    # DLP to do the work and cannot fetch the reviewed template that says WHAT to redact. It
+    # fails at request time with a 403 naming the template resource, which reads like the
+    # template is missing rather than like a role is. Found by running a dossier against the
+    # deployment on 2026-08-29: `dlp.inspectTemplates.get` denied on a template that exists.
+    "roles/dlp.reader",
     # sanitizeUserPrompt / sanitizeModelResponse against the guardrail template. Never needed
     # before because the gcp guardrail binding could not even import its SDK, so the whole
     # adapter was unreachable and its missing role invisible.
