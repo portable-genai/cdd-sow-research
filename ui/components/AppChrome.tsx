@@ -33,7 +33,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
       <header className="border-b border-ink-200 bg-white">
         <div className="mx-auto max-w-4xl px-6 py-4">
           <h1 className="text-lg font-semibold text-ink-900">
-            B1 · CDD + Source-of-Wealth Agent
+            CDD + Source-of-Wealth Agent
           </h1>
           <p className="text-sm text-ink-500">
             Cited CDD dossiers · region {region} · synthetic data is fictional

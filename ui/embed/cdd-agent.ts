@@ -1,7 +1,7 @@
 (() => {
   const scriptAtLoad = document.currentScript;
   if (!(scriptAtLoad instanceof HTMLScriptElement) || !scriptAtLoad.src) {
-    throw new Error("Doc1 loader must be loaded from a versioned external script");
+    throw new Error("the CDD agent loader must be loaded from a versioned external script");
   }
   const agentOrigin = new URL(scriptAtLoad.src).origin;
   const protocolVersions = ["1"] as const;
@@ -109,14 +109,14 @@
       const fallback = document.createElement("a");
       fallback.href = `${agentOrigin}/agent/embed/${encodeURIComponent(installationId)}/fallback`;
       this.fallbackHref = fallback.href;
-      fallback.textContent = this.getAttribute("fallback-label")?.trim() || "Open Doc1 standalone";
+      fallback.textContent = this.getAttribute("fallback-label")?.trim() || "Open the CDD agent standalone";
       fallback.referrerPolicy = "no-referrer";
       fallback.style.cssText =
         "display:inline-block;margin:0 0 8px;font:14px system-ui;color:#2945d6;text-decoration:underline";
       container.append(fallback);
 
       const iframe = document.createElement("iframe");
-      iframe.title = this.getAttribute("title")?.trim() || "Doc1 CDD and Source-of-Wealth Agent";
+      iframe.title = this.getAttribute("title")?.trim() || "CDD and Source-of-Wealth Agent";
       iframe.src = `${agentOrigin}/agent/embed/${encodeURIComponent(installationId)}/`;
       iframe.sandbox.value = "allow-scripts allow-same-origin";
       iframe.referrerPolicy = "no-referrer";
@@ -159,7 +159,7 @@
 
     setAccessToken(accessToken: string): void {
       if (!this.port || !this.protocolVersion) {
-        throw new Error("Doc1 iframe is not ready");
+        throw new Error("the CDD agent iframe is not ready");
       }
       if (!accessToken || new TextEncoder().encode(accessToken).byteLength > 32 * 1024) {
         throw new Error("Doc1 access token is empty or too large");
@@ -173,7 +173,7 @@
 
     setLaunchCode(instanceId: string, launchCode: string): void {
       if (!this.port || !this.protocolVersion) {
-        throw new Error("Doc1 iframe is not ready");
+        throw new Error("the CDD agent iframe is not ready");
       }
       if (
         !opaqueBindingPattern.test(instanceId) ||

@@ -90,7 +90,7 @@ function AgentConsoleContent({ embedded }: { embedded: boolean }) {
           setAuthRequired(e.returnTo);
         } else {
           setBootstrapError(
-            `Doc1 startup failed: ${e instanceof Error ? e.message : String(e)}`,
+            `Agent startup failed: ${e instanceof Error ? e.message : String(e)}`,
           );
         }
         return;
@@ -378,7 +378,7 @@ function AgentConsoleContent({ embedded }: { embedded: boolean }) {
 
       {!transportReady && !authRequired && !bootstrapError ? (
         <div className="rounded border border-ink-200 bg-ink-50 px-3 py-2 text-sm text-ink-600">
-          Connecting to Doc1…
+          Connecting to the CDD agent…
         </div>
       ) : null}
 

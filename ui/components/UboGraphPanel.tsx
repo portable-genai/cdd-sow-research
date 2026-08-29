@@ -194,7 +194,7 @@ export function UboGraphPanel({
             </div>
           </dl>
           <p className="mb-3 text-xs text-ink-500">
-            {resolution.control_rationale} Routed to the Hrz7 human-review console:{" "}
+            {resolution.control_rationale} Routed to the human-review console:{" "}
             {resolution.routed_to_hrz7 ? "yes" : "no (retained locally for retry)"}
           </p>
 

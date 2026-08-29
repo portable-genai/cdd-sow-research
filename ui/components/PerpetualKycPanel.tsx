@@ -149,7 +149,7 @@ export function PerpetualKycPanel({
                 ))}
               </ul>
               <p className="mb-3 text-xs text-ink-500">
-                Routed to the Hrz7 human-review console:{" "}
+                Routed to the human-review console:{" "}
                 {assessment.queue_item.routed_to_hrz7 ? "yes" : "no (retained locally for retry)"}
               </p>
             </>
