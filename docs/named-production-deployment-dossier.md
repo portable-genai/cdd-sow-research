@@ -7,23 +7,22 @@ status: draft
 
 # Doc1 named production deployment dossier
 
-> **The installation this dossier records was deleted on 2026-08-29. Read every filled-in
-> value below as past tense.** The `us-central1` projects were deleted and the deployment was
-> rebuilt in `asia-southeast1`. So the approved region, the allowed-regions list, the state
-> bucket, the notification channel, the applied-resource counts and the evidence rows all
-> describe infrastructure that no longer exists, and none of them may be quoted in the present
-> tense or re-used as inputs for the successor.
+> **Re-scoped 2026-08-29.** The `us-central1` projects this dossier was first filled in
+> against were deleted on 2026-08-29 and the stack was rebuilt in `asia-southeast1`. A dated
+> banner over unchanged present-tense rows was not enough: a reader who skipped it would still
+> have read a live region, a live state bucket and a live notification channel. So every row
+> that named the retired project has been returned to the placeholder convention this file
+> already uses, and the first apply is kept, whole, as history in
+> [section 9a](#9a-the-retired-first-apply-2026-08-24).
 >
-> What is still worth reading is everything this file is actually for: the field list, the
-> approvals it demands, the preflight it must survive, and the defects the first apply found.
-> That half is a procedure and it transfers. The values are an example of a completed dossier,
-> not a description of anything running.
+> Keeping that section rather than deleting it is deliberate. The field list, the approvals,
+> the preflight and the defects the first apply found are a procedure, and a procedure
+> transfers across a rebuild; what does not transfer is the values, and those are now marked
+> as gone rather than quietly left standing.
 >
-> How far any claim about the current deployment is proved is
-> `org-metadata/docs/deployment-status.md`'s to say, and it owns the "Retired" vocabulary this
-> banner is using. A successor dossier is a new copy of this template with new values, not an
-> edit of this one, because overwriting the record would destroy the evidence that the first
-> apply happened at all.
+> Nothing here is a second copy of the deployment record. How far any claim about the current
+> deployment is proved, and which claims are **Retired** rather than merely stale, is
+> `org-metadata/docs/deployment-status.md`'s to say, and it owns that vocabulary.
 
 This dossier is the entry gate for one real production installation. Complete every field with
 the named institution and obtain the listed approvals before applying
@@ -97,11 +96,12 @@ of these roles:
 
 ## 2. Cloud, residency and edge
 
-`us-central1` (USA) is this installation's region. It is **no longer the repository default**:
-since 2026-08-27 `infra/terraform/variables.tf` and `config/settings.yaml` default to
-`asia-southeast1`, and this deployment is held on `us-central1` by an explicit deploy-time
-override through the same reviewed input an institution would use. The override runs this way
-round because the applied project cannot follow a region change: see [what does not
+`asia-southeast1` is this installation's region, and it is also the repository default: since
+2026-08-27 `infra/terraform/variables.tf` and `config/settings.yaml` default to it. This
+deployment was once held on `us-central1` (USA) by an explicit deploy-time override, and that
+override is gone with the project that carried it. An applied project cannot follow a region
+change, which is why the move was made by deletion and rebuild rather than by editing a
+variable: see [what does not
 move](https://github.com/portable-genai/org-metadata/blob/main/docs/deployment-region-alignment.md).
 
 The justification this section used to give — that not all services this repo depends on are
@@ -129,15 +129,15 @@ carries a live identifier. Rows reading `PENDING` are genuinely not created; row
 | GCP organization and project | `REPLACE_ME_ORGANIZATION` / `REPLACE_ME_ORG_ID`, project `REPLACE_ME_PROJECT_ID` (number `REPLACE_ME_PROJECT_NUMBER`) | Shared deployment project, approved in [gcp-org-and-project-topology.md](https://github.com/portable-genai/org-metadata/blob/main/docs/gcp-org-and-project-topology.md) |
 | Credential reachability | `REPLACE_ME_ORG_ADMIN`, holding `roles/resourcemanager.organizationAdmin`, `roles/resourcemanager.projectCreator` and `roles/accesscontextmanager.policyAdmin` | See the note below |
 | Billing and quota owner | `REPLACE_ME_BILLING_ACCOUNT` (`REPLACE_ME_BILLING_ORG`), linked and enabled; owner `REPLACE_ME_BILLING_OWNER` | Quotas cover HSM, Firestore and Cloud Run, plus IAP for the separate Mode 6 edge |
-| Approved region | `us-central1` (USA) | Must be in `allowed_regions`. A deploy-time override of the `asia-southeast1` repository default, not an inherited value |
-| Allowed regions | `["us-central1"]` | Reference deployment under no residency obligation; see the region record. **Satisfies no APAC residency regime**, and is not the portfolio's target region |
+| Approved region | `asia-southeast1` | Must be in `allowed_regions`. The repository default since 2026-08-27, inherited rather than overridden |
+| Allowed regions | `["asia-southeast1"]` | One member, so the deploy region is the only region a plan can accept; see the region record |
 | Access Context Manager policy | `REPLACE_ME_ACCESS_POLICY_ID` (org-scoped) | Dry-run VPC-SC before enforcement |
 | Agent origin | `PENDING` | Dedicated HTTPS origin |
 | Standalone fallback origin | `PENDING` | Separate Mode 6 service and cookie boundary |
 | DNS managed zone and owner | `PENDING` | Change window recorded |
 | Certificate authority and owner | `PENDING` | Managed certificate or approved equivalent |
-| Terraform state backend | `gs://portable-genai-prod-tfstate`, prefix `doc1/`; versioned, UBLA, public access prevented | GCS bucket plus installation-specific prefix; local state is rejected |
-| Alert notification channel | `projects/portable-genai-prod/notificationChannels/16092192702056537312` (email) | Real channel required by preflight |
+| Terraform state backend | `REPLACE_ME_STATE_BUCKET`, prefix `doc1/`; versioned, UBLA, public access prevented | GCS bucket plus installation-specific prefix; local state is rejected |
+| Alert notification channel | `REPLACE_ME_NOTIFICATION_CHANNEL` (email) | Real channel required by preflight |
 | WORM retention decision | **3 days, UNLOCKED** (`retention_days = 3`, `worm_locked = false`). DECIDED 2026-08-24 | See the revised rule below — the six-month floor still binds a locked stack |
 
 **Workstation credentials.** A dedicated `gcloud` configuration authenticated as the
@@ -341,17 +341,23 @@ The final evidence pack must contain:
 |---|---|---|
 | Repository and reusable infrastructure | Ready | Local gates and Terraform validation |
 | Doc1 Mode 5 code for a Google subject | Ready | Section 3a's three changes are implemented: per-installation subject token type, the Google ID-token profile verifier with its negative matrix, and scope derived from reviewed installation policy |
-| Named institution inputs | PARTIAL | Section 2 is filled with real, created resources (see the 2026-08-24 record below). Section 3's portal origin is settled: Hrz9 is deployed and serving with this system embedded same-origin at `/agent`, so the parent origin exists. Sections 3 and 5 still need the dedicated Google OAuth client id, the browser-policy rows, and the standalone Mode 6 domain |
+| Named institution inputs | PARTIAL | Section 2's decisions stand and its created values are held in the gitignored local copy rather than published here, which is why its resource rows read `REPLACE_ME_*`; the values the 2026-08-24 record names are retired with that project. Section 3's portal origin is settled: Hrz9 is deployed and serving with this system embedded same-origin at `/agent`, so the parent origin exists. Sections 3 and 5 still need the dedicated Google OAuth client id, the browser-policy rows, and the standalone Mode 6 domain |
 | Identity provider capability | PARTIAL | Google Cloud Identity can serve Mode 5 and Mode 6; Mode 4 is not applicable and the preflight does not demand it |
-| Hrz9 portal half | **DEPLOYED** | Serving behind IAP in the shared named project with this system mounted as an embedded app; the RM journey has been driven end to end in a browser against it. The code below is therefore no longer a claim about a repository but about a running system. `journey-portal` implements `private_key_jwt` signing behind a signing-key port with non-exportable Cloud KMS custody, the BFF JWKS route, CSRF plus exact `Origin` plus Fetch Metadata enforcement before any credential is minted, and a host authorization proof built from the verified principal. A cross-repo fixture verifies a portal-minted assertion against this repo's actual `PrivateKeyJwtVerifier`, with the replay, tamper, expiry, audience, client and foreign-key negatives refused. Its deployment inputs are tracked in its own dossier |
-| Base stack applied | **DONE 2026-08-24** | 77 resources live in `portable-genai-prod`: Org Policy, CMEK, dry-run VPC-SC perimeter, WORM sink and log bucket, Model Armor, DLP, Document AI, Firestore, four posture alerts. See the record below |
+| Hrz9 portal half | **DEPLOYED**, on the 2026-08-29 rebuild | Serving behind IAP in the shared named project with this system mounted as an embedded app at `/agent`, same origin; the RM journey has been driven end to end in a browser against it. The code below is therefore no longer a claim about a repository but about a running system. `journey-portal` implements `private_key_jwt` signing behind a signing-key port with non-exportable Cloud KMS custody, the BFF JWKS route, CSRF plus exact `Origin` plus Fetch Metadata enforcement before any credential is minted, and a host authorization proof built from the verified principal. A cross-repo fixture verifies a portal-minted assertion against this repo's actual `PrivateKeyJwtVerifier`, with the replay, tamper, expiry, audience, client and foreign-key negatives refused. Its deployment inputs are tracked in its own dossier |
+| Base stack applied | **REDONE 2026-08-29** | The 2026-08-24 apply is retired with its project; what section 9a describes no longer exists. The stack was rebuilt from scratch in `asia-southeast1`, and which of its claims are re-proved against the rebuild rather than carried over is the catalog's deployment record to say, not this file |
 | Named Modes 4/5 edge | BLOCKED, on less | The portal half is no longer among the blockers: it exists and serves. What remains is the dedicated Google OAuth client id, a portal OIDC session holding its ID token, and a separate standalone domain for Mode 6. See "What the named edge still needs" |
 | Production-complete gate | BLOCKED | All eight conditions in `embedding-implementation-plan.md` Section 15.2 must pass |
 
-## 9a. The 2026-08-24 reference deployment: what was applied, and what it proves
+## 9a. The retired first apply, 2026-08-24
 
-**Applied.** 77 resources into `portable-genai-prod`, region `us-central1`, from the inputs in
-section 2. Org Policy (residency, no SA keys, uniform bucket access, domain-restricted
+**Retired 2026-08-29.** Every resource named in this section was deleted with its project, and
+none of it may be quoted in the present tense. The section is kept whole because the run
+happened and what it found is what makes the procedure above worth following; it is a record of
+an apply, not a description of anything running. The region, project and channel it names are
+the retired ones, deliberately, because rewriting them would turn a record into a fiction.
+
+**Applied.** 77 resources into the retired `us-central1` project, from the inputs section 2
+carried at the time. Org Policy (residency, no SA keys, uniform bucket access, domain-restricted
 sharing), the CMEK key ring and key with six service bindings, a dry-run VPC-SC perimeter over
 twelve restricted services, the audit sink routing both the app log and Cloud Audit Logs into a
 CMEK-encrypted log bucket, Model Armor, two DLP templates, a Document AI processor, the
@@ -369,17 +375,18 @@ cosign-signed. The scan refused two earlier attempts and both refusals were real
 were shipping pip and npm, whose VENDORED dependencies carried the advisories. Neither was a
 dependency of this application and neither appeared in any lockfile.
 
-**What this evidence is.** Live enforcement of the posture the repository previously only
-described. It closes the "posture-as-code closed, live enforcement needs a named project" half
-of audit D5.
+**What this evidence was.** Live enforcement of the posture the repository had previously only
+described. It closed the "posture-as-code closed, live enforcement needs a named project" half
+of audit D5 at the time, against infrastructure that is now gone; whether that half is
+re-established on the rebuild is the deployment record's to say.
 
-**What it is not.** Retention is applied but not locked, so it is NOT WORM evidence. Firestore
-runs on Google-managed encryption because CMEK there is allowlist-gated. The VPC-SC perimeter is
-dry-run, so denial is logged and not enforced. The residency claim is the **United States**, not
-`us-central1`: Document AI has no `us-central1` endpoint, and the Org Policy correctly blocked
-the widening until the boundary was restated at country granularity. HA is not demonstrated.
-Every one of these is printed by `deployment_env.py` as a posture disclosure rather than left
-for a reader to notice.
+**What it was not.** Retention was applied but not locked, so it was never WORM evidence.
+Firestore ran on Google-managed encryption because CMEK there is allowlist-gated. The VPC-SC
+perimeter was dry-run, so denial was logged and not enforced. The residency claim was the
+**United States**, not `us-central1`: Document AI had no `us-central1` endpoint, and the Org
+Policy correctly blocked the widening until the boundary was restated at country granularity.
+HA was not demonstrated. Every one of these was printed by `deployment_env.py` as a posture
+disclosure rather than left for a reader to notice, which is the part that transfers.
 
 ## 9b. What the named edge still needs
 
