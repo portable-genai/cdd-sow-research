@@ -8,7 +8,7 @@ service's ``/v1/audit`` endpoint, which returns ``202 Accepted`` (SPEC §6, A5 c
 
 Customer PII is removed at the domain boundary (P-04, R1) before the event reaches this
 adapter, so the JSON body it sends is already safe to persist. The base URL is read from
-``HRZ_OBSERVABILITY_URL`` with a localhost default.
+``OBSERVABILITY_URL`` with a localhost default.
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ class RemoteAuditAdapter:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._base_url = _s2s.validate_base_url(
-            setting_or_default("HRZ_OBSERVABILITY_URL", _DEFAULT_URL),
+            setting_or_default("OBSERVABILITY_URL", _DEFAULT_URL),
             service=type(self).__name__,
         )
 

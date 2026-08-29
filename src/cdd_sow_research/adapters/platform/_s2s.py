@@ -6,16 +6,16 @@ horizontal-platform and de-risking services. Two controls apply to every call:
 * **Transport**: base URLs must be ``https://`` except for loopback development hosts
   (``localhost`` / ``127.0.0.1`` / ``::1``). A plaintext URL to a real host is a
   configuration error caught at adapter construction, not a silent downgrade.
-* **Service identity**: when ``HRZ_S2S_TOKEN`` is set, every request carries it as an
+* **Service identity**: when ``S2S_TOKEN`` is set, every request carries it as an
   ``Authorization: Bearer`` header (a Cloud Run ID token, an OIDC service-account JWT,
-  or an API gateway key, per deployment). When ``HRZ_S2S_SIGNING_KEY`` is set, the
+  or an API gateway key, per deployment). When ``S2S_SIGNING_KEY`` is set, the
   verified end-user actor is propagated as an HMAC-signed ``X-Cdd-Actor`` /
   ``X-Cdd-Actor-Sig`` header pair so the receiving service can authenticate the
   asserted user context instead of blindly trusting a JSON body field.
 
 **Sourced from the shared ``hex-service-kit`` commons.** The logic lives in
 :mod:`hex_service_kit.s2s` rather than as a copy here; this module passes this repo's exact
-env-var names (``HRZ_S2S_*``) and header names (``X-Cdd-Actor`` / ``X-Cdd-Actor-Sig``) as
+env-var names (``S2S_*``) and header names (``X-Cdd-Actor`` / ``X-Cdd-Actor-Sig``) as
 parameters. A fix to the S2S transport rule is a version bump of the package rather than an
 N-repo edit.
 """
@@ -28,9 +28,9 @@ from hex_service_kit.s2s import client_headers, validate_base_url
 #: no header is attached (the offline zero-secret posture), a real value is sent as the bearer,
 #: and PRESENT-BUT-EMPTY is an operator error that raises ``netdefaults.ConfiguredEmptyError``
 #: from the commons rather than silently sending an unauthenticated request.
-TOKEN_ENV = "HRZ_S2S_TOKEN"
+TOKEN_ENV = "S2S_TOKEN"
 #: Env var holding the HMAC key for signing the propagated end-user actor.
-SIGNING_KEY_ENV = "HRZ_S2S_SIGNING_KEY"
+SIGNING_KEY_ENV = "S2S_SIGNING_KEY"
 #: This repo's header names for the signed-actor pair (kept stable for the receiving side).
 _ACTOR_HEADER = "X-Cdd-Actor"
 _ACTOR_SIG_HEADER = "X-Cdd-Actor-Sig"

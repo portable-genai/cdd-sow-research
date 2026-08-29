@@ -31,7 +31,7 @@ unentitled request returns 403, not a data leak.
 ### What about the service-to-service calls in the `platform` profile?
 
 The platform adapters (`adapters/platform/_s2s.py`) require `https://` base URLs outside
-loopback (rejected at construction), attach a bearer credential from `HRZ_S2S_TOKEN` (a
+loopback (rejected at construction), attach a bearer credential from `S2S_TOKEN` (a
 Cloud Run ID token / OIDC service-account JWT / gateway key), and propagate the verified
 end-user actor as an HMAC-signed header rather than a trust-me JSON field. The receiving
 platform services own verification.
@@ -128,7 +128,7 @@ by digest; GitHub Actions are SHA-pinned; `dependabot.yml` proposes bumps; and a
 
 No secret values are in the repo. `config/settings.yaml` stores only the **names** of env
 vars holding secrets (e.g. `session_signing_key_env`, `client_secret_env`,
-`HRZ_S2S_TOKEN`); values are read at construction time and never logged. The bundled
+`S2S_TOKEN`); values are read at construction time and never logged. The bundled
 sanctions snapshot and every fixture are obviously-fictional.
 
 ### What is explicitly out of scope / a residual risk?

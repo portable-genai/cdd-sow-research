@@ -4,7 +4,7 @@ name: Promotion gate (Hrz4)
 # smoke check (eval-gate.yaml). Runs `eval/run_eval.py --mode gate` under CDD_PROFILE=platform
 # so the shared Hrz4 AI-quality service scores the target and returns the PASS/FAIL gate;
 # the job fails closed on the reconciled verdict. Runs on release tags and on demand, and is
-# expected to be configured only in deployments that have Hrz4 reachable (HRZ_QUALITY_URL +
+# expected to be configured only in deployments that have Hrz4 reachable (QUALITY_GATE_URL +
 # the S2S auth token from secrets).
 
 on:
@@ -45,20 +45,20 @@ jobs:
         #
         # The Hrz4 URL and the S2S credential are exported HERE rather than in the workflow
         # `env:` block, and only when the secret actually has a value. A workflow-level
-        # `HRZ_S2S_TOKEN: ${{ secrets.HRZ_S2S_TOKEN }}` DEFINES the variable even when the
+        # `S2S_TOKEN: ${{ secrets.S2S_TOKEN }}` DEFINES the variable even when the
         # secret is unset, and an unset secret expands to the empty string: the job would then
         # run with a present-but-empty credential. hex-service-kit resolves the S2S
         # credential in three states, so present-but-empty is an operator error that raises
         # `ConfiguredEmptyError`; absent is the zero-secret posture. Conditional export keeps
         # the unconfigured deployment on the absent branch instead of the error branch.
         env:
-          HRZ_QUALITY_URL_SECRET: ${{ secrets.HRZ_QUALITY_URL }}
-          HRZ_S2S_TOKEN_SECRET: ${{ secrets.HRZ_S2S_TOKEN }}
+          QUALITY_GATE_URL_SECRET: ${{ secrets.QUALITY_GATE_URL }}
+          S2S_TOKEN_SECRET: ${{ secrets.S2S_TOKEN }}
         run: |
-          if [ -n "$HRZ_QUALITY_URL_SECRET" ]; then
-            export HRZ_QUALITY_URL="$HRZ_QUALITY_URL_SECRET"
+          if [ -n "$QUALITY_GATE_URL_SECRET" ]; then
+            export QUALITY_GATE_URL="$QUALITY_GATE_URL_SECRET"
           fi
-          if [ -n "$HRZ_S2S_TOKEN_SECRET" ]; then
-            export HRZ_S2S_TOKEN="$HRZ_S2S_TOKEN_SECRET"
+          if [ -n "$S2S_TOKEN_SECRET" ]; then
+            export S2S_TOKEN="$S2S_TOKEN_SECRET"
           fi
           python eval/run_eval.py --mode gate

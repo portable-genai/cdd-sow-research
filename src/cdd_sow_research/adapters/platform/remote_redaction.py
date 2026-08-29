@@ -5,7 +5,7 @@ Delegates PII de-identification to the shared ``agent-guardrail-gateway`` servic
 implements :class:`PIIRedactionPort` and is mandatory for B1 (rule R1): customer KYC PII
 is removed at the boundary before any model, index or audit call (P-04).
 
-The base URL is read from ``HRZ_GUARDRAIL_URL`` (localhost default).
+The base URL is read from ``GUARDRAIL_GATEWAY_URL`` (localhost default).
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ class RemoteRedactionAdapter:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._base_url = _s2s.validate_base_url(
-            setting_or_default("HRZ_GUARDRAIL_URL", _DEFAULT_URL),
+            setting_or_default("GUARDRAIL_GATEWAY_URL", _DEFAULT_URL),
             service=type(self).__name__,
         )
 

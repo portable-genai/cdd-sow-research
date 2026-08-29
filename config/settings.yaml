@@ -65,7 +65,7 @@ document_ai:
   processor_version: rc
 
 knowledge_base:
-  base_url_env: HRZ_KB_URL             # A2 Enterprise KB (B1's governed RAG store)
+  base_url_env: KNOWLEDGE_BASE_URL             # A2 Enterprise KB (B1's governed RAG store)
   data_store_id: ${CDD_KB_DATA_STORE:-cdd-case-kb}   # only used by the standalone GCP adapter
   # NOT the deploy region. Discovery Engine serves `global`, `us` and `eu`, so tracking
   # GCP_REGION produced `us-central1-discoveryengine.googleapis.com`, a hostname that does not

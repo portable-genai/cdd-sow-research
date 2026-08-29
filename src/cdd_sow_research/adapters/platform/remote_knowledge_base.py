@@ -7,7 +7,7 @@ endpoints (SPEC §6, A2 contract), so the case's KYC documents are indexed into 
 case ACL tags and retrieved via A2 governed search, rather than B1 building its own
 backend.
 
-The base URL is read from ``HRZ_KB_URL`` with a localhost default.
+The base URL is read from ``KNOWLEDGE_BASE_URL`` with a localhost default.
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ class RemoteKnowledgeBaseAdapter:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._base_url = _s2s.validate_base_url(
-            setting_or_default("HRZ_KB_URL", _DEFAULT_URL), service=type(self).__name__
+            setting_or_default("KNOWLEDGE_BASE_URL", _DEFAULT_URL), service=type(self).__name__
         )
 
     def ingest(
