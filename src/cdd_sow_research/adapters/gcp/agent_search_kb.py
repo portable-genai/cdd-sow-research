@@ -71,6 +71,24 @@ def _struct_data(
     }
 
 
+def _api_endpoint(location: str) -> str:
+    """The Discovery Engine host that serves ``location``.
+
+    Agent Search has exactly three locations: ``global``, ``us`` and ``eu``. The two
+    jurisdictional ones are reached through a location-prefixed host, but ``global`` is
+    reached through the BARE host — there is no ``global-discoveryengine.googleapis.com``,
+    so prefixing unconditionally makes the default location unaddressable. Ingestion then
+    fails against a hostname that does not resolve, and because the upload path reports the
+    store write rather than the index write, the case looks uploaded and retrieval finds
+    nothing. Observed 2026-08-29 on the asia-southeast1 deployment, which selects ``global``
+    because no Agent Search location is in region.
+    """
+
+    if location == "global":
+        return "discoveryengine.googleapis.com"
+    return f"{location}-discoveryengine.googleapis.com"
+
+
 def _ingest_mime_type(content: bytes) -> str:
     """What Discovery Engine should PARSE these bytes as.
 
@@ -132,7 +150,7 @@ class AgentSearchKnowledgeBaseAdapter:
         self._collection_id = cfg.collection_id
         self._branch_id = cfg.branch_id
         self._serving_config_id = cfg.serving_config_id
-        self._endpoint = f"{self._location}-discoveryengine.googleapis.com"
+        self._endpoint = _api_endpoint(self._location)
         # How long a retraction waits for the SERVING index to stop disclosing the
         # document before it reports itself as not yet effective. Bounded on purpose:
         # the observed lag has been hours, so a caller must get an answer rather than

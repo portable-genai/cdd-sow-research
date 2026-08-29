@@ -303,6 +303,18 @@ class CddService:
                 page_texts=page_texts,
             )
         except Exception:  # noqa: BLE001 - ingestion is best-effort; retrieval is the gate
+            # Best-effort must still be VISIBLE. Swallowing this silently is how a wrong
+            # knowledge-base endpoint, a residency Org Policy that refuses the configured
+            # location, or a missing IAM grant all present identically: an upload that
+            # reports success, an empty index, and a dossier refused for want of evidence
+            # the operator just supplied. The case still proceeds — retrieval remains the
+            # gate — but the reason is now in the log instead of being unrecoverable.
+            _LOG.warning(
+                "knowledge-base ingestion failed for document %s; the case continues but "
+                "this document will not ground any citation",
+                document.id,
+                exc_info=True,
+            )
             return
 
     def _fetch_document(
