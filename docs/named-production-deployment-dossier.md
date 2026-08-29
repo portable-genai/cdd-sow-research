@@ -7,6 +7,24 @@ status: draft
 
 # Doc1 named production deployment dossier
 
+> **The installation this dossier records was deleted on 2026-08-29. Read every filled-in
+> value below as past tense.** The `us-central1` projects were deleted and the deployment was
+> rebuilt in `asia-southeast1`. So the approved region, the allowed-regions list, the state
+> bucket, the notification channel, the applied-resource counts and the evidence rows all
+> describe infrastructure that no longer exists, and none of them may be quoted in the present
+> tense or re-used as inputs for the successor.
+>
+> What is still worth reading is everything this file is actually for: the field list, the
+> approvals it demands, the preflight it must survive, and the defects the first apply found.
+> That half is a procedure and it transfers. The values are an example of a completed dossier,
+> not a description of anything running.
+>
+> How far any claim about the current deployment is proved is
+> `org-metadata/docs/deployment-status.md`'s to say, and it owns the "Retired" vocabulary this
+> banner is using. A successor dossier is a new copy of this template with new values, not an
+> edit of this one, because overwriting the record would destroy the evidence that the first
+> apply happened at all.
+
 This dossier is the entry gate for one real production installation. Complete every field with
 the named institution and obtain the listed approvals before applying
 [`infra/terraform/`](../infra/terraform/). Do not put credentials, private keys, subject tokens,
