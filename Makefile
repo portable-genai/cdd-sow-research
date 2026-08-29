@@ -72,7 +72,7 @@ test-oidc: ## Run the PyJWT-dependent tests (needs `make install-oidc` first).
 		$(TESTS)/unit/test_citation_continuation.py \
 		$(TESTS)/browser/test_identity_harness.py
 
-eval: ## Run the A4 eval gate (sow_groundedness / risk_band / citations / pii_safety).
+eval: ## Run the A4 eval smoke check (metrics and thresholds: eval/rubrics/).
 	$(PYTHON) eval/run_eval.py
 
 portability: ## Execute the bounded offline/profile portability proof.

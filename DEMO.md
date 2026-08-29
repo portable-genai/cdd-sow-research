@@ -127,7 +127,9 @@ PYTHONPATH=src python scripts/sow_demo_server.py     # http://localhost:8099
 ```
 
 Open `http://localhost:8099` and click **Next ▶** to advance the real case, **Restart** to
-reset. Same five steps as above.
+reset. It advances the same `STEPS` sequence in `scripts/sow_demo_server.py` that the
+walkthrough above narrates, so the steps are the ones listed there rather than a second list
+kept in step with them here.
 
 ### 2.3 Static artifacts (slides / screenshots)
 
