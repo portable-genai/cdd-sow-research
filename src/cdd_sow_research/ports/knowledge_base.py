@@ -3,7 +3,7 @@
 B1 does **not** build its own retrieval backend: the case's KYC documents are ingested
 into the shared **A2 Enterprise Knowledge Base** with case ACL tags and retrieved from
 it (rule R3, governed RAG). The ``platform`` adapter is a thin HTTP client to A2's
-``/v1/ingest`` and ``/v1/search`` (env ``HRZ_KB_URL``); the on-prem placeholder stub
+``/v1/ingest`` and ``/v1/search`` (env ``KNOWLEDGE_BASE_URL``); the on-prem placeholder stub
 raises, and a direct GCP adapter (Agent Search) is available for standalone runs.
 
 ACL contract (every adapter must enforce it, fail-closed):

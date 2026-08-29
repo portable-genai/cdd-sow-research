@@ -48,7 +48,7 @@ class RemoteEvaluationAdapter:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._base_url = _s2s.validate_base_url(
-            setting_or_default("HRZ_QUALITY_URL", _DEFAULT_URL),
+            setting_or_default("QUALITY_GATE_URL", _DEFAULT_URL),
             service=type(self).__name__,
         )
         self._client = PromotionGateClient(

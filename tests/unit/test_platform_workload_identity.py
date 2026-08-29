@@ -7,7 +7,7 @@ from cdd_sow_research.config import Settings
 def test_managed_platform_headers_mint_audience_bound_id_token(
     monkeypatch,
 ) -> None:
-    monkeypatch.delenv("HRZ_S2S_TOKEN", raising=False)
+    monkeypatch.delenv("S2S_TOKEN", raising=False)
     audiences: list[str] = []
 
     def mint(audience: str) -> str:

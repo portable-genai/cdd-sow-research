@@ -317,7 +317,7 @@ class DocumentAiSettings:
 @dataclass(frozen=True)
 class KnowledgeBaseSettings:
     # B1's governed RAG store IS A2; default top_k for case retrieval.
-    base_url_env: str = "HRZ_KB_URL"
+    base_url_env: str = "KNOWLEDGE_BASE_URL"
     data_store_id: str = "cdd-case-kb"  # only used by the standalone GCP adapter
     location: str = DEFAULT_GCP_REGION
     top_k: int = 10

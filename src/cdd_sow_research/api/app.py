@@ -1360,7 +1360,7 @@ def _capability_manifest(settings: Settings) -> CapabilityManifestModel:
                 (
                     "immutable-audit",
                     "Hrz5 / Cloud Logging WORM",
-                    optional_setting("HRZ_OBSERVABILITY_URL") is not None,
+                    optional_setting("OBSERVABILITY_URL") is not None,
                 ),
                 (
                     "observability",

@@ -206,13 +206,13 @@ required. The normative route, token, state-machine, and completion contracts li
 
 ### 6.3 Doc1 consumes (existing platform services)
 
-- **Hrz1 guardrail** (`HRZ_GUARDRAIL_URL`): `POST /v1/guardrail/screen {text, direction}`,
+- **Hrz1 guardrail** (`GUARDRAIL_GATEWAY_URL`): `POST /v1/guardrail/screen {text, direction}`,
   `POST /v1/redact {text}`.
-- **Hrz2 enterprise KB** (`HRZ_KB_URL`): `POST /v1/ingest {document, acl_tags, source_meta}`,
+- **Hrz2 enterprise KB** (`KNOWLEDGE_BASE_URL`): `POST /v1/ingest {document, acl_tags, source_meta}`,
   `POST /v1/search {query, top_k, acl_principals[], filters}` -> `{passages:[...]}`.
-- **Hrz3 registry** (`HRZ_REGISTRY_URL`): `POST/GET /v1/agents`,
+- **Hrz3 registry** (`AGENT_REGISTRY_URL`): `POST/GET /v1/agents`,
   `GET /.well-known/agent-card.json`.
-- **Hrz4 AI quality** (`HRZ_QUALITY_URL`):
+- **Hrz4 AI quality** (`QUALITY_GATE_URL`):
   `POST /v1/evaluations {target: {model, prompt_version, dataset_id, system}, dataset_id, bundle: "doc1-cdd-sow"}`
   (the top-level `dataset_id` equals `target.dataset_id`; a divergence is a 422) -> report
   parsed from `results[]` (each row carrying its own server-owned threshold), and
@@ -220,7 +220,7 @@ required. The normative route, token, state-machine, and completion contracts li
   selection is by the registered bundle name `doc1-cdd-sow` (Hrz4 owns the metric set and
   per-bundle thresholds); no bare metric names go on the wire, so Hrz4's fail-closed
   unknown-metric rejection is never triggered by this client.
-- **Hrz5 observability/audit** (`HRZ_OBSERVABILITY_URL`): `POST /v1/audit` (202).
+- **Hrz5 observability/audit** (`OBSERVABILITY_URL`): `POST /v1/audit` (202).
 - **Rsk1 compliance** (`RSK_COMPLIANCE_URL`): `POST /ask {question, actor, filters}` ->
   AnswerResponse `{question, answer, citations, requires_human_review, confidence}`.
 
