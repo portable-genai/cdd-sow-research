@@ -103,6 +103,8 @@ export async function resolveUboGraph(request_: UboGraphRequest): Promise<UboRes
 export async function health(): Promise<{
   status: string;
   profile: string;
+  runtime: string;
+  generator_model: string;
   region: string;
   identity_mode: string;
   channel_mode: string;

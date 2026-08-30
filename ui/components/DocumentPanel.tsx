@@ -87,7 +87,7 @@ export function DocumentPanel({
       <p className="text-sm text-ink-500">
         Upload the KYC pack for this subject. The dossier is grounded in these documents
         and cites them by page. PDF, image, and text files are read; scanned pages are
-        transcribed locally.
+        transcribed. The provenance banner above names where that runs.
       </p>
 
       <div className="mt-3 flex flex-wrap items-end gap-3">

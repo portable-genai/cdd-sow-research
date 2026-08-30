@@ -114,16 +114,14 @@ local:
   browser_flow_path: ${CDD_BROWSER_FLOW_DB:-}
   client_assertion_replay_path: ${CDD_CLIENT_ASSERTION_REPLAY_DB:-}
 
-# The `live` profile's local model server: real inference on the operator's own machine,
-# so uploaded customer documents are read and reasoned over without leaving it. Point
-# CDD_LIVE_LLM_URL at the FULL chat-completions endpoint (MLX serves /chat/completions,
-# Ollama and vLLM serve /v1/chat/completions).
+# The `live` profile's extraction knobs. There is deliberately NO local model server:
+# every model call in this profile is the Gemini API (configured under `models`), because
+# a use case that needs internet research is only implemented for customers who permit
+# leaving the data centre (org decision, 2026-08-30). The profile needs Application
+# Default Credentials and GOOGLE_CLOUD_PROJECT; custody of documents, index and audit
+# stays in local SQLite.
 live:
-  llm_url: ${CDD_LIVE_LLM_URL:-http://127.0.0.1:8001/chat/completions}
-  llm_model: ${CDD_LIVE_LLM_MODEL:-mlx-community/gemma-4-26b-a4b-it-8bit}
-  vision_model: ${CDD_LIVE_VISION_MODEL:-}   # "" => reuse llm_model (Gemma is multimodal)
-  timeout_seconds: ${CDD_LIVE_TIMEOUT:-240}
-  max_output_tokens: ${CDD_LIVE_MAX_TOKENS:-2048}
+  max_output_tokens: ${CDD_LIVE_MAX_TOKENS:-2048}   # per-page transcription budget
   ocr_enabled: ${CDD_LIVE_OCR:-true}   # transcribe pages with no text layer (scans)
   max_ocr_pages: ${CDD_LIVE_MAX_OCR_PAGES:-10}   # per-document transcription budget
   render_dpi: ${CDD_LIVE_RENDER_DPI:-150}
@@ -398,10 +396,11 @@ policy:
 #
 # The `live` profile is the analyst-facing one, and it binds EVERY port explicitly on
 # purpose: it is not SDK-free, so an unbound port would silently fall back to a managed
-# GCP adapter and quietly ship customer evidence to a service the operator did not
-# choose. Reading down the `live:` column shows exactly where each capability runs.
-# Only two ports are cloud-bound (adverse media, corporate registry) and both take a
-# subject NAME, never document content.
+# adapter the operator did not choose. Reading down the `live:` column shows exactly
+# where each capability runs: custody (documents, index, audit) is local SQLite, and
+# every MODEL call is the Gemini API — generation, page transcription, and the
+# name-only adverse-media / corporate-registry research (org decision, 2026-08-30:
+# no local model in an outbound-grounded system).
 # ----------------------------------------------------------------------------- #
 adapters:
   # Atomic short-lived browser-flow persistence. Managed profiles share one regional,
@@ -467,7 +466,7 @@ adapters:
     gcp: cdd_sow_research.adapters.gcp.gemini_llm:GeminiLLMAdapter
     platform: cdd_sow_research.adapters.gcp.gemini_llm:GeminiLLMAdapter
     local: cdd_sow_research.adapters.local.llm:LocalDeterministicLLMAdapter
-    live: cdd_sow_research.adapters.live.llm:GemmaLocalLLMAdapter
+    live: cdd_sow_research.adapters.gcp.gemini_llm:GeminiLLMAdapter
     onprem: cdd_sow_research.adapters.onprem.llm:OnPremLLMAdapter
   guardrail:
     gcp: cdd_sow_research.adapters.gcp.model_armor_guardrail:ModelArmorGuardrailAdapter

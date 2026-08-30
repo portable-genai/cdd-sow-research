@@ -41,13 +41,12 @@ Step-by-step scripts for demoing Doc1 five ways:
 | A GCP project + `gcloud` | n/a | ✅ | n/a | ✅ | Demo D needs only ADC + a project for the grounded web searches |
 | Terraform | n/a | ✅ | n/a | n/a | provisions Document AI, DLP, WORM bucket, CMEK |
 | Cloud KMS key (regional) | n/a | ✅ | n/a | n/a | CMEK; set `CDD_KMS_KEY` |
-| A local OpenAI-compatible model server (Gemma) | n/a | n/a | n/a | ✅ | reads the documents and writes the dossier, on your machine (§5.1) |
 | `pip install -e ".[live]"` | n/a | n/a | n/a | ✅ | pypdf, pypdfium2, pillow, google-genai |
 
 Install/setup references (read these once):
 
 - Local install & profiles → [README §4.1 `local`](README.md#41-local-profile-a-working-offline-run-no-gcp)
-- The live profile (real documents, local models) → [README §4.2 `live`](README.md#42-live-profile-real-documents-real-subjects-on-your-own-machine)
+- The live profile (real documents, Gemini API) → [README §4.2 `live`](README.md#42-live-profile-real-documents-real-subjects-on-your-own-machine)
 - GCP install & deploy → [README §4.4 `gcp`](README.md#44-gcp-profile-real-managed-stack-in-asia-southeast1) and [`docs/runbook.md`](docs/runbook.md#1-deploy)
 - Running the surfaces (API / CLI / UI) → [README §5](README.md#5-running-the-surfaces)
 - Deployment profiles explained → [SPEC §1 “Deployment profiles”](SPEC.md#deployment-profiles)
@@ -443,20 +442,20 @@ the working application: upload an actual KYC pack for an actual company or pers
 get a dossier grounded in those files, cited page by page, with a link on every citation
 that opens the page it came from.
 
-The split that makes this demoable at all: **the documents never leave the machine.**
-Reading them (including transcribing scanned pages), writing the narrative and rating the
-risk all run against a local Gemma model; only the subject's **name** goes to the cloud,
-for the adverse-media and corporate-registry web searches that need a live web index.
+What makes this demoable: **custody stays on the machine, and the model is the same
+Gemini the deployment runs.** The evidence index, the uploaded files and the audit trail
+live in local SQLite; extraction, drafting, risk rating and the adverse-media and
+corporate-registry web searches all call the Gemini API. There is deliberately no local
+model — this use case needs internet research, so it is only implemented for customers
+who permit leaving the data centre (org decision, 2026-08-30) — and the UI banner states
+on every page that the runtime is local and the model is Gemini.
 
 ### 5.1 Setup
 
 ```bash
 pip install -e ".[live,dev]"
 
-# A local OpenAI-compatible server hosting a Gemma build. For example, with MLX:
-python -m mlx_vlm.server --model mlx-community/gemma-4-26b-a4b-it-8bit --port 8001
-
-# Credentials for the two grounded research capabilities:
+# Credentials: every model call in this profile is the Gemini API.
 gcloud auth application-default login
 export GOOGLE_CLOUD_PROJECT=your-project
 export CDD_PROFILE=live
@@ -477,8 +476,8 @@ make run-ui         # :3000
    extracts, ID pages), images, or text files. Each is filed against the case under its
    own ACL and listed with its size and, after assessment, its page count.
 3. **Build the dossier.** This takes minutes, not seconds, and the button says so with a
-   running clock: several local model calls plus one transcription per scanned page. That
-   is the cost of keeping the documents on the machine.
+   running clock: several model calls plus one transcription per scanned page. That is
+   the cost of a dossier grounded in the actual evidence.
 4. **Follow a citation.** Click `source` on any claim. It opens the uploaded document at
    the cited page. This is the point of the whole exercise: a claim a reviewer cannot
    check is not evidence.

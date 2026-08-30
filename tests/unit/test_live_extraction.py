@@ -1,9 +1,9 @@
-"""The live extractor: real PDF text layers, and the bounded vision fallback.
+"""The live extractor: real PDF text layers, and the bounded Gemini vision fallback.
 
 Every case here runs against genuine PDF bytes, so the page split under test is the one
-a real document produces. The vision model is stubbed (the point is the routing and the
-budget, not the model), and the assertions cover what a reviewer depends on: correct page
-attribution, and a visible marker wherever a page could not be read at all.
+a real document produces. The Gemini transcriber is stubbed (the point is the routing and
+the budget, not the model), and the assertions cover what a reviewer depends on: correct
+page attribution, and a visible marker wherever a page could not be read at all.
 """
 
 from __future__ import annotations
@@ -11,10 +11,10 @@ from __future__ import annotations
 import pytest
 from tests.fixtures.pdfs import BANK_STATEMENT_PAGES, build_pdf
 
-from cdd_sow_research.adapters.live import extraction as live_extraction
 from cdd_sow_research.adapters.live.extraction import (
     UNREADABLE_MARKER,
     LiveDocumentExtractionAdapter,
+    TranscriptionError,
 )
 from cdd_sow_research.config import LiveSettings, Settings
 from cdd_sow_research.domain.models import DocType, KycDocument
@@ -27,24 +27,24 @@ def _adapter(**live: object) -> LiveDocumentExtractionAdapter:
 
 
 class _StubClient:
-    """Stands in for the local model server; records what it was asked to transcribe."""
+    """Stands in for the Gemini transcriber; records what it was asked to transcribe."""
 
     def __init__(self, reply: str = "TRANSCRIBED PAGE", fail: bool = False) -> None:
         self.reply = reply
         self.fail = fail
         self.calls = 0
 
-    def chat(self, messages, model, temperature=0.0, max_tokens=0):  # noqa: ANN001, ANN201
+    def transcribe(self, image, prompt, max_tokens):  # noqa: ANN001, ANN201
         self.calls += 1
         if self.fail:
-            raise live_extraction.LocalModelError("server down")
-        return self.reply, {"input_tokens": 1, "output_tokens": 1}, model
+            raise TranscriptionError("model unreachable")
+        return self.reply
 
 
 def test_a_digital_pdf_is_read_page_by_page_with_no_model_involved():
     stub = _StubClient()
     adapter = _adapter()
-    adapter._client = stub  # type: ignore[attr-defined]
+    adapter._transcriber = stub  # type: ignore[assignment]
 
     extract = adapter.extract(_DOCUMENT, build_pdf(BANK_STATEMENT_PAGES), "application/pdf")
 
@@ -60,7 +60,7 @@ def test_a_digital_pdf_is_read_page_by_page_with_no_model_involved():
 def test_a_page_with_no_text_layer_is_transcribed_by_the_vision_model():
     stub = _StubClient(reply="SCANNED: closing balance SGD 3,918,442.60")
     adapter = _adapter()
-    adapter._client = stub  # type: ignore[attr-defined]
+    adapter._transcriber = stub  # type: ignore[assignment]
     # Page 2 is blank (a scan): no text layer, so it must go to the vision path.
     pdf = build_pdf([BANK_STATEMENT_PAGES[0], []])
 
@@ -74,7 +74,7 @@ def test_a_page_with_no_text_layer_is_transcribed_by_the_vision_model():
 def test_transcription_is_capped_by_the_per_document_budget():
     stub = _StubClient()
     adapter = _adapter(max_ocr_pages=2)
-    adapter._client = stub  # type: ignore[attr-defined]
+    adapter._transcriber = stub  # type: ignore[assignment]
     pdf = build_pdf([[], [], [], []])  # four unreadable pages
 
     extract = adapter.extract(_DOCUMENT, pdf, "application/pdf")
@@ -93,7 +93,7 @@ def test_a_skipped_render_never_shifts_a_transcription_onto_another_page(monkeyp
     """
     stub = _StubClient(reply="TEXT OF PAGE 4")
     adapter = _adapter()
-    adapter._client = stub  # type: ignore[attr-defined]
+    adapter._transcriber = stub  # type: ignore[assignment]
     pdf = build_pdf([BANK_STATEMENT_PAGES[0], [], [], []])  # pages 2, 3, 4 unreadable
 
     # Only the last requested page renders; the earlier two are skipped.
@@ -114,7 +114,7 @@ def test_a_skipped_render_never_shifts_a_transcription_onto_another_page(monkeyp
 
 def test_a_page_the_model_cannot_read_is_marked_not_silently_blank():
     adapter = _adapter()
-    adapter._client = _StubClient(fail=True)  # type: ignore[attr-defined]
+    adapter._transcriber = _StubClient(fail=True)  # type: ignore[assignment]
 
     extract = adapter.extract(_DOCUMENT, build_pdf([[]]), "application/pdf")
 
@@ -124,7 +124,7 @@ def test_a_page_the_model_cannot_read_is_marked_not_silently_blank():
 def test_ocr_can_be_switched_off_entirely():
     stub = _StubClient()
     adapter = _adapter(ocr_enabled=False)
-    adapter._client = stub  # type: ignore[attr-defined]
+    adapter._transcriber = stub  # type: ignore[assignment]
 
     extract = adapter.extract(_DOCUMENT, build_pdf([[]]), "application/pdf")
 
@@ -135,7 +135,7 @@ def test_ocr_can_be_switched_off_entirely():
 def test_an_uploaded_image_goes_straight_to_the_vision_model():
     stub = _StubClient(reply="REGISTRY EXTRACT")
     adapter = _adapter()
-    adapter._client = stub  # type: ignore[attr-defined]
+    adapter._transcriber = stub  # type: ignore[assignment]
 
     extract = adapter.extract(_DOCUMENT, b"\x89PNG\r\n\x1a\n fake", "image/png")
 
@@ -163,7 +163,7 @@ def test_no_bytes_yields_an_empty_extract_rather_than_invented_content():
 @pytest.mark.parametrize("mime", ["application/pdf", "", "application/octet-stream"])
 def test_pdf_bytes_are_recognised_however_they_are_labelled(mime: str):
     adapter = _adapter()
-    adapter._client = _StubClient()  # type: ignore[attr-defined]
+    adapter._transcriber = _StubClient()  # type: ignore[assignment]
 
     extract = adapter.extract(_DOCUMENT, build_pdf(BANK_STATEMENT_PAGES), mime)
 
