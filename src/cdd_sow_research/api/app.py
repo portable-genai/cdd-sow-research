@@ -1263,6 +1263,8 @@ def healthz() -> HealthResponse:
     return HealthResponse(
         status="ok",
         profile=settings.profile,
+        runtime="gcp" if settings.profile in {"gcp", "platform"} else "local",
+        generator_model=_generator_model(settings),
         region=settings.region,
         mode=settings.deprecated_control_ownership,
         identity_mode=settings.identity_mode,
@@ -1283,6 +1285,23 @@ def healthz() -> HealthResponse:
 def capabilities() -> CapabilityManifestModel:
     """Expose real adapter availability so the UI never fabricates managed assurance."""
     return _capability_manifest(deps.get_settings())
+
+
+def _generator_model(settings: Settings) -> str:
+    """The model that writes dossier narratives under the active profile.
+
+    ``live`` names the same Gemini model as the managed profiles because it IS the same
+    model: the profile differs by runtime, not by generator (org decision, 2026-08-30).
+    ``local`` is the deterministic test stub and says so; a banner that called it a
+    model would be claiming inference that never happens.
+    """
+    if settings.profile in {"gcp", "platform", "live"}:
+        if settings.models.use_hard_reasoning and settings.models.hard_reasoning:
+            return settings.models.hard_reasoning
+        return settings.models.reasoning
+    if settings.profile == "local":
+        return "deterministic-offline-stub"
+    return "not-configured"
 
 
 def _capability_manifest(settings: Settings) -> CapabilityManifestModel:

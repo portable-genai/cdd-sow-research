@@ -75,7 +75,11 @@ class LocalKnowledgeBaseAdapter:
         # documents, and a case with nothing indexed is refused as ungrounded.
         if self._settings.profile == "local" and self._is_empty():
             self.seed(SEED_PASSAGES)
-        elif self._settings.profile == "local":
+        else:
+            # Every other profile, not just `local` restarts: a laptop's persistent
+            # `live` index seeded before the corpus was scoped still carries the
+            # untagged -- and so PUBLIC -- rows, and `live` is exactly the profile
+            # where they must never compete with a case's own evidence.
             self._retag_legacy_seed_rows()
 
     # ------------------------------------------------------------------ #
@@ -263,19 +267,27 @@ class LocalKnowledgeBaseAdapter:
     def search(self, query: RetrievalQuery) -> list[RetrievedPassage]:
         """Return ranked, ACL-filtered passages with page-level citations for ``query``.
 
-        The built-in demo corpus is admitted only as a FALLBACK, when the case's own
-        evidence retrieved nothing. It used to be untagged, which under the ACL contract
-        means public: it then competed with a case's uploaded documents on relevance, and
-        since retrieval is capped at ``top_k`` it did not merely join them but displaced
-        them. A dossier for a real subject cited a fictional bank statement.
+        The built-in demo corpus is admitted only under the ``local`` profile, and only
+        as a FALLBACK when the case's own evidence retrieved nothing. It used to be
+        untagged, which under the ACL contract means public: it then competed with a
+        case's uploaded documents on relevance, and since retrieval is capped at
+        ``top_k`` it did not merely join them but displaced them. A dossier for a real
+        subject cited a fictional bank statement.
 
-        Ordering the two passes this way is what makes the rule stateable in one sentence:
-        the demo corpus grounds a query that would otherwise be ungrounded, and never
-        competes with real evidence for a place in the result.
+        Under every other profile the fallback does not exist at all (org decision,
+        2026-08-30, made when the F4 laptop/deployment pair diverged on exactly this):
+        a ``live`` case grounds on what its user uploaded or it is refused as
+        ungrounded, which the pipeline already treats as a hard error. A fixture that
+        can answer for a real subject is not a fallback, it is a second corpus
+        competing with the evidence.
+
+        Ordering the two passes this way is what makes the rule stateable in one
+        sentence: the demo corpus grounds a `local` query that would otherwise be
+        ungrounded, and never competes with real evidence for a place in the result.
         """
         rows = self._ranked_rows(query)
         out = self._admit(rows, query.acl_principals, query.top_k)
-        if not out:
+        if not out and self._settings.profile == "local":
             out = self._admit(rows, (*query.acl_principals, DEMO_CORPUS_TAG), query.top_k)
         return out
 

@@ -381,22 +381,18 @@ class LocalSettings:
 
 @dataclass(frozen=True)
 class LiveSettings:
-    """The ``live`` profile's local model server (real inference, on this machine).
+    """The ``live`` profile's extraction knobs (real documents, Gemini transcription).
 
-    ``llm_url`` is the FULL chat-completions endpoint because servers disagree about the
-    prefix: MLX serves ``/chat/completions`` while Ollama and vLLM serve
-    ``/v1/chat/completions``. Naming the whole URL removes the guesswork.
-
-    The OCR budget is deliberate: transcribing a page image costs seconds, so a document
-    whose text layer is missing is transcribed only up to ``max_ocr_pages`` pages, and
-    the rest are reported as unread rather than quietly dropped.
+    The profile carries no model-server settings: every model call is the Gemini API,
+    configured under ``models``, because a use case that needs internet research is only
+    implemented for customers who permit leaving the data centre (org decision,
+    2026-08-30). What remains here is the OCR budget, and it is deliberate: transcribing
+    a page image costs a model call, so a document whose text layer is missing is
+    transcribed only up to ``max_ocr_pages`` pages, and the rest are reported as unread
+    rather than quietly dropped.
     """
 
-    llm_url: str = "http://127.0.0.1:8001/chat/completions"
-    llm_model: str = "mlx-community/gemma-4-26b-a4b-it-8bit"
-    vision_model: str = ""  # "" => reuse llm_model (Gemma is multimodal)
-    timeout_seconds: float = 240.0
-    max_output_tokens: int = 2048
+    max_output_tokens: int = 2048  # per-page transcription budget
     ocr_enabled: bool = True
     max_ocr_pages: int = 10
     render_dpi: int = 150

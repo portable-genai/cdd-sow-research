@@ -1,19 +1,21 @@
-"""``live`` profile adapters — real inference on the operator's own machine.
+"""``live`` profile adapters — real documents, generation via the Gemini API.
 
 The ``live`` profile is the one an analyst actually uses: real uploaded documents, real
 subject names, real generation. It differs from ``local`` (deterministic fixtures, for
-tests and CI) and from ``gcp`` (fully managed) by splitting the work along a data
-boundary rather than a vendor one:
+tests and CI) and from ``gcp`` (fully managed) by where the runtime sits, not by which
+model answers:
 
-* **Customer documents never leave the machine.** Text extraction, page-image
-  transcription, generation of the source-of-wealth narrative and the risk rating all
-  run against a local OpenAI-compatible model server (a Gemma build under MLX or
-  Ollama), and the evidence index stays in local SQLite.
-* **Only the subject's NAME goes to the cloud**, and only for the capabilities a laptop
-  cannot provide: adverse-media and corporate-registry research, which need a live web
-  index. Those bind to the existing Gemini ``google_search`` grounded adapters.
+* **Custody stays on the machine.** Uploaded documents, the evidence index and the
+  audit trail live in local SQLite; the deterministic text-layer extraction runs
+  locally too.
+* **Every model call is the Gemini API**: source-of-wealth and risk generation, scanned
+  page transcription, and the adverse-media / corporate-registry ``google_search``
+  research. There is deliberately no local model: a system whose use case needs
+  internet research is only implemented for customers who permit leaving the data
+  centre, so a local-model profile here would demo a deployment nobody would buy
+  (org decision, 2026-08-30).
 
-That split is the point of the profile: the sensitive artifacts stay local, the public
-research is grounded in the open web, and both halves are the same ports the managed
-profile uses.
+The profile therefore needs Application Default Credentials and a
+``GOOGLE_CLOUD_PROJECT``, and the UI provenance banner states that the runtime is local
+and the model is Gemini.
 """

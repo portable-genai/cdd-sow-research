@@ -1,16 +1,18 @@
-"""Live document-extraction adapter (DocumentExtractionPort) — real files, on-machine.
+"""Live document-extraction adapter (DocumentExtractionPort) — real files, Gemini OCR.
 
 Reads what an analyst actually uploads: PDFs (digital or scanned), page images, and
-plain text. Every path runs on the operator's own machine, so a customer's bank
-statement is never shipped to a third party to be read.
+plain text. The deterministic half runs on the operator's own machine; the model half
+is the Gemini API. This profile exists for customers who permit leaving the data
+centre, so a scanned page IS sent to Gemini to be read — that is a property of the
+profile, stated in the UI provenance banner, not something this adapter hides.
 
 How a PDF is handled, page by page:
 
 1. ``pypdf`` recovers the text layer. For a digitally produced document that is the
    whole job: exact text, correct page numbers, no model involved.
 2. A page whose text layer is missing or too thin to be evidence (a scan, a photo) is
-   rendered to an image with ``pypdfium2`` and transcribed by the local vision model.
-   This is the OCR path, and it is bounded: at most ``max_ocr_pages`` pages per
+   rendered to an image with ``pypdfium2`` and transcribed by the Gemini triage-tier
+   model. This is the OCR path, and it is bounded: at most ``max_ocr_pages`` pages per
    document, so one 400-page scan cannot stall an assessment.
 3. A page that neither route can read is recorded as an explicit unreadable marker
    rather than silently becoming an empty page, so a reviewer can see the gap instead
@@ -18,6 +20,9 @@ How a PDF is handled, page by page:
 
 Page boundaries are preserved in ``DocumentExtract.page_texts``, which is what lets the
 knowledge base cite "p.11" and the UI deep-link the reviewer to that exact page.
+
+All Google GenAI SDK imports are lazy so the on-prem / test profile imports this module
+without ``google-genai`` installed.
 """
 
 from __future__ import annotations
@@ -27,7 +32,6 @@ import logging
 
 from ...config import Settings
 from ...domain.models import DocumentExtract, KycDocument
-from ._client import LocalModelError, OpenAiCompatClient, image_part, text_part
 
 _LOG = logging.getLogger(__name__)
 
@@ -48,17 +52,69 @@ _TRANSCRIBE_PROMPT = (
 #: the evidence: an unreadable page is a gap a reviewer must know about.
 UNREADABLE_MARKER = "[unreadable page: no text layer and no transcription available]"
 
+
+class TranscriptionError(RuntimeError):
+    """The transcription model was unreachable or returned an unusable response."""
+
+
+class GeminiPageTranscriber:
+    """Transcribe one page image via the Gemini triage-tier model.
+
+    The seam the adapter (and its tests) swap: everything model-shaped lives here, so
+    the routing and the OCR budget stay testable without a network.
+    """
+
+    def __init__(self, settings: Settings) -> None:
+        self._settings = settings
+        self._client: object | None = None
+
+    def _get_client(self) -> object:
+        if self._client is None:
+            from google import genai
+
+            # Same construction as GeminiLLMAdapter: the MODEL location, not the
+            # compute region (see the reasoning beside `models.location` in settings).
+            self._client = genai.Client(
+                vertexai=True,
+                project=self._settings.project_id,
+                location=self._settings.models.location,
+            )
+        return self._client
+
+    def transcribe(self, image: bytes, prompt: str, max_tokens: int) -> str:
+        from google.genai import types
+
+        client = self._get_client()
+        try:
+            response = client.models.generate_content(  # type: ignore[attr-defined]
+                model=self._settings.models.triage,
+                contents=types.Content(
+                    role="user",
+                    parts=[
+                        types.Part.from_bytes(data=image, mime_type="image/png"),
+                        types.Part.from_text(text=prompt),
+                    ],
+                ),
+                config=types.GenerateContentConfig(
+                    temperature=0.0,
+                    max_output_tokens=max_tokens,
+                ),
+            )
+        except Exception as exc:  # noqa: BLE001 - any SDK/transport failure is one outcome
+            raise TranscriptionError(str(exc)) from exc
+        return getattr(response, "text", "") or ""
+
+
 _IMAGE_MIMES = ("image/png", "image/jpeg", "image/jpg", "image/webp", "image/tiff")
 
 
 class LiveDocumentExtractionAdapter:
-    """Extract real uploaded documents locally: text layer first, vision as fallback."""
+    """Extract real uploaded documents: text layer locally, Gemini vision as fallback."""
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         live = settings.live
-        self._client = OpenAiCompatClient(live.llm_url, live.timeout_seconds)
-        self._vision_model = live.vision_model or live.llm_model
+        self._transcriber = GeminiPageTranscriber(settings)
         self._max_ocr_pages = live.max_ocr_pages
         self._render_dpi = live.render_dpi
         self._ocr_enabled = live.ocr_enabled
@@ -159,26 +215,17 @@ class LiveDocumentExtractionAdapter:
         return images
 
     # ------------------------------------------------------------------ #
-    # Vision
+    # Vision (Gemini)
     # ------------------------------------------------------------------ #
     def _transcribe(self, image: bytes, page_no: int) -> str:
-        """Transcribe one page image with the local vision model."""
+        """Transcribe one page image with the Gemini triage-tier model."""
         if not self._ocr_enabled:
             return UNREADABLE_MARKER
-        messages = [
-            {
-                "role": "user",
-                "content": [image_part(image), text_part(_TRANSCRIBE_PROMPT)],
-            }
-        ]
         try:
-            content, _, _ = self._client.chat(
-                messages,
-                model=self._vision_model,
-                temperature=0.0,
-                max_tokens=self._settings.live.max_output_tokens,
+            content = self._transcriber.transcribe(
+                image, _TRANSCRIBE_PROMPT, self._settings.live.max_output_tokens
             )
-        except LocalModelError as exc:
+        except TranscriptionError as exc:
             _LOG.warning("page %d could not be transcribed: %s", page_no, exc)
             return UNREADABLE_MARKER
         text = content.strip()

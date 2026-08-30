@@ -356,8 +356,10 @@ function AgentConsoleContent({ embedded }: { embedded: boolean }) {
         </div>
         {profile === "live" ? (
           <p className="mt-3 text-xs text-ink-400">
-            Documents are read by a model running on this machine. Only the subject name
-            is sent out, for the adverse-media and corporate-registry web searches.
+            Runs locally, generates with the Gemini API: uploaded evidence and the
+            subject name are sent to Google Cloud for extraction, drafting and the
+            adverse-media and corporate-registry web searches. Custody of documents,
+            index and audit stays on this machine.
           </p>
         ) : null}
       </Panel>

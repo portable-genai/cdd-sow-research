@@ -77,8 +77,9 @@ evidence for P-02.
   of `local`: it binds the SDK-free adapters so an offline process still starts, but every
   relaxation is withheld (no seeded personas, no localhost CORS fallback, no dev-persona
   header, rate limit on).
-- `live`: local document custody and local model inference, with selected managed
-  public-source adapters receiving subject names only.
+- `live`: local document custody (SQLite index, blobs, audit), with every model call
+  on the Gemini API: generation, page transcription, and the name-only grounded
+  research. Deliberately no local model (org decision, 2026-08-30).
 - `platform`: thin HTTP delegates where sibling contracts exist, plus managed adapters
   for vertical-owned capabilities. Priority 1 makes every reuse explicit.
 - `onprem`: `NotImplementedError` placeholder stubs that still satisfy every Protocol

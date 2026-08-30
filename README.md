@@ -100,7 +100,7 @@ flowchart TB
         PL["Remote KB (Hrz2) · Remote Guardrail (Hrz1) ·<br/>Remote Audit (Hrz5) · Remote Compliance (Rsk1)"]
     end
     subgraph liv["live profile: reviewed hybrid"]
-        LI["Local documents + local model<br/>selected managed public sources"]
+        LI["Local custody + Gemini API<br/>generation and grounded research"]
     end
     subgraph onp["adapters/onprem/*: placeholder stubs"]
         ON["NotImplementedError stubs that satisfy<br/>the same Protocols (P-02 / P-12 exit story)"]
@@ -208,29 +208,31 @@ and CI-friendly, and also what makes it a demo. The `live` profile is the one an
 actually uses: upload the real KYC pack for a real company or person and get a dossier
 grounded in those files, cited page by page.
 
-It splits the work along a data boundary rather than a vendor one:
+It differs from the managed profile by where the runtime sits, not by which model
+answers. There is deliberately no local model: adverse media and corporate registry need
+a live web index, so this use case is only implemented for customers who permit leaving
+the data centre, and a local-model profile for it would demo a deployment nobody would
+buy (org decision, 2026-08-30).
 
 | Capability | Where it runs | What leaves the machine |
 |---|---|---|
-| Reading uploaded documents (text layer, and transcribing scanned pages) | local vision model | nothing |
-| Source-of-wealth narrative, self-critique, risk rating | local model | nothing |
+| PDF text layers | local (`pypdf`), no model | nothing |
+| Transcribing scanned pages | Gemini API | the rendered page image |
+| Source-of-wealth narrative, self-critique, risk rating | Gemini API | the redacted evidence in the prompt |
 | Evidence index, document custody, audit trail | local SQLite | nothing |
 | Adverse media, corporate registry / UBO | Gemini with `google_search` grounding | the subject's **name** only |
 
-Customer documents never leave the machine. The two cloud-bound ports need a live web
-index, which a laptop cannot provide, and they are given a name to search for, never
-document content. Every port is bound explicitly for this profile in
+Custody stays on the machine; generation is the same Gemini model the deployment runs,
+which is what lets the F4 laptop/deployment pair compare runtimes rather than models.
+The UI states this on every page: running locally or on GCP, and which model answers.
+Every port is bound explicitly for this profile in
 [`config/settings.yaml`](config/settings.yaml), so reading down the `live:` column shows
 exactly where each capability runs.
 
 ```bash
 pip install -e ".[live,dev]"     # pypdf, pypdfium2, pillow, google-genai
 
-# 1. A local OpenAI-compatible model server, serving a Gemma build. For example, with MLX:
-python -m mlx_vlm.server --model mlx-community/gemma-4-26b-a4b-it-8bit --port 8001
-#    Ollama and vLLM work too: point CDD_LIVE_LLM_URL at the full chat-completions path.
-
-# 2. Google credentials for the two grounded research capabilities:
+# Google credentials: every model call in this profile is the Gemini API.
 gcloud auth application-default login
 export GOOGLE_CLOUD_PROJECT=your-project
 
@@ -241,20 +243,19 @@ make run-api                     # :8090
 make run-ui                      # :3000, then upload documents and name a subject
 ```
 
-Settings live under `live:` in `config/settings.yaml` and every one is env-overridable:
-`CDD_LIVE_LLM_URL` (default `http://127.0.0.1:8001/chat/completions`), `CDD_LIVE_LLM_MODEL`,
-`CDD_LIVE_VISION_MODEL` (defaults to the same multimodal model), `CDD_LIVE_TIMEOUT`,
-`CDD_LIVE_OCR`, `CDD_LIVE_MAX_OCR_PAGES` (the per-document transcription budget), and
-`CDD_LIVE_RENDER_DPI`.
+The remaining `live:` settings in `config/settings.yaml` are extraction knobs, every one
+env-overridable: `CDD_LIVE_OCR`, `CDD_LIVE_MAX_OCR_PAGES` (the per-document transcription
+budget), `CDD_LIVE_MAX_TOKENS` (per-page transcription budget) and `CDD_LIVE_RENDER_DPI`.
+The models themselves are pinned under `models:`, shared with the managed profiles.
 
 Things worth knowing before you run it:
 
 - **Model ids are regional.** The pinned triage model is not served in every region, and
   a model that 404s makes the grounded research silently return nothing. Pin what your
   region serves with `CDD_TRIAGE_MODEL` / `CDD_REASONING_MODEL`.
-- **A build takes minutes, not seconds.** Several local model calls run per dossier, plus
-  a page transcription for every scanned page. That is the cost of keeping the documents
-  on the machine.
+- **A build takes minutes, not seconds.** Several model calls run per dossier, plus a
+  page transcription for every scanned page. That is the cost of a dossier grounded in
+  the actual evidence.
 - **The index starts empty and stays honest.** The fixture corpus is never seeded into a
   live index, and a case with nothing readable indexed is refused as ungrounded rather
   than answered from guesswork.

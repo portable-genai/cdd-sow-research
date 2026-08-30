@@ -183,3 +183,64 @@ def test_the_repair_leaves_a_case_document_alone() -> None:
             "SELECT acl_tags FROM passages WHERE source_id = ?", ("doc-case-own",)
         ).fetchone()
     assert row["acl_tags"] == "", "a non-seed row must not be re-tagged"
+
+
+# --------------------------------------------------------------------------------------- #
+# The `live` profile: no fallback at all (org decision, 2026-08-30).
+# --------------------------------------------------------------------------------------- #
+def _live_adapter(db_path: str) -> LocalKnowledgeBaseAdapter:
+    return LocalKnowledgeBaseAdapter(
+        Settings(profile="live", local=LocalSettings(db_path=db_path, audit_path=":memory:"))
+    )
+
+
+def test_a_live_case_with_no_evidence_is_ungrounded_not_grounded_in_fiction() -> None:
+    """Under `live` the demo fallback does not exist: real subjects, no invented grounding.
+
+    The F4 laptop/deployment pair diverged on exactly this — the laptop answered a real
+    case from the seeded corpus while the deployment read the case file. An empty result
+    here is what makes the pipeline's ungrounded-case hard error reachable, which is the
+    correct outcome for a live case that supplied nothing.
+    """
+
+    adapter = _live_adapter(":memory:")
+    # Plant the tagged demo rows a shared laptop DB may hold.
+    adapter.add(list(SEED_PASSAGES[:3]))
+
+    passages = adapter.search(
+        RetrievalQuery(text="source of wealth dividends", acl_principals=("case:empty",), top_k=5)
+    )
+
+    assert passages == [], "a live case must never be grounded by the demo corpus"
+
+
+def test_a_live_index_seeded_before_the_corpus_was_scoped_is_repaired_on_open(
+    tmp_path,  # noqa: ANN001
+) -> None:
+    """The on-open repair runs under EVERY profile, not only `local`.
+
+    A laptop's persistent `live` index seeded before the corpus was scoped still holds
+    untagged — and therefore public — seed rows, and `live` is exactly the profile where
+    they must never compete with a case's own evidence.
+    """
+
+    db_path = str(tmp_path / "kb.db")
+    seeded = LocalKnowledgeBaseAdapter(
+        Settings(profile="local", local=LocalSettings(db_path=db_path, audit_path=":memory:"))
+    )
+    with seeded._lock:  # noqa: SLF001 - reproducing the old on-disk state is the point
+        seeded._conn.execute("UPDATE passages SET acl_tags = ''")
+        seeded._conn.commit()
+
+    adapter = _live_adapter(db_path)
+    _ingest_case_document(adapter)
+
+    passages = adapter.search(
+        RetrievalQuery(
+            text="source of wealth dividends", acl_principals=("case:meridian",), top_k=5
+        )
+    )
+
+    cited = {p.citation.source_id for p in passages}
+    assert not (cited & {p.citation.source_id for p in SEED_PASSAGES})
+    assert cited == {"doc-case-own"}
