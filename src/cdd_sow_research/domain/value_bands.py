@@ -108,6 +108,62 @@ def format_range(rng: Range | None, currency: str = "USD") -> str:
     return f"{prefix}{_fmt_magnitude(rng.low)}-{_fmt_magnitude(rng.high)}"
 
 
+#: The reference band ladder, in base currency units. A precise figure the model should
+#: never have emitted is widened to the ladder band containing it, so one statement read
+#: twice cannot produce "SGD 12.4m" once and "SGD 10m-15m" the next time: the F4
+#: laptop/deployment pair diverged on exactly that shape on 2026-08-30, same evidence,
+#: same model, different formatting. The rungs are order-of-magnitude thirds
+#: (1 / 3 / 5 / 10 per decade), matching the granularity the narrative model already
+#: uses when it does answer in bands. A fork tunes wealth policy, not this reference
+#: arithmetic; the ladder is deliberately here with the parser it serves.
+LADDER: tuple[float, ...] = (
+    0.0,
+    10_000.0,
+    30_000.0,
+    50_000.0,
+    100_000.0,
+    300_000.0,
+    500_000.0,
+    1_000_000.0,
+    3_000_000.0,
+    5_000_000.0,
+    10_000_000.0,
+    15_000_000.0,
+    30_000_000.0,
+    50_000_000.0,
+    100_000_000.0,
+    300_000_000.0,
+    500_000_000.0,
+    1_000_000_000.0,
+)
+
+
+def snap_to_band(band: str | None) -> str:
+    """Enforce "a band, never a spurious precise figure" deterministically.
+
+    A value that parses to a single point (``"SGD 12400000"``, ``"12.4m"``) is widened
+    to the :data:`LADDER` band containing it and formatted with its own currency
+    (``"SGD 10m-15m"``). A value that is already a range, and anything unparseable, is
+    returned as written: this function removes false precision, never information.
+    Values above the top rung become an open-ended ``">CCY 1bn"``, which
+    :func:`parse_band` already reads back.
+    """
+    if not band:
+        return ""
+    rng = parse_band(band)
+    if rng is None or abs(rng.high - rng.low) >= 1.0:
+        return band.strip()
+    value = rng.low
+    ccy = currency_of(band)
+    if value >= LADDER[-1]:
+        prefix = f"{ccy} " if ccy else ""
+        return f">{prefix}{_fmt_magnitude(LADDER[-1])}"
+    for low, high in zip(LADDER, LADDER[1:], strict=False):
+        if low <= value < high:
+            return format_range(Range(low, high), ccy)
+    return band.strip()  # pragma: no cover - the ladder starts at 0, so unreachable
+
+
 def sum_bands(bands: list[str], currency: str = "USD") -> tuple[Range | None, str]:
     """Sum parseable bands into a total ``(Range, formatted_band)``.
 
