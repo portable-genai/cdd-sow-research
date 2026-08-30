@@ -46,6 +46,12 @@ from fastapi import (
     status,
 )
 from fastapi.responses import JSONResponse
+from hex_service_kit.capabilities import (
+    AssuranceLevel,
+    Capability,
+    CapabilityManifest,
+    CapabilityMode,
+)
 from hex_service_kit.netdefaults import (
     ConfiguredEmptyError,
     InsecureBindError,
@@ -96,7 +102,6 @@ from .schemas import (
     AdverseMediaResponse,
     AgentCardModel,
     CapabilityManifestModel,
-    CapabilityModel,
     CaseBundleRestoreResponse,
     CddCaseResponse,
     CddRequest,
@@ -1304,6 +1309,33 @@ def _generator_model(settings: Settings) -> str:
     return "not-configured"
 
 
+def _capability(
+    *,
+    name: str,
+    available: bool,
+    mode: str,
+    assurance: str,
+    provider: str = "",
+    reason: str = "",
+    required_for_production: bool = False,
+) -> Capability:
+    """Build a kit :class:`Capability` from this service, VALIDATING both vocabularies.
+
+    The enum constructors are the point rather than a formality: a mode or an assurance level
+    this fleet does not define now raises here, instead of being served as a string that reads
+    like it means something. The strings themselves are unchanged on the wire.
+    """
+    return Capability(
+        name=name,
+        available=available,
+        mode=CapabilityMode(mode),
+        assurance=AssuranceLevel(assurance),
+        provider=provider,
+        reason=reason,
+        required_for_production=required_for_production,
+    )
+
+
 def _capability_manifest(settings: Settings) -> CapabilityManifestModel:
     demo_only = settings.profile in {"local", "live"}
     managed = settings.profile in {"gcp", "platform"}
@@ -1321,7 +1353,7 @@ def _capability_manifest(settings: Settings) -> CapabilityManifestModel:
         return "attested" if managed and refs[name] else "not-attested"
 
     items = [
-        CapabilityModel(
+        _capability(
             name="cdd-workflow",
             available=core_available,
             mode="local" if demo_only else ("managed" if managed else "disabled"),
@@ -1338,7 +1370,7 @@ def _capability_manifest(settings: Settings) -> CapabilityManifestModel:
             ),
             required_for_production=True,
         ),
-        CapabilityModel(
+        _capability(
             name="evaluation-gate",
             available=core_available,
             mode="local" if demo_only else ("external" if managed else "disabled"),
@@ -1356,7 +1388,7 @@ def _capability_manifest(settings: Settings) -> CapabilityManifestModel:
             required_for_production=True,
         ),
         *[
-            CapabilityModel(
+            _capability(
                 name=name,
                 available=managed and configured,
                 mode="external"
@@ -1393,26 +1425,33 @@ def _capability_manifest(settings: Settings) -> CapabilityManifestModel:
                 ),
             )
         ],
-        CapabilityModel(
+        # The CHANNEL vocabulary (native / sandboxed / standalone) is not the capability-mode
+        # vocabulary (managed / local / external / disabled), and this row was serving the
+        # first one in a field whose siblings all carry the second. One field meaning two
+        # different things depending on which row you read is not something a consumer can
+        # tell apart, so the channel moves to `reason`, where it is stated rather than
+        # encoded, and `mode` says what it says everywhere else: who implements this.
+        # /healthz continues to report `channel_mode` in its own field, unchanged.
+        _capability(
             name="embeddable-ui",
             available=core_available,
-            mode=settings.channel_mode,
+            mode="local" if demo_only else ("managed" if managed else "disabled"),
             assurance="demo-only" if demo_only else assurance("embeddable-ui"),
             provider="portable Next.js micro-frontend",
+            reason=f"channel: {settings.channel_mode}",
         ),
     ]
-    production_ready = not demo_only and all(
-        item.available and item.assurance == "attested"
-        for item in items
-        if item.required_for_production
-    )
-    return CapabilityManifestModel(
-        service="cdd-sow-research",
-        profile=settings.profile,
-        region=settings.region,
-        capabilities=items,
-        demo_only=demo_only,
-        production_ready=production_ready,
+    # production_ready is NOT recomputed here: the kit manifest derives it from the
+    # very capabilities just built, so the served flag and the rule behind it cannot
+    # disagree. It used to be written out a second time, right above this line.
+    return CapabilityManifestModel.from_manifest(
+        CapabilityManifest(
+            service="cdd-sow-research",
+            profile=settings.profile,
+            region=settings.region,
+            capabilities=tuple(items),
+            demo_only=demo_only,
+        )
     )
 
 

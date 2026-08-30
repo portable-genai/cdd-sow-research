@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from hex_service_kit.capabilities import Capability, CapabilityManifest
 from pydantic import BaseModel, Field
 
 from ..domain import models as m
@@ -1020,6 +1021,15 @@ class HealthResponse(BaseModel):
 
 
 class CapabilityModel(BaseModel):
+    """The wire projection of one :class:`hex_service_kit.capabilities.Capability`.
+
+    A wire model, and nothing else. It used to be a second implementation of the kit model
+    that happened to agree with it, with ``mode`` and ``assurance`` as bare strings and the
+    production-readiness rule written out again at the call site. Both are now read off the
+    kit object, so the rule that decides whether a capability is production-ready lives in
+    exactly one place and this class cannot drift away from it without failing to build.
+    """
+
     name: str
     available: bool
     mode: str
@@ -1028,8 +1038,22 @@ class CapabilityModel(BaseModel):
     reason: str = ""
     required_for_production: bool = False
 
+    @classmethod
+    def from_capability(cls, capability: Capability) -> CapabilityModel:
+        return cls(
+            name=capability.name,
+            available=capability.available,
+            mode=str(capability.mode),
+            assurance=str(capability.assurance),
+            provider=capability.provider,
+            reason=capability.reason,
+            required_for_production=capability.required_for_production,
+        )
+
 
 class CapabilityManifestModel(BaseModel):
+    """The wire projection of a :class:`hex_service_kit.capabilities.CapabilityManifest`."""
+
     service: str
     profile: str
     region: str
@@ -1038,6 +1062,21 @@ class CapabilityManifestModel(BaseModel):
     portable_core: bool = True
     demo_only: bool = False
     production_ready: bool = False
+
+    @classmethod
+    def from_manifest(cls, manifest: CapabilityManifest) -> CapabilityManifestModel:
+        """Project the kit manifest, taking ``production_ready`` from the kit rather than
+        recomputing it: a served flag derived a second way is a flag that can disagree."""
+        return cls(
+            service=manifest.service,
+            profile=manifest.profile,
+            region=manifest.region,
+            capabilities=[CapabilityModel.from_capability(c) for c in manifest.capabilities],
+            schema_version=manifest.schema_version,
+            portable_core=manifest.portable_core,
+            demo_only=manifest.demo_only,
+            production_ready=manifest.production_ready,
+        )
 
 
 class AgentSkillModel(BaseModel):
