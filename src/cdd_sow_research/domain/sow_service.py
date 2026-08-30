@@ -13,6 +13,7 @@ from __future__ import annotations
 from typing import Any
 
 from . import _grounded as g
+from . import value_bands as vb
 from .models import (
     Citation,
     SourceOfWealthNarrative,
@@ -154,7 +155,9 @@ class SourceOfWealthService:
                 WealthSource(
                     kind=self._coerce_kind(raw.get("kind")),
                     description=description,
-                    est_value_band=str(raw.get("est_value_band") or "").strip(),
+                    # The wire contract is "a band, never a spurious precise figure";
+                    # the model does not always honour it, so the domain does.
+                    est_value_band=vb.snap_to_band(str(raw.get("est_value_band") or "")),
                     citations=g.citations_for_source_ids(
                         g.as_str_list(raw.get("used_source_ids")), passages
                     ),
