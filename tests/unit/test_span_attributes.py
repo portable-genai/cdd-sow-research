@@ -28,7 +28,37 @@ ACTOR = "analyst@bank.example"
 _ALLOWED = {
     "cdd.assess": {"action", "actor"},
     "cdd.screen": {"action", "actor"},
+    # The per-segment child spans. `cdd.assess` alone said a build was slow and nothing about
+    # where: the deployment takes ~4-5 minutes where the laptop takes ~50 seconds, and one span
+    # cannot be subdivided after the fact.
+    "cdd.extract_and_ingest": {"action", "actor", "documents"},
+    "cdd.retrieve": {"action", "actor"},
+    "cdd.adverse_media": {"action", "actor"},
+    "cdd.ownership": {"action", "actor"},
+    "cdd.screening": {"action", "actor"},
+    "cdd.source_of_wealth": {"action", "actor", "passages"},
+    "cdd.risk_rating": {"action", "actor"},
+    "cdd.compliance_check": {"action", "actor"},
+    "cdd.route_review": {"action", "actor"},
 }
+
+#: The segments a completed assessment must have timed. Named here rather than derived from
+#: `_ALLOWED` on purpose: `_ALLOWED` is a CEILING on what may be emitted and would still be
+#: satisfied by emitting nothing, so a separate floor is what catches instrumentation quietly
+#: disappearing. `cdd.route_review` is absent because routing is conditional on a bound router.
+_REQUIRED_SEGMENTS = frozenset(
+    {
+        "cdd.assess",
+        "cdd.extract_and_ingest",
+        "cdd.retrieve",
+        "cdd.adverse_media",
+        "cdd.ownership",
+        "cdd.screening",
+        "cdd.source_of_wealth",
+        "cdd.risk_rating",
+        "cdd.compliance_check",
+    }
+)
 
 
 class _AttributeRecordingTracer:
@@ -80,3 +110,20 @@ def test_every_attribute_value_is_a_string(cdd_service, tracer) -> None:
     for name, attributes in tracer.spans:
         for key, value in attributes.items():
             assert isinstance(value, str), f"span {name!r} attribute {key!r} is not a str"
+
+
+def test_every_consequential_segment_is_timed_separately(cdd_service, tracer) -> None:
+    """The floor, not the ceiling: an unattributed pipeline is the defect this closes.
+
+    The deployed dossier build takes ~4-5 minutes where the laptop takes ~50 seconds, and that
+    gap survived two sessions unexplained because the only span covered the whole request.
+    Screening was ruled out by a hand measurement of one case; nothing else was measured at all.
+
+    This asserts each segment opens its own span, so the next deployed run yields a profile
+    rather than another guess. It fails if instrumentation is removed, which the allowlist above
+    cannot do: an allowlist is satisfied by emitting nothing.
+    """
+    cdd_service.assess(sample_cases.SAMPLE_CASE_INPUT, actor=ACTOR)
+    opened = {name for name, _ in tracer.spans}
+    missing = _REQUIRED_SEGMENTS - opened
+    assert not missing, f"these pipeline segments are not timed: {sorted(missing)}"
