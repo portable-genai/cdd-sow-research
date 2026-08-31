@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import contextlib
 import logging
-from contextlib import nullcontext
+from contextlib import AbstractContextManager, nullcontext
 from dataclasses import replace
 from typing import Any
 
@@ -161,6 +161,28 @@ class CddService:
     # ------------------------------------------------------------------ #
     # Pipeline
     # ------------------------------------------------------------------ #
+    def _segment(self, name: str, actor: str, **attributes: str) -> AbstractContextManager[None]:
+        """A CHILD span for one pipeline segment, or a no-op when nothing is tracing.
+
+        ``assess`` has always opened one ``cdd.assess`` span around the whole build, which is
+        enough to say the request was slow and nothing at all about WHERE. On the deployment a
+        dossier takes ~4-5 minutes where the laptop takes ~50 seconds, and that gap stayed
+        unattributed through two sessions because a single span cannot be subdivided after the
+        fact. Screening was measured by hand at 1.5s and ruled out; the other eight segments were
+        never measured at all.
+
+        So each consequential segment opens its own span here. Instrument first, then fix: a
+        profile that names the segment is a different artefact from a guess about it, and the
+        next deployed run produces one without anybody standing over it.
+
+        Attributes are STRUCTURAL only, per the port's contract -- counts and actions, never a
+        subject, a document body or a narrative. A span that carried the case summary would turn
+        Cloud Trace into an unredacted copy of exactly the data P-04 redacts before the model
+        sees it.
+        """
+        span = self._tracer.span(name, action="assess_cdd", actor=actor, **attributes)
+        return span if span is not None else nullcontext()
+
     def _assess_inner(
         self,
         case_input: CaseInput,
@@ -186,18 +208,22 @@ class CddService:
         acl_tags = self._acl_tags(subject.id, tenant)
 
         # 3) Extract + ingest each KYC document into the governed RAG store (A2, case ACL).
-        for document in case_input.documents:
-            self._extract_and_ingest(document, acl_tags, (*acl_tags, *principals))
+        with self._segment(
+            "cdd.extract_and_ingest", actor, documents=str(len(case_input.documents))
+        ):
+            for document in case_input.documents:
+                self._extract_and_ingest(document, acl_tags, (*acl_tags, *principals))
 
         # 4) Retrieve grounding passages from A2. Empty -> hard error (never ungrounded).
-        passages: list[RetrievedPassage] = g.retrieve_passages(
-            self._knowledge_base,
-            self._retrieval_query(subject),
-            # Case ACL tags AND the verified user's entitlement principals: governed
-            # retrieval is scoped to what THIS user is allowed to see, server-side.
-            acl_principals=(*acl_tags, *principals),
-            top_k=self._knowledge_base_top_k(),
-        )
+        with self._segment("cdd.retrieve", actor):
+            passages: list[RetrievedPassage] = g.retrieve_passages(
+                self._knowledge_base,
+                self._retrieval_query(subject),
+                # Case ACL tags AND the verified user's entitlement principals: governed
+                # retrieval is scoped to what THIS user is allowed to see, server-side.
+                acl_principals=(*acl_tags, *principals),
+                top_k=self._knowledge_base_top_k(),
+            )
         if not passages:
             self._write_audit(actor, redacted_summary, "", Decision.ESCALATED)
             raise RetrievalEmptyError(f"no case evidence retrieved for subject: {subject.id!r}")
@@ -205,21 +231,30 @@ class CddService:
         # 5) Adverse media + ownership (UBO) + deterministic watchlist screening.
         # A None screen means none ran; the findings it did not produce are (), but the
         # case keeps the None so the dossier can say "not screened" rather than "clear".
-        adverse_media = self._adverse.scan(subject, actor)
+        with self._segment("cdd.adverse_media", actor):
+            adverse_media = self._adverse.scan(subject, actor)
         media_findings = adverse_media.findings if adverse_media is not None else ()
-        ownership = self._ownership.resolve(subject, actor)
-        screening = self._screen(subject)
+        with self._segment("cdd.ownership", actor):
+            ownership = self._ownership.resolve(subject, actor)
+        # Kept as its own span even though it was measured at 1.5s and ruled out by hand: the
+        # measurement was a one-off against one case, and a segment that is only fast for the
+        # cases someone happened to try is not a segment anybody can rule out again later.
+        with self._segment("cdd.screening", actor):
+            screening = self._screen(subject)
 
         # 6) Synthesise the source-of-wealth narrative (LLM, grounded + self-critique).
-        sow: SourceOfWealthNarrative = self._sow.build(subject, passages, actor)
+        with self._segment("cdd.source_of_wealth", actor, passages=str(len(passages))):
+            sow: SourceOfWealthNarrative = self._sow.build(subject, passages, actor)
 
         # 7) Risk rating (LLM + deterministic hard-signal raise).
-        rating: RiskRating = self._risk.rate(
-            subject, sow, media_findings, ownership, passages, actor, screening=screening
-        )
+        with self._segment("cdd.risk_rating", actor):
+            rating: RiskRating = self._risk.rate(
+                subject, sow, media_findings, ownership, passages, actor, screening=screening
+            )
 
         # 8) Check against regulatory CDD/AML expectations via C1 (best-effort).
-        self._compliance_check(subject, rating, actor)
+        with self._segment("cdd.compliance_check", actor):
+            self._compliance_check(subject, rating, actor)
 
         # 9) Assemble the dossier.
         case = CDDCase(
@@ -258,7 +293,7 @@ class CddService:
         #     durable escalation of record, and the outbox path retries).
         if self._review_router is not None and case.requires_human_review:
             # Routing is a hand-off, never fatal to an already-assembled, already-audited dossier.
-            with contextlib.suppress(Exception):
+            with self._segment("cdd.route_review", actor), contextlib.suppress(Exception):
                 self._review_router.route(case, maker=actor)
         return case
 
