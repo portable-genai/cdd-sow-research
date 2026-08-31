@@ -50,6 +50,16 @@ class ModelArmorGuardrailAdapter:
         from google.cloud import modelarmor_v1
 
         client = self._get_client()
+        # Two request types, one variable. mypy takes the type from the FIRST branch, so the
+        # OUTPUT branch contradicts it; declaring the union is what this code always meant.
+        #
+        # It ran correctly and stayed invisible because each request goes to the method that
+        # accepts it, and the only check that could have seen the contradiction was resolving
+        # `google-cloud-modelarmor` to nothing: the distribution ships no `py.typed` marker.
+        # `follow_untyped_imports` is what made it visible.
+        request: (
+            modelarmor_v1.SanitizeUserPromptRequest | modelarmor_v1.SanitizeModelResponseRequest
+        )
         if direction is Direction.INPUT:
             request = modelarmor_v1.SanitizeUserPromptRequest(
                 name=self._template,
