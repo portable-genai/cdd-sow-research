@@ -19,4 +19,4 @@ msgpack>=1.2.2
 
 # CVE-2025-47273 — path traversal in setuptools PackageIndex. Ships in the base image's
 # ensurepip at 70.3.0, so the venv inherits it unless it is explicitly raised.
-setuptools>=78.1.1
+setuptools>=84.0.0
