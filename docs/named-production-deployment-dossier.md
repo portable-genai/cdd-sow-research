@@ -314,10 +314,10 @@ level.
 
 ## 8. Promotion and evidence pack
 
-Run the gated
-[`release-production-images.yaml`](../.github/workflows/release-production-images.yaml) workflow
-or [`scripts/promote_production_images.sh`](../scripts/promote_production_images.sh) in the
-approved build environment. Promotion requires workload identity or authenticated registry
+Run [`scripts/promote_production_images.sh`](../scripts/promote_production_images.sh) in the
+approved build environment. The gated GitHub Actions release workflow that was the other option
+never ran, because Actions are disabled organization-wide, and has been removed; the script is
+now the only path, so the scan-then-sign-then-promote ordering it enforces is the control. Promotion requires workload identity or authenticated registry
 access, Trivy and Cosign. Record the immutable API and UI image references, loader digest and SRI
 emitted by the exact source commit.
 
