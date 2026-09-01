@@ -15,7 +15,7 @@
 # Re-derive rather than trust this file: `trivy image --severity HIGH,CRITICAL <image>`.
 
 # GHSA-6v7p-g79w-8964 — out-of-bounds read / crash on Unpacker reuse after an error.
-msgpack>=1.2.1
+msgpack>=1.2.2
 
 # CVE-2025-47273 — path traversal in setuptools PackageIndex. Ships in the base image's
 # ensurepip at 70.3.0, so the venv inherits it unless it is explicitly raised.
