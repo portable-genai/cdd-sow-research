@@ -42,7 +42,7 @@ mypy src                         # clean (best-effort)
 python eval/run_eval.py          # pass (exit 0)
 ```
 
-CI runs the same on the `local` profile (`.github/workflows/ci.yaml` and `eval-gate.yaml`).
+CI runs the same on the `local` profile (the hosted Cloud Build check and `eval-gate.yaml`).
 
 ## Adding an adapter
 
