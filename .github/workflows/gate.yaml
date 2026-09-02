@@ -42,7 +42,9 @@ jobs:
       runner_archive_sha256: "90c0ea91161b5bb6aa603c0d4a7b817fcf9ddf4ff235a14c9bdfc3327eb58eb9"
       job_id: "offline-gate"
       make_targets: "check ui-check demo-selftest portability"
+      extra_lockfiles: "requirements-demo.lock"
       dev_lockfile: "requirements-dev-oidc.lock"
+      extra_lockfiles_first: true
       npm_directory: "ui"
       npm_directory_first: true
       terraform_directory: "infra/terraform"
