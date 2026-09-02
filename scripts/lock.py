@@ -51,6 +51,11 @@ _TARGETS: tuple[tuple[tuple[str, ...], str], ...] = (
     (("dev",), "requirements-dev.lock"),
     (("gcp",), "requirements-gcp.lock"),
     (("dev", "oidc"), "requirements-dev-oidc.lock"),
+    # The `demo` extra carries playwright, and until now it was compiled into NO lockfile at
+    # all. `make demo-selftest` drives scripts/sow_demo_playwright.py, so the target could not
+    # run anywhere the extra was not hand-installed -- and CI never installed it. The gap was
+    # invisible because no CI had ever executed demo-selftest for this repository.
+    (("demo",), "requirements-demo.lock"),
 )
 
 #: `name[extras] @ git+URL@vTAG`, the shape every commons dependency is declared in.
