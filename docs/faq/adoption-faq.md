@@ -53,7 +53,7 @@ reference constants. `tests/unit/test_risk_policy.py` shows overrides changing b
 
 ### Will the demo rot after I diverge?
 
-There is a CI self-test (`make demo-selftest`, wired into the hosted Cloud Build check) that
+There is a CI self-test (`make demo-selftest`, wired into the hosted GitHub Actions check) that
 drives the whole walkthrough headless and asserts each step's live state, plus a browserless
 `tests/unit/test_demo_server.py`. A refactor that breaks the demo fails the PR instead of
 surfacing the morning of a stakeholder presentation.
