@@ -1,7 +1,7 @@
 """Generation port — LLM text/reasoning for synthesising the dossier.
 
 Primary GCP adapter: Gemini models on the Gemini Enterprise Agent Platform
-(``gemini-3.5-flash`` for reasoning, ``gemini-3.1-flash-lite`` for triage), used to
+(``gemini-3.5-flash`` for reasoning, ``gemini-3.5-flash`` for triage), used to
 synthesise the source-of-wealth narrative and the risk rating from the case evidence.
 """
 

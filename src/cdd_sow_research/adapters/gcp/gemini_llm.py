@@ -3,7 +3,7 @@
 Wraps the unified **Google GenAI SDK** (``google-genai``) against the **Gemini
 Enterprise Agent Platform** (Vertex backend) in ``asia-southeast1`` (Singapore).
 Reasoning uses ``gemini-3.5-flash`` (thinking=high) for source-of-wealth and risk
-synthesis; triage/classification uses ``gemini-3.1-flash-lite``. Both are pinned from
+synthesis; triage/classification uses ``gemini-3.5-flash``. Both are pinned from
 settings; the floating ADK default model and ``gemini-2.0-flash`` are never used.
 
 The adapter maps the domain :class:`LlmRequest` onto ``client.models.generate_content``

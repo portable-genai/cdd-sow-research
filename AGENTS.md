@@ -153,7 +153,7 @@ gate. Break them and CI fails:
   (the `us` multi-region until the Single Region Request Form is granted) and
   `knowledge_base.location` (Agent Search serves only `global`/`us`/`eu`). Each is a stated
   deviation, not a fallback to take silently. Models are pinned in `config/settings.yaml`
-  (`gemini-3.5-flash` reasoning, `gemini-3.1-flash-lite` triage).
+  (`gemini-3.5-flash` reasoning, `gemini-3.5-flash` triage).
 - **Markdown:** validate any mermaid diagram before committing.
 
 ## Adding an adapter
