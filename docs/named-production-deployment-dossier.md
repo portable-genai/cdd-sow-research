@@ -316,8 +316,10 @@ level.
 
 Run [`scripts/promote_production_images.sh`](../scripts/promote_production_images.sh) in the
 approved build environment. The gated GitHub Actions release workflow that was the other option
-never ran, because Actions are disabled organization-wide, and has been removed; the script is
-now the only path, so the scan-then-sign-then-promote ordering it enforces is the control. Promotion requires workload identity or authenticated registry
+never ran, because Actions were disabled organization-wide at the time, and was removed. GitHub
+Actions has been the fleet's live CI since 2026-09-02, but this release workflow has not been
+re-added, so the script stays the only path, and the scan-then-sign-then-promote ordering it
+enforces is the control. Promotion requires workload identity or authenticated registry
 access, Trivy and Cosign. Record the immutable API and UI image references, loader digest and SRI
 emitted by the exact source commit.
 
