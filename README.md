@@ -376,9 +376,10 @@ make eval        # runs eval/run_eval.py; non-zero exit fails the smoke check
 The pre-merge run is the hosted GitHub Actions check;
 the promotion verdict is the live Hrz4 service's (`EvaluationGatePort.gate`), which is invoked
 at promotion time. The GitHub Actions workflow that once invoked it never ran, because Actions
-are disabled organization-wide, so there is no automated promotion gate today and the verdict
-has to be obtained deliberately. See [`COMPLIANCE.md`](COMPLIANCE.md) for how this maps to the
-model-risk principle.
+were disabled organization-wide at the time, and was removed. GitHub Actions has been the
+fleet's live CI since 2026-09-02, but this release workflow has not been re-added, so there is
+still no automated promotion gate and the verdict has to be obtained deliberately. See
+[`COMPLIANCE.md`](COMPLIANCE.md) for how this maps to the model-risk principle.
 
 ---
 
