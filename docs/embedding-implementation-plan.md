@@ -741,7 +741,7 @@ Add:
 - `ui/embed/examples/direct-token-host.html`;
 - browser tests for transfer, refresh, failure, and fallback;
 - audit tests for success, failure, installation mismatch, and safe token correlation;
-- an update to the explicit OIDC test-file list in the hosted Cloud Build check.
+- an update to the explicit OIDC test-file list in the hosted GitHub Actions check.
 
 Test two synthetic issuers, one RSA and one EC, including key rotation. Negative cases include
 wrong `typ`, issuer, audience, client, scope, tenant, algorithm, timestamps, key, and origin.
