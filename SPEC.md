@@ -83,7 +83,7 @@ checker) applies: the dossier always requires human review.
   ruff lint `["E","F","I","UP","B","SIM"]`, target py312, build backend hatchling.
 - The product is Gemini Enterprise Agent Platform; the API host is still
   `aiplatform.googleapis.com`. Region pinned `asia-southeast1`.
-- Models: reasoning `gemini-3.5-flash` (thinking=high), triage `gemini-3.1-flash-lite`.
+- Models: reasoning `gemini-3.5-flash` (thinking=high), triage `gemini-3.5-flash`.
   Never a floating default or `gemini-2.0-flash`.
 - Unified SDK `google-genai`. ADK `google-adk==2.7.1`. A2A v1.0 + MCP 2026-07-28. One
   built-in tool per agent: `google_search` lives in its own adverse-media sub-agent.
