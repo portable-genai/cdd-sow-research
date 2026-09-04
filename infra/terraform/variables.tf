@@ -24,7 +24,7 @@
 # Per the build contract, only project_id, the region/residency values, the posture
 # toggles and a few per-tenant values (perimeter, alert channels, sanctions image) are
 # variables. Service identifiers derive from name_prefix (naming.tf). Storage/RAG infra
-# lives in Hrz2.
+# lives in enterprise-knowledge-base.
 
 variable "project_id" {
   description = "Target GCP project id (required). Single-tenant, in-region."
@@ -322,7 +322,7 @@ variable "sanctions_sync_image" {
 
 variable "standalone" {
   type        = bool
-  description = "Standalone deploy (default): provision this repo's own guardrail (Model Armor), DLP templates and WORM audit bucket+sink. Set false for a platform deploy where Hrz1/Hrz5 front those. Immutable per deployment (a locked WORM bucket blocks a true->false toggle). validate ignores variable-driven count, so a second `validate -var standalone=false` is a wiring smoke, not proof the count=0 path is destroy-safe."
+  description = "Standalone deploy (default): provision this repo's own guardrail (Model Armor), DLP templates and WORM audit bucket+sink. Set false for a platform deploy where agent-guardrail-gateway, agent-observability front those. Immutable per deployment (a locked WORM bucket blocks a true->false toggle). validate ignores variable-driven count, so a second `validate -var standalone=false` is a wiring smoke, not proof the count=0 path is destroy-safe."
   default     = true
 }
 
@@ -429,13 +429,13 @@ variable "deployment_stage" {
 }
 
 variable "production_edge_enabled" {
-  description = "Provision the named Doc1 UI/API edge. Requires immutable images, domain and manifest secret."
+  description = "Provision the named cdd-sow-research UI/API edge. Requires immutable images, domain and manifest secret."
   type        = bool
   default     = false
 }
 
 variable "api_image" {
-  description = "Immutable Doc1 API image reference including @sha256 digest."
+  description = "Immutable cdd-sow-research API image reference including @sha256 digest."
   type        = string
   default     = ""
 
@@ -446,7 +446,7 @@ variable "api_image" {
 }
 
 variable "ui_image" {
-  description = "Immutable Doc1 UI image reference including @sha256 digest."
+  description = "Immutable cdd-sow-research UI image reference including @sha256 digest."
   type        = string
   default     = ""
 

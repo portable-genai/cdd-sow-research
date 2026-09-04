@@ -95,7 +95,7 @@ The runner builds and starts the production Next server when needed, starts only
 host services, and stops every service it owns in `finally`. The two host pages use fictional
 installation data and loopback origins. Full scope adds production-module synthetic Mode 4 and Mode 5
 identity chains: two pinned issuer policies through the OAuth verifier, plus an institution BFF
-session/CSRF/user-intent exchange through the embed broker and dedicated Doc1 token verifier.
+session/CSRF/user-intent exchange through the embed broker and dedicated `cdd-sow-research` token verifier.
 The evidence proves channel and identity portability; it does not prove infrastructure, model,
 data, audit-record, or whole-system portability.
 

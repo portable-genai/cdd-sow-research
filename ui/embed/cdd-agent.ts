@@ -162,7 +162,7 @@
         throw new Error("the CDD agent iframe is not ready");
       }
       if (!accessToken || new TextEncoder().encode(accessToken).byteLength > 32 * 1024) {
-        throw new Error("Doc1 access token is empty or too large");
+        throw new Error("cdd-sow-research access token is empty or too large");
       }
       this.port.postMessage({
         type: "host:credential",
@@ -179,7 +179,7 @@
         !opaqueBindingPattern.test(instanceId) ||
         !opaqueBindingPattern.test(launchCode)
       ) {
-        throw new Error("Doc1 grant binding is invalid");
+        throw new Error("cdd-sow-research grant binding is invalid");
       }
       this.port.postMessage({
         type: "host:launch-code",

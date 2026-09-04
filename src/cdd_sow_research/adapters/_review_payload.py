@@ -1,12 +1,12 @@
 """Shared conversion from an escalated CDD dossier to an ``review-kit`` Review payload.
 
-Lives in the adapter layer (not the pure domain) because it depends on the kit. Redacts the
-subject descriptor and summary before they leave the process (R1 / P-04 boundary), using the same
+Lives in the adapter layer (not the pure domain) because it depends on the kit. Redacts the subject
+descriptor and summary before they leave the process (R1 / P-04 boundary), using the same
 jurisdiction pattern set the redaction adapter uses (``domain/pii_patterns``), so no raw customer
-identifier reaches Hrz7 over the wire; Hrz7 redacts again before its own audit write (defense in
-depth). The maker (the agent/analyst who originated the dossier) and the tenant are asserted here
-and trusted by Hrz7 because this is an authenticated S2S caller (per-hop OBO is the deferred next
-layer).
+identifier reaches human-review-console over the wire; human-review-console redacts again before its
+own audit write (defense in depth). The maker (the agent/analyst who originated the dossier) and the
+tenant are asserted here and trusted by human-review-console because this is an authenticated S2S
+caller (per-hop OBO is the deferred next layer).
 """
 
 from __future__ import annotations
@@ -26,6 +26,10 @@ from ..domain.models import (
 )
 from ..domain.pii_patterns import all_patterns
 from ..domain.policy import UboGraphPolicy
+
+#: The repository name prefixes every source_key: it is the dedup key the
+#: human-review-console stores, so it names the producer.
+_REPOSITORY = "cdd-sow-research"
 
 # Cap the citations carried on the wire: enough to let a reviewer trace the dossier without
 # copying the entire evidence set into the review console.
@@ -70,7 +74,8 @@ def _case_citations(case: CDDCase) -> list[Citation]:
     return out
 
 
-#: Hrz7 severity for a queued perpetual-KYC item. Priority is the pKYC vocabulary; the
+#: human-review-console severity for a queued perpetual-KYC item. Priority is the pKYC vocabulary;
+#: the
 #: console speaks the shared severity scale, so the mapping is declared once here.
 _SEVERITY_BY_PRIORITY: dict[QueuePriority, str] = {
     QueuePriority.URGENT: "critical",
@@ -89,7 +94,7 @@ _APPROVALS_BY_PRIORITY: dict[QueuePriority, int] = {
 
 
 def assessment_to_review(assessment: PerpetualKycAssessment, *, maker: str) -> Review:
-    """Build the review a producer submits to Hrz7 for a perpetual-KYC re-score.
+    """Build the review a producer submits to human-review-console for a perpetual-KYC re-score.
 
     Mirrors :func:`case_to_review`: the subject descriptor and summary are redacted with
     the full jurisdiction pattern set before they leave the process, the citations behind
@@ -122,7 +127,7 @@ def assessment_to_review(assessment: PerpetualKycAssessment, *, maker: str) -> R
         required_approvals=_APPROVALS_BY_PRIORITY.get(priority, 1),
         sod_group="cdd-maker-checker",
         case_ref=item.id if item is not None else assessment.subject_id,
-        source_key=f"doc1:{assessment.tenant}:{assessment.subject_id}:pkyc:{assessment.as_of}",
+        source_key=f"{_REPOSITORY}:{assessment.tenant}:{assessment.subject_id}:pkyc:{assessment.as_of}",
         citations=citations,
     )
 
@@ -130,7 +135,7 @@ def assessment_to_review(assessment: PerpetualKycAssessment, *, maker: str) -> R
 def resolution_to_review(
     resolution: UboResolution, *, maker: str, policy: UboGraphPolicy
 ) -> Review:
-    """Build the review a producer submits to Hrz7 for a UBO-graph resolution.
+    """Build the review a producer submits to human-review-console for a UBO-graph resolution.
 
     Mirrors :func:`case_to_review` and :func:`assessment_to_review` in every respect that
     matters on the wire (redaction with the full jurisdiction pattern set, capped
@@ -173,7 +178,7 @@ def resolution_to_review(
         ),
         sod_group="cdd-maker-checker",
         case_ref=f"ubo-{resolution.subject_id}-{resolution.as_of}",
-        source_key=f"doc1:{resolution.tenant}:{resolution.subject_id}:ubo:{resolution.as_of}",
+        source_key=f"{_REPOSITORY}:{resolution.tenant}:{resolution.subject_id}:ubo:{resolution.as_of}",
         citations=_limited_citations(resolution.citations),
     )
 
@@ -201,7 +206,7 @@ def _limited_citations(citations: tuple[Citation, ...]) -> tuple[KitCitation, ..
 
 
 def case_to_review(case: CDDCase, *, maker: str) -> Review:
-    """Build the review a producer submits to Hrz7 when a CDD dossier escalates."""
+    """Build the review a producer submits to human-review-console when a CDD dossier escalates."""
     subject = case.subject
     descriptor = (
         f"CDD dossier for {subject.name} (id={subject.id}, {subject.type.value}, "
@@ -227,6 +232,6 @@ def case_to_review(case: CDDCase, *, maker: str) -> Review:
         required_approvals=_APPROVALS_BY_BAND.get(case.rating.band, 1),
         sod_group="cdd-maker-checker",
         case_ref=case.id,
-        source_key=f"doc1:{subject.tenant}:{case.id}:cdd_dossier",
+        source_key=f"{_REPOSITORY}:{subject.tenant}:{case.id}:cdd_dossier",
         citations=_kit_citations(case),
     )

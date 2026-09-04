@@ -1,4 +1,4 @@
-# Doc1: CDD + Source-of-Wealth Agent
+# `cdd-sow-research`: CDD + Source-of-Wealth Agent
 
 **Industries:** Banking, Wealth & asset management, Crypto & digital assets, Insurance, Real estate, Legal, Accounting
 
@@ -20,9 +20,9 @@
 
 ---
 
-## 1. What Doc1 produces
+## 1. What `cdd-sow-research` produces
 
-Doc1 turns days of analyst work into minutes: it assembles a **CDD dossier** (`CDDCase`)
+`cdd-sow-research` turns days of analyst work into minutes: it assembles a **CDD dossier** (`CDDCase`)
 bundling four cited, audited artifacts, each carrying source-grade provenance (document,
 registry, media, or regulation, with a **page**):
 
@@ -35,17 +35,15 @@ registry, media, or regulation, with a **page**):
 
 The `CddService.assess()` orchestrator runs the whole pipeline and bundles the result.
 
-Onboarding is not the end of the relationship, so Doc1 also keeps it current. Alongside the
+Onboarding is not the end of the relationship, so `cdd-sow-research` also keeps it current. Alongside the
 risk-based *schedule* (periodic review), the **perpetual-KYC** module watches for *change*:
 it diffs the current sanctions, adverse-media and corporate-registry picture against the
 last accepted baseline, re-scores the relationship in deterministic code over bank-owned
-policy weights, and places an explainable item on a review queue routed to Hrz7. Every
+policy weights, and places an explainable item on a review queue routed to `human-review-console`. Every
 figure is computed, never generated: the model writes the paragraph, not the number. See
 [SPEC.md §10](SPEC.md#10-perpetual-kyc-implemented).
-Catalog identity: **Doc1**, group **`doc`** (document-heavy verticals), priority **P1**,
-buyer **Financial Crime / Private Bank**. Mandatory platform dependencies: **Hrz1**
-Guardrail, **Hrz2** Enterprise KB, **Hrz3** Registry, **Hrz4** AI Quality, **Hrz5**
-Observability/Audit, and **Rsk1** Compliance Assistant; see
+Catalog identity: `cdd-sow-research`, group **`doc`** (document-heavy verticals), priority **P1**,
+buyer **Financial Crime / Private Bank**. Mandatory platform dependencies: `agent-guardrail-gateway`, `enterprise-knowledge-base`, `agent-registry`, `model-quality-gate` AI Quality, `agent-observability`, and `compliance-advisory`; see
 [§9 Platform dependencies](#9-platform-dependencies).
 
 Every artifact, citation and case input is a pure-stdlib dataclass in
@@ -83,7 +81,7 @@ flowchart TB
     subgraph ports["Ports (21 Protocols): the hexagon boundary"]
         P1["DocumentExtraction · KnowledgeBaseClient · DocumentStore"]
         P2["AdverseMedia · CorporateRegistry · OwnershipGraph"]
-        P3["Compliance (Rsk1) · LLM"]
+        P3["Compliance (`compliance-advisory`) · LLM"]
         P4["Guardrail · PIIRedaction"]
         P5["AuditSink · ReviewRouter · Tracer · EvaluationGate"]
         P6["AgentRegistry · ToolCatalog"]
@@ -96,8 +94,8 @@ flowchart TB
     subgraph loc["adapters/local/*: WORKING offline (SDK-free)"]
         LO["SQLite FTS5 KB · deterministic LLM ·<br/>heuristic guardrail · regex DLP ·<br/>hash-chained SQLite audit · no-op tracer"]
     end
-    subgraph plat["adapters/platform/*: horizontal-platform and Rsk1 HTTP clients"]
-        PL["Remote KB (Hrz2) · Remote Guardrail (Hrz1) ·<br/>Remote Audit (Hrz5) · Remote Compliance (Rsk1)"]
+    subgraph plat["adapters/platform/*: horizontal-platform and `compliance-advisory` HTTP clients"]
+        PL["Remote KB (`enterprise-knowledge-base`) · Remote Guardrail (`agent-guardrail-gateway`) ·<br/>Remote Audit (`agent-observability`) · Remote Compliance (`compliance-advisory`)"]
     end
     subgraph liv["live profile: reviewed hybrid"]
         LI["Local custody + Gemini API<br/>generation and grounded research"]
@@ -146,14 +144,14 @@ sequence diagram, and the runtime topology.
 | Triage model | Gemini 3.5 Flash | `gemini-3.5-flash` |
 | Unified SDK | Google GenAI SDK | `google-genai` |
 | Document extraction | **Document AI** | `google-cloud-documentai` |
-| Governed RAG store | **Hrz2 Enterprise KB** (Agent Search behind it) | `google-cloud-discoveryengine` |
+| Governed RAG store | **`enterprise-knowledge-base`** (Agent Search behind it) | `google-cloud-discoveryengine` |
 | Adverse media | Gemini API `google_search` tool | `google-genai` (own sub-agent) |
 | Runtime | **Agent Runtime** (ex-Agent Engine) | `google-cloud-aiplatform[agent_engines,adk]` |
 | Guardrail | Model Armor | `modelarmor.asia-southeast1.rep.googleapis.com` |
 | PII redaction | Sensitive Data Protection / DLP | `google-cloud-dlp` `deidentifyContent` |
 | Audit (WORM) | Cloud Logging locked bucket | retention 180 days (six months) |
 | Tracing | Cloud Trace via OpenTelemetry | content capture **OFF** |
-| Eval gate | Gen AI evaluation service + Hrz4 | `vertexai.Client(...).evals` |
+| Eval gate | Gen AI evaluation service + `model-quality-gate` | `vertexai.Client(...).evals` |
 | Interop | A2A v1.0 + MCP 2026-07-28 | AgentCard `/.well-known/agent-card.json` |
 | Sovereignty | VPC-SC, regional CMEK, Org Policy | `asia-southeast1` |
 
@@ -317,7 +315,7 @@ Everything is keyed off [`config/settings.yaml`](config/settings.yaml), which re
 
 ## 6. The R1 safety pipeline (customer PII)
 
-Doc1 handles customer KYC, so the full Hrz1 guardrail plus DLP-redaction pipeline is mandatory
+`cdd-sow-research` handles customer KYC, so the full `agent-guardrail-gateway` plus DLP-redaction pipeline is mandatory
 (rule R1). Every assessment redacts before any model, index, registry or audit call, and
 screens both directions:
 
@@ -328,9 +326,9 @@ sequenceDiagram
     participant Svc as CddService
     participant Red as PIIRedactionPort (DLP)
     participant Grd as GuardrailPort (Model Armor)
-    participant KB as KnowledgeBaseClientPort (Hrz2)
+    participant KB as KnowledgeBaseClientPort (`enterprise-knowledge-base`)
     participant LLM as LLMPort (Gemini 3.5 Flash)
-    participant Rsk1 as ComplianceClientPort (Rsk1)
+    participant `compliance-advisory` as ComplianceClientPort (`compliance-advisory`)
     participant Aud as AuditSinkPort (WORM)
 
     Analyst->>Svc: assess(case_input, actor)
@@ -346,8 +344,8 @@ sequenceDiagram
         KB-->>Svc: case evidence passages
         Svc->>LLM: synthesise SoW narrative, rate risk
         LLM-->>Svc: structured artifacts
-        Svc->>Rsk1: check regulatory CDD/AML expectations
-        Rsk1-->>Svc: cited compliance answer
+        Svc->>`compliance-advisory`: check regulatory CDD/AML expectations
+        `compliance-advisory`-->>Svc: cited compliance answer
         Svc->>Grd: screen(dossier, OUTPUT)
         Grd-->>Svc: verdict(allowed=true)
         Svc->>Aud: record(AuditEvent decision=ESCALATED, redacted)
@@ -357,7 +355,7 @@ sequenceDiagram
 
 ---
 
-## 7. The eval gate (Hrz4 / P-08)
+## 7. The eval gate (`model-quality-gate` / P-08)
 
 No build is promoted without passing a quality gate. `eval/run_eval.py --mode smoke` scores a
 synthetic golden set before merge, and the report passes only if every gated metric clears its
@@ -374,7 +372,7 @@ make eval        # runs eval/run_eval.py; non-zero exit fails the smoke check
 ```
 
 The pre-merge run is the hosted GitHub Actions check;
-the promotion verdict is the live Hrz4 service's (`EvaluationGatePort.gate`), which is invoked
+the promotion verdict is the live `model-quality-gate` service's (`EvaluationGatePort.gate`), which is invoked
 at promotion time. The GitHub Actions workflow that once invoked it never ran, because Actions
 were disabled organization-wide at the time, and was removed. GitHub Actions has been the
 fleet's live CI since 2026-09-02, but this release workflow has not been re-added, so there is
@@ -391,9 +389,9 @@ still no automated promotion gate and the verdict has to be obtained deliberatel
 | **VPC Service Controls** | All managed services sit inside a service perimeter (dry-run first, then enforced) so case data cannot egress. |
 | **CMEK** (regional) | Customer-managed Cloud KMS keys (`CDD_KMS_KEY`) encrypt Document AI outputs, the KB, and the log bucket. |
 | **PII redaction before model** (**P-04**) | `DlpRedactionAdapter` de-identifies inbound text before it reaches the model, the index, a span or the audit sink. |
-| **Guardrail screening** (Hrz1, **R1**) | `ModelArmorGuardrailAdapter` screens INPUT and OUTPUT for prompt injection, jailbreak, sensitive data, and malicious URLs. |
+| **Guardrail screening** (`agent-guardrail-gateway`, **R1**) | `ModelArmorGuardrailAdapter` screens INPUT and OUTPUT for prompt injection, jailbreak, sensitive data, and malicious URLs. |
 | **WORM audit** (**R2**) | `CloudLoggingAuditAdapter` writes already-redacted `AuditEvent`s to a locked Cloud Logging bucket (retention 180 days by default). |
-| **Case-scoped ACL** (**R3**) | KYC documents are ingested into Hrz2 with `case:<subject_id>` ACL tags and retrieved only by case principals. |
+| **Case-scoped ACL** (**R3**) | KYC documents are ingested into `enterprise-knowledge-base` with `case:<subject_id>` ACL tags and retrieved only by case principals. |
 | **Maker-checker** (**P-06**) | `CddReviewPolicy` always sets `requires_human_review`; HIGH/PROHIBITED or sanctions/terrorism hits escalate. |
 | **Citations** | Every claim carries a source-and-page `Citation` so an analyst/MLRO can verify it. |
 | **Channel and identity portability** | Modes 4 and 5, the immutable `/agent` artifact, strict MessagePort transport, Mode 6 fallback, direct-token verification, and the brokered PKCE grant are implemented. The full synthetic gate passes in Chromium, Firefox, and WebKit with RSA/EC issuers, rotation, negative paths, and leak scans. See [`docs/embedding-and-identity.md`](docs/embedding-and-identity.md) and [DEMO §4](DEMO.md). Production enablement remains. |
@@ -406,23 +404,23 @@ concrete control in this repo is in [`COMPLIANCE.md`](COMPLIANCE.md).
 
 ## 9. Platform dependencies
 
-Doc1 exercises the whole platform. When deployed standalone, the `gcp` adapters call the
+`cdd-sow-research` exercises the whole platform. When deployed standalone, the `gcp` adapters call the
 managed services directly. Inside the full platform, supported shared capabilities delegate
 over HTTP; vertical-owned capabilities continue to use reviewed managed adapters. Priority 1
 in the embedding plan made every such binding explicit (contracts in
 [`SPEC.md`](SPEC.md) §6).
 
-| Dep | Repo | Doc1 ports it backs | `platform` adapter |
+| Dep | Repo | `cdd-sow-research` ports it backs | `platform` adapter |
 |-----|------|-------------------|--------------------|
-| **Hrz1** Guardrail Gateway | `agent-guardrail-gateway` | `GuardrailPort`, `PIIRedactionPort` | `RemoteGuardrailAdapter`, `RemoteRedactionAdapter` |
-| **Hrz2** Enterprise KB | `enterprise-knowledge-base` | `KnowledgeBaseClientPort` | `RemoteKnowledgeBaseAdapter` |
-| **Hrz3** Registry | `agent-registry` | `AgentRegistryPort` | `RemoteRegistryAdapter` |
-| **Hrz4** AI Quality | `model-quality-gate` | `EvaluationGatePort` | `RemoteEvaluationAdapter` |
-| **Hrz5** Observability/Audit | `agent-observability` | `AuditSinkPort` | `RemoteAuditAdapter` |
-| **Rsk1** Compliance Assistant | `compliance-advisory` | `ComplianceClientPort` | `RemoteComplianceAdapter` |
+| `agent-guardrail-gateway` | `agent-guardrail-gateway` | `GuardrailPort`, `PIIRedactionPort` | `RemoteGuardrailAdapter`, `RemoteRedactionAdapter` |
+| `enterprise-knowledge-base` | `enterprise-knowledge-base` | `KnowledgeBaseClientPort` | `RemoteKnowledgeBaseAdapter` |
+| `agent-registry` | `agent-registry` | `AgentRegistryPort` | `RemoteRegistryAdapter` |
+| `model-quality-gate` AI Quality | `model-quality-gate` | `EvaluationGatePort` | `RemoteEvaluationAdapter` |
+| `agent-observability` | `agent-observability` | `AuditSinkPort` | `RemoteAuditAdapter` |
+| `compliance-advisory` | `compliance-advisory` | `ComplianceClientPort` | `RemoteComplianceAdapter` |
 
-Doc1's governed RAG store **is** Hrz2: it ingests the case's KYC documents into Hrz2 (with case
-ACL tags) and retrieves via Hrz2, rather than building a separate retrieval backend. See
+`cdd-sow-research`'s governed RAG store **is** `enterprise-knowledge-base`: it ingests the case's KYC documents into `enterprise-knowledge-base` (with case
+ACL tags) and retrieves via `enterprise-knowledge-base`, rather than building a separate retrieval backend. See
 [`ARCHITECTURE.md`](ARCHITECTURE.md) §6 for the dependency relationship in detail.
 
 ---
@@ -445,7 +443,7 @@ flowchart LR
     cli["cli/<br/>Typer CLI (entry point: cdd-sow)"]
     srcconfig["config.py<br/>Settings + Container (DI for the hexagon)"]
     config["config/settings.yaml<br/>port -> adapter bindings, region, models"]
-    eval["eval/<br/>run_eval.py + golden dataset (the Hrz4 gate)"]
+    eval["eval/<br/>run_eval.py + golden dataset (the `model-quality-gate`)"]
     terraform["infra/terraform/<br/>asia-southeast1 infra (Document AI, DLP, WORM)"]
     ui["ui/<br/>React / Next.js app"]
     tests["tests/<br/>contract + unit tests (driven by the local adapters)"]
@@ -536,7 +534,7 @@ flowchart LR
 
 ## Cost and latency
 
-Size this system's cost and latency with the shared interactive calculator: [**live**](https://portable-genai.github.io/cost-latency-calculator/calc/calculator.html?system=Doc1) or the [in-repo page](cost-latency-calculator.html). The engine and the pricing book are maintained once in [cost-latency-calculator](https://github.com/portable-genai/cost-latency-calculator).
+Size this system's cost and latency with the shared interactive calculator: [**live**](https://portable-genai.github.io/cost-latency-calculator/calc/calculator.html?system=cdd-sow-research) or the [in-repo page](cost-latency-calculator.html). The engine and the pricing book are maintained once in [cost-latency-calculator](https://github.com/portable-genai/cost-latency-calculator).
 
 ## License
 

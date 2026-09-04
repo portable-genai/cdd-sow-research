@@ -1,11 +1,11 @@
 """Platform tracer adapter (ObservabilityTracerPort) : OTLP export with a Cloud Trace fallback.
 
-The workspace-standard tracing path exports OpenTelemetry spans straight to Cloud Trace
-(the gcp adapter). The platform deployment may instead front tracing with the Hrz5 OTel
-collector: when ``OTEL_EXPORTER_OTLP_ENDPOINT`` is set, this adapter exports OTLP to that
-endpoint; when it is unset (the common case, since the collector is optional infra) it
-delegates to :class:`CloudTraceTracerAdapter`, so the ``platform`` profile always has a
-real tracer and never an accidental fallback.
+The workspace-standard tracing path exports OpenTelemetry spans straight to Cloud Trace (the gcp
+adapter). The platform deployment may instead front tracing with the agent-observability OTel
+collector: when ``OTEL_EXPORTER_OTLP_ENDPOINT`` is set, this adapter exports OTLP to that endpoint;
+when it is unset (the common case, since the collector is optional infra) it delegates to
+:class:`CloudTraceTracerAdapter`, so the ``platform`` profile always has a real tracer and never an
+accidental fallback.
 
 Tracing setup/export is best-effort and must never fail a request. Application errors raised
 inside a span always propagate; they must never be mistaken for exporter failures. All

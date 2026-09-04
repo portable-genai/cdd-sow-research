@@ -40,7 +40,7 @@ resource "google_storage_bucket_iam_member" "documents_app" {
 # Additional writers: the runtime identities an EMBEDDING HOST creates for this app.
 #
 # A portal that mounts this app same-origin runs it under a service account of the portal's own
-# making (Hrz9 creates one per embedded app), so the grant above -- which names this stack's own
+# making (journey-portal creates one per embedded app), so the grant above -- which names this stack's own
 # serving identity -- does not cover it. The first upload through the portal was refused with
 # "does not have storage.objects.list access" naming an account this stack has never heard of.
 # Naming them here keeps the bucket's access list in ONE place, next to the bucket, rather than

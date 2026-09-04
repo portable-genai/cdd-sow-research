@@ -1,9 +1,10 @@
-"""Local ReviewRouterPort: a durable SQLite outbox and direct Hrz7 service hand-off.
+"""Local ReviewRouterPort: a durable SQLite outbox and direct human-review-console service hand-off.
 
-An escalated dossier is first committed to Doc1's own SQLite outbox.  If the local Hrz7
-console is available, the adapter then attempts an immediate S2S flush; failures remain pending
-for the next route/startup flush.  This keeps the local journey genuine without letting Doc1
-write Hrz7 storage or use the browser/portal identity boundary as a service integration.
+An escalated dossier is first committed to cdd-sow-research's own SQLite outbox.  If the local
+human-review-console is available, the adapter then attempts an immediate S2S flush; failures remain
+pending for the next route/startup flush.  This keeps the local journey genuine without letting
+cdd-sow-research write human-review-console storage or use the browser/portal identity boundary as a
+service integration.
 """
 
 from __future__ import annotations
@@ -33,9 +34,10 @@ _ACTOR = "doc1-cdd-sow-research"
 
 
 class SqliteReviewOutbox:
-    """Doc1-owned durable outbox with retry-safe, producer-keyed entries.
+    """cdd-sow-research-owned durable outbox with retry-safe, producer-keyed entries.
 
-    The console owns its own review database.  This table is only Doc1's delivery log and
+    The console owns its own review database.  This table is only cdd-sow-research's delivery log
+    and
     intentionally stores the complete, already-redacted shared-kit payload needed to retry.
     """
 
@@ -151,7 +153,9 @@ class SqliteReviewOutbox:
 
 
 class LocalReviewRouter:
-    """Persist escalations locally and optionally submit them to Hrz7's S2S intake."""
+    """Persist escalations locally and optionally submit them to
+    human-review-console's S2S intake.
+    """
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
@@ -168,7 +172,8 @@ class LocalReviewRouter:
                 token_env="CDD_S2S_TOKEN",
                 signing_key_env="CDD_S2S_SIGNING_KEY",
             )
-            # Startup retry makes a previously queued escalation visible as soon as Hrz7 returns.
+            # Startup retry makes a previously queued escalation visible as soon as
+            # human-review-console returns.
             self._outbox.flush(self._client)
 
     def route(self, case: CDDCase, *, maker: str) -> None:

@@ -200,7 +200,7 @@ class EmbedTokenIssuer:
         if claims.get("aud") != self._policy.audience:
             raise IdentityError("embedded token audience must be exact")
         if claims.get("token_use") != "doc1-embedded-grant":
-            raise IdentityError("token is not a Doc1 embedded-grant resource token")
+            raise IdentityError("token is not a cdd-sow-research embedded-grant resource token")
         source_issuer = _required_string(claims, "source_iss")
         source_subject = _required_string(claims, "source_sub")
         subject = _required_string(claims, "sub")

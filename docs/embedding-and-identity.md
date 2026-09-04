@@ -1,6 +1,6 @@
 # Embedding and identity: client integration guide
 
-This guide defines how an enterprise client can run the Doc1 CDD and Source-of-Wealth
+This guide defines how an enterprise client can run the `cdd-sow-research` CDD and Source-of-Wealth
 Agent as a native integration, a sandboxed embed, or a standalone application. It also
 defines how identity remains server-verified and independent of the selected channel,
 infrastructure, model, and data-store profile.
@@ -59,7 +59,7 @@ Current code provides these reusable seams:
 - the immutable loader, strict MessagePort protocol, installation manifest, authenticated
   JSON/form/blob transport, and in-frame viewer;
 - the Mode 4 OAuth access-token verifier;
-- the Mode 5 BFF broker, PKCE-bound one-time grant, dedicated Doc1 token, replay state,
+- the Mode 5 BFF broker, PKCE-bound one-time grant, dedicated `cdd-sow-research` token, replay state,
   transactional browser-flow store, and durable security-event outbox.
 
 The code and synthetic-evidence gate in
@@ -81,12 +81,12 @@ The deployment must compose these choices explicitly.
 
 ### 2.2 Identity profiles
 
-| Identity profile | Credential verified by Doc1 | Intended channels |
+| Identity profile | Credential verified by `cdd-sow-research` | Intended channels |
 |---|---|---|
 | `local-persona` | Seeded fictional persona selector | Local only |
 | `iap` | IAP-injected signed assertion | Native or standalone GCP |
 | `oidc-session` | Agent-issued first-party session after top-level OIDC login | Standalone |
-| `oauth-access-token` | Institution-issued Doc1-audience OAuth access token | Sandboxed Mode 4 or native trusted BFF |
+| `oauth-access-token` | Institution-issued `cdd-sow-research`-audience OAuth access token | Sandboxed Mode 4 or native trusted BFF |
 | `embedded-grant` | Agent-issued token obtained by redeeming an iframe-bound, single-use launch grant | Mode 5 |
 | `onprem` | Client IdP adapter | Private or sovereign deployment after implementation |
 
@@ -150,8 +150,8 @@ architecture.
 | 1 | Native, same-origin iframe | IAP | Implemented | The host controls its edge and accepts IAP or WIF. |
 | 2 | Standalone | IAP | Application pattern built; production edge open | A separate GCP console is acceptable. |
 | 3 | Standalone local | Local persona | Implemented | Evaluation, CI, and offline demonstration. |
-| 4 | Sandboxed, dedicated origin | Direct OAuth access token | Implemented; synthetic conformance passes | The host already has a Doc1-audience token and accepts being a trusted credential courier. |
-| 5 | Sandboxed, dedicated origin | Brokered launch grant | Implemented; synthetic conformance passes | The host must not receive a reusable Doc1 credential or read the sensitive panel. |
+| 4 | Sandboxed, dedicated origin | Direct OAuth access token | Implemented; synthetic conformance passes | The host already has a `cdd-sow-research`-audience token and accepts being a trusted credential courier. |
+| 5 | Sandboxed, dedicated origin | Brokered launch grant | Implemented; synthetic conformance passes | The host must not receive a reusable `cdd-sow-research` credential or read the sensitive panel. |
 | 6 | Standalone | OIDC session | Flow and synthetic fallback built; production deployment open | Lowest-cost universal integration or fallback from any framed mode. |
 
 The previous Mode 5 design, a same-origin proxy that injected an authorization header, is
@@ -199,7 +199,7 @@ The host mounts it:
 
 This mode has no cross-origin CORS or third-party-cookie problem. It also has no origin
 isolation from the host. Same-origin host JavaScript can inspect the iframe, so this mode
-is appropriate only when the host is inside the Doc1 data trust boundary.
+is appropriate only when the host is inside the `cdd-sow-research` data trust boundary.
 
 The framed document is served by Next.js. Therefore the Next.js response, not an API
 response, is the load-bearing location for its `frame-ancestors` policy.
@@ -251,7 +251,7 @@ The top-level application currently performs OIDC Authorization Code with PKCE:
 2. The IdP authenticates the user in a top-level browsing context.
 3. `/auth/callback` validates state, redeems the code, verifies the returned ID token
    against the issuer and client audience, and checks the OIDC nonce.
-4. Doc1 issues its own short-lived `HttpOnly; Secure; SameSite=Strict` session cookie.
+4. `cdd-sow-research` issues its own short-lived `HttpOnly; Secure; SameSite=Strict` session cookie.
 5. `OidcSessionIdentityAdapter` verifies that session locally on every protected request.
 
 An ID token is correct at this OIDC callback because it authenticates the user to the
@@ -322,8 +322,8 @@ Public auth:         /agent/auth/...
 Internal FastAPI:    /v1/..., /auth/..., /healthz
 ```
 
-Hrz9 is the current native Mode 1 host. It exposes the canonical `/agent/*` surface to the
-unmodified Doc1 artifact, keeps `/apps/doc1` as a tested compatibility entry, and selects
+`journey-portal` is the current native Mode 1 host. It exposes the canonical `/agent/*` surface to the
+unmodified `cdd-sow-research` artifact, keeps `/apps/doc1` as a tested compatibility entry, and selects
 native channel plus local-persona or IAP identity explicitly. Its build, proxy, asset, API,
 identity, and RM-journey evidence close the internal canonical-artifact dependency.
 
@@ -397,7 +397,7 @@ An installation record contains:
 - exact allowed parent origin or origins;
 - tenant identifier;
 - accepted issuer and subject-token audience or client;
-- Doc1 resource audience and permitted scopes;
+- `cdd-sow-research` resource audience and permitted scopes;
 - selected Mode 4 or Mode 5 credential transport;
 - supported loader, protocol, and API major versions;
 - UI theme policy and bounded presentation options;
@@ -422,12 +422,12 @@ cache. Every authenticated JSON, multipart result, stream, and document response
 `private, no-store`. Only versioned non-secret loader and `_next` assets use public
 immutable caching; no service worker caches protected responses.
 
-On every authenticated request, Doc1 requires:
+On every authenticated request, `cdd-sow-research` requires:
 
 ```text
 verified token tenant == installation tenant
 verified token issuer == installation issuer policy
-verified token audience contains the Doc1 resource
+verified token audience contains the `cdd-sow-research` resource
 verified token scopes authorize the requested operation
 ```
 
@@ -515,7 +515,7 @@ parent origins loaded it, and `referrerpolicy=no-referrer` deliberately provides
    listeners and use only the dedicated `MessagePort`.
 
 `channel_id` identifies the browser protocol session. It is never reused as the Mode 5
-`grant_instance_id`, which is created by the Doc1 API only after the channel exists.
+`grant_instance_id`, which is created by the `cdd-sow-research` API only after the channel exists.
 
 Every envelope contains:
 
@@ -574,9 +574,9 @@ at build time. The reference artifact therefore has one canonical `/agent` base 
 native, sandboxed, and standalone deployments. A native BFF preserves that path instead
 of choosing a tenant-specific mount. The standalone root may redirect to `/agent/`.
 
-Hrz9 consumes the canonical `/agent` build and retains `/apps/doc1` only as a compatibility
+`journey-portal` consumes the canonical `/agent` build and retains `/apps/doc1` only as a compatibility
 entry. The same-artifact claim therefore includes the native host while remaining bounded
-to the Doc1 UI and API artifacts; Hrz9 shell and proxy assets are host integration artifacts.
+to the `cdd-sow-research` UI and API artifacts; `journey-portal` shell and proxy assets are host integration artifacts.
 
 ### 5.7 Browser-flow state and citation continuation
 
@@ -609,7 +609,7 @@ The public-citation continuation is:
    citations for the verified actor; the response emits IDs only for those records.
 2. The authenticated iframe sends only one emitted server-owned citation ID through its
    normal bearer transport.
-3. Doc1 rechecks installation, tenant, case, emitted-citation binding, current document
+3. `cdd-sow-research` rechecks installation, tenant, case, emitted-citation binding, current document
    custody, and source policy, then maps the embedded actor to exactly one expected
    Mode 6 actor through reviewed server-side policy.
 4. The store creates a subject-bound citation ticket with at most 60 seconds lifetime.
@@ -636,7 +636,7 @@ linking key.
 ### 6.1 Trust statement
 
 Mode 4 is the lower-friction compatibility path. The host already possesses a short-lived
-OAuth access token for the Doc1 resource and transfers it to the iframe.
+OAuth access token for the `cdd-sow-research` resource and transfers it to the iframe.
 
 The host is:
 
@@ -650,7 +650,7 @@ already passed through the host secret from that host.
 
 ### 6.2 Token contract
 
-The production credential is an OAuth access token for Doc1. A plain OIDC ID token is not
+The production credential is an OAuth access token for `cdd-sow-research`. A plain OIDC ID token is not
 accepted as an API bearer.
 
 The initial portable profile is a signed JWT access token with:
@@ -658,7 +658,7 @@ The initial portable profile is a signed JWT access token with:
 - protected JOSE header `typ: at+jwt`;
 - allowlisted asymmetric signing algorithm;
 - exact `iss`;
-- `aud` containing the Doc1 resource identifier;
+- `aud` containing the `cdd-sow-research` resource identifier;
 - `sub`, interpreted only together with the exact issuer so subjects cannot collide
   across institutions;
 - `client_id` or an equivalent authorized-party binding;
@@ -667,7 +667,7 @@ The initial portable profile is a signed JWT access token with:
 - `exp - iat` no greater than the issuer policy's configured maximum; the reference
   default is 300 seconds and the deployment ceiling is 900 seconds;
 - `jti` for safe audit correlation;
-- narrow Doc1 `scope`;
+- narrow `cdd-sow-research` `scope`;
 - tenant claim mapped through issuer-specific policy; and
 - groups, roles, or entitlements only through allowlisted claim mappings.
 
@@ -680,7 +680,7 @@ requires pre-expiry revocation, its issuer policy must configure and test an aut
 introspection or revocation source; only a one-way token or `jti` correlation hash may
 enter audit.
 
-The request supplies `installation_id` only as a selector. Doc1 then binds the verified
+The request supplies `installation_id` only as a selector. `cdd-sow-research` then binds the verified
 token to that installation through either an issuer-signed installation claim or a
 reviewed mapping in which the issuer, authorized client, and tenant tuple resolves to
 exactly one installation. A selector supplied by the iframe is never sufficient authority.
@@ -701,7 +701,7 @@ not a change to `IdentityPort`.
 
 1. The iframe completes the origin-checked channel handshake.
 2. It emits `agent:authorize`.
-3. The host obtains a Doc1-audience access token from its authorization server, directly
+3. The host obtains a `cdd-sow-research`-audience access token from its authorization server, directly
    or through standards-based token exchange.
 4. The host sends `host:credential` over the instance-bound `MessagePort`.
 5. The iframe keeps the token in memory only and attaches it to every protected request.
@@ -713,8 +713,8 @@ dependency for every adopter.
 
 ### 6.4 Applicability limit
 
-A pure SPA can use Mode 4 only when it already has a suitable signed Doc1 access token.
-Browser code cannot safely manufacture a confidential-client credential, and Doc1 does
+A pure SPA can use Mode 4 only when it already has a suitable signed `cdd-sow-research` access token.
+Browser code cannot safely manufacture a confidential-client credential, and `cdd-sow-research` does
 not weaken audience checks to make an unrelated host token work.
 
 If the host cannot obtain the required token, use Mode 5 or Mode 6.
@@ -723,13 +723,13 @@ If the host cannot obtain the required token, use Mode 5 or Mode 6.
 
 ### 7.1 Security objective
 
-Mode 5 preserves the dedicated-origin iframe while ensuring that reusable Doc1
+Mode 5 preserves the dedicated-origin iframe while ensuring that reusable `cdd-sow-research`
 credentials never pass through host JavaScript. The host transports only a short-lived,
 single-use launch code that cannot be redeemed without a verifier held inside the agent
 iframe.
 
 The implemented reference uses Authorization Code with PKCE semantics and a
-replaceable embedded-authorization broker. The broker can be deployed with Doc1 for the
+replaceable embedded-authorization broker. The broker can be deployed with `cdd-sow-research` for the
 portable demonstration or replaced by an institution-approved standards service.
 
 ### 7.2 Flow
@@ -740,7 +740,7 @@ sequenceDiagram
   participant H as Host browser
   participant B as Registered host BFF
   participant F as Agent iframe
-  participant A as Doc1 API
+  participant A as `cdd-sow-research` API
   participant I as Institution identity service
 
   H->>F: Create dedicated-origin frame
@@ -757,16 +757,16 @@ sequenceDiagram
   B-->>H: Launch code only
   H->>F: host:grant with launch code
   F->>A: Redeem code with private verifier
-  A-->>F: Short-lived Doc1 access token
+  A-->>F: Short-lived `cdd-sow-research` access token
   F->>A: Protected calls with access token
 ```
 
-The iframe registers its challenge directly with Doc1 before the host receives the
+The iframe registers its challenge directly with `cdd-sow-research` before the host receives the
 instance identifier. A parent that merely observes that legitimate instance and launch
 code cannot redeem it without the iframe's verifier. The grant request is server-to-server
 from a registered host BFF, and the browser never receives the subject credential.
 
-PKCE is not proof that code is running in the genuine Doc1 iframe. An actively malicious
+PKCE is not proof that code is running in the genuine `cdd-sow-research` iframe. An actively malicious
 host backend with valid delegation authority can register its own challenge and request a
 grant. Mode 5 therefore removes the reusable token from the ordinary host front end; it
 does not remove the registered BFF, identity service, or broker from the authorization
@@ -816,7 +816,7 @@ or step-up on a BFF- or agent-controlled surface before issuing the grant.
   scope. It is never sent through host JavaScript.
 - The subject credential must be intended for the configured launch broker or accepted
   through a documented token-exchange policy. It is never accepted directly on ordinary
-  Doc1 resource endpoints.
+  `cdd-sow-research` resource endpoints.
 - The launch code is bound to installation, instance, PKCE challenge, verified source
   issuer and subject, tenant, client, scopes, parent-origin policy, and expiry.
 - Opaque grant-instance IDs and launch codes come from a cryptographically secure random
@@ -831,12 +831,12 @@ or step-up on a BFF- or agent-controlled surface before issuing the grant.
   `REGISTERED` and `CODE_ISSUED` may instead become `EXPIRED`; no other transition is
   valid.
 - The code verifier has at least 256 bits of entropy and uses `S256`.
-- The issued Doc1 token has a maximum default lifetime of five minutes.
+- The issued `cdd-sow-research` token has a maximum default lifetime of five minutes.
 - The issued token uses JOSE `typ=at+jwt` plus a required
   `token_use=doc1-embedded-grant` claim, a distinct issuer and asymmetric signing key set,
   audience, installation, tenant, authenticated BFF client, exact signed `source_iss`,
   original signed `source_sub`, and effective scopes. Its canonical actor is derived from
-  `(source_iss, source_sub)`; the Doc1 token issuer and BFF client are separate identities.
+  `(source_iss, source_sub)`; the `cdd-sow-research` token issuer and BFF client are separate identities.
 - Its protected `alg` must match the deployment-pinned allowlist (`ES256` by default;
   `RS256` is the supported compatibility choice), never a value selected by token content.
 - It requires `iat` and `exp`, validates optional `nbf`, permits at most 30 seconds of
@@ -891,14 +891,14 @@ sanitization remain load-bearing.
 The old Mode 5 header-injection design belongs here.
 
 A host with a server tier may proxy UI and API under its own origin and obtain the user's
-Doc1 access token server-side. This deployment selects `channel.mode=native` and
+`cdd-sow-research` access token server-side. This deployment selects `channel.mode=native` and
 `identity.mode=oauth-access-token`; it is not Mode 4 because no isolated cross-origin
 channel exists. The BFF must:
 
 - strip inbound `Authorization`, cookie, persona, actor, tenant, group, role, and ACL
   headers before proxying;
 - authenticate the host session;
-- obtain a user-specific Doc1 access token from the configured authorization server;
+- obtain a user-specific `cdd-sow-research` access token from the configured authorization server;
 - inject only that verified credential upstream;
 - enforce CSRF, Origin, and Fetch Metadata controls for state-changing browser requests;
   and
@@ -906,7 +906,7 @@ channel exists. The BFF must:
   entitlement decisions require that human.
 
 This channel avoids browser token handoff, CORS, and third-party cookies. It also places
-the host inside the complete Doc1 trust boundary. Same-origin host code can inspect the
+the host inside the complete `cdd-sow-research` trust boundary. Same-origin host code can inspect the
 agent DOM and responses. That is native integration, not sandboxed isolation.
 
 ## 9. Authorization, tenancy, and document custody
@@ -1104,7 +1104,7 @@ while grant registration, authorization, redemption, expiry, replay rejection, a
 authentication failures produce dedicated security audit events. Configured
 `authorized_parent_origin` and browser-observed parent origin are separate fields.
 
-Maker-checker remains mandatory. A framed parent that is allowed to embed Doc1 can still
+Maker-checker remains mandatory. A framed parent that is allowed to embed `cdd-sow-research` can still
 deny service, overlay the frame, or attempt user-interface redress. Consequential approval
 should use a visible confirmation and may require a Mode 6 top-level step-up with fresh
 MFA. Origin isolation does not prove user intent.
@@ -1233,9 +1233,9 @@ it with an actionable migration message requiring both a real runtime profile an
 |---|---|---|
 | Host reads rendered KYC data | Dedicated origin blocks DOM access, but the host possesses an API token and is trusted for that data | Dedicated origin blocks DOM access and the front end receives only a PKCE-bound launch code; the registered BFF remains in the authorization trust boundary |
 | Unsigned host identity | Server verifies OAuth access token | Broker verifies subject credential and issues iframe-bound token |
-| Host steals reusable Doc1 token | Not prevented; host is the trusted courier | Token never traverses host JavaScript |
+| Host steals reusable `cdd-sow-research` token | Not prevented; host is the trusted courier | Token never traverses host JavaScript |
 | Spoofed message | Exact origins, source, instance, schema, sequence, and `MessagePort` | Same |
-| Malicious site frames Doc1 | Per-installation `frame-ancestors` | Same |
+| Malicious site frames `cdd-sow-research` | Per-installation `frame-ancestors` | Same |
 | Cross-tenant access | Installation, issuer, token tenant, entitlement, case, and evidence tags must all match | Same |
 | Launch-code replay | Not applicable | Atomic `BrowserFlowStorePort` state transition plus PKCE |
 | Access-token replay after leakage | Short expiry; optional later DPoP | Short expiry; optional later DPoP |
@@ -1283,7 +1283,7 @@ Secure deployments never downgrade to a local persona.
 ## 15. Portability evidence
 
 The executable channel-and-identity proof for Modes 4 and 5 uses the same immutable
-Doc1 UI and backend artifacts across:
+`cdd-sow-research` UI and backend artifacts across:
 
 - a plain HTML host and at least one framework host;
 - two distinct host origins;
@@ -1338,7 +1338,7 @@ audit records are exported.
   is explicit, and `IdentityPort` is selected only by exact identity mode;
 - the dedicated-origin iframe, installation-specific `frame-ancestors`, same-origin
   iframe/API, immutable loader, protocol, and host/iframe CSP tests pass;
-- Mode 4 accepts only a policy-compliant Doc1 OAuth access token and states its host trust;
+- Mode 4 accepts only a policy-compliant `cdd-sow-research` OAuth access token and states its host trust;
 - Mode 5 binds a CSPRNG single-use grant to the iframe challenge, keeps reusable
   credentials out of parent JavaScript, and passes host-BFF session, user-intent, CSRF,
   Origin, and Fetch Metadata tests;
@@ -1348,8 +1348,8 @@ audit records are exported.
   exposing their target or a reusable credential to host JavaScript;
 - audit records contain the verified channel and identity context without secrets;
 - the two-host, two-issuer, three-browser conformance demonstration passes;
-- Hrz9 consumes the canonical `/agent` artifact behind its compatibility entry route and
-  records the same Doc1 build digest; and
+- `journey-portal` consumes the canonical `/agent` artifact behind its compatibility entry route and
+  records the same `cdd-sow-research` build digest; and
 - the separately configured Mode 6 fallback passes the canonical public callback and
   cookie contract.
 

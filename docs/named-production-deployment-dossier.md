@@ -1,11 +1,11 @@
 ---
 type: Deployment Input Dossier
-title: Doc1 named production deployment
+title: `cdd-sow-research` named production deployment
 description: Non-secret decision and evidence template for one institution enabling UI portability Modes 4 and 5.
 status: draft
 ---
 
-# Doc1 named production deployment dossier
+# `cdd-sow-research` named production deployment dossier
 
 > **Re-scoped 2026-08-29.** The `us-central1` projects this dossier was first filled in
 > against were deleted on 2026-08-29 and the stack was rebuilt in `asia-southeast1`. A dated
@@ -193,16 +193,16 @@ An installation choosing Google Cloud Identity, with no third-party authorizatio
 consistent with the rest of the catalog: most sibling repos ship a working IAP adapter or
 verify Google-signed OIDC ID tokens for service-to-service calls, and every reference to Okta,
 Auth0, Keycloak or Entra in the workspace sits inside an `onprem/identity.py` placeholder that
-raises `NotImplementedError`. Introducing a third-party issuer would make Doc1 the only repo in
+raises `NotImplementedError`. Introducing a third-party issuer would make `cdd-sow-research` the only repo in
 the catalog that needs one.
 
 Two consequences follow, and both are load-bearing:
 
 1. **Mode 4 cannot be served by Google, and no exchange changes that.** Mode 4 requires the
-   host to already hold a Doc1-audience RFC 9068 access token with protected header
+   host to already hold a `cdd-sow-research`-audience RFC 9068 access token with protected header
    `typ=at+jwt` and a narrow `cdd.*` scope. Google is not a general-purpose authorization
    server for third-party APIs: its user access tokens are opaque and its JWTs are ID tokens
-   carrying an OAuth client id in `aud` and no `scope` claim. Doc1 refuses an ID token as an
+   carrying an OAuth client id in `aud` and no `scope` claim. `cdd-sow-research` refuses an ID token as an
    API bearer by design, enforced at
    [`access_token_identity.py`](../src/cdd_sow_research/adapters/oidc/access_token_identity.py).
    A Google-only deployment therefore serves Mode 5 and Mode 6, and section 4 below is marked
@@ -239,7 +239,7 @@ an installation that records Mode 4 as not applicable.
 |---|---|---|
 | Issuer and discovery/JWKS URI | `PENDING` | HTTPS, restricted egress, pinned issuer |
 | Algorithms | `PENDING` | RS256 or ES256 only |
-| Resource audience | `PENDING` | Exact Doc1 API audience |
+| Resource audience | `PENDING` | Exact `cdd-sow-research` API audience |
 | Tenant | `PENDING` | One institution per deployment |
 | Allowed clients | `PENDING` | Explicit client IDs |
 | Required scopes | `PENDING` | Least privilege |
@@ -271,16 +271,16 @@ and configure the policy under `identity.embedded_grant.id_token_subject_issuers
 |---|---|---|
 | Subject-token issuer and audience | Issuer `https://accounts.google.com`; JWKS `https://www.googleapis.com/oauth2/v3/certs`; audience is the dedicated Google OAuth client id, `PENDING` until created | Distinct broker audience |
 | Subject client and grant scope | Subject client is the same dedicated Google client (`azp`); grant scope `cdd.embed` established by installation policy, not by a token claim | Least privilege |
-| BFF client identity | `PENDING`: the Hrz9 journey portal BFF, registered as a distinct service identity | Registered service identity |
+| BFF client identity | `PENDING`: the `journey-portal` BFF, registered as a distinct service identity | Registered service identity |
 | BFF authentication | `private_key_jwt` | mTLS or `private_key_jwt` |
 | BFF public keys and accepted window | `PENDING`, tracked as the key-custody rows of `journey-portal`'s `docs/named-deployment-dossier.md` | Reviewed JWK set and rotation dates |
 | Browser-session binding | Authenticated Google Cloud Identity session at the portal, bound to the instance and the verified Google subject | Authenticated user session |
 | User-intent control | CSRF token, exact `Origin` matching the portal's origin, and Fetch Metadata policy on the host-facing request | CSRF, Origin and Fetch Metadata evidence |
-| Revocation owner and procedure | `PENDING`, tracked in the Hrz9 dossier and rehearsed against its runbook rotation procedure | Tested emergency path |
+| Revocation owner and procedure | `PENDING`, tracked in the `journey-portal` dossier and rehearsed against its runbook rotation procedure | Tested emergency path |
 
 ## 6. Mode 6 fallback
 
-Mode 6 is the only mode Google Cloud Identity satisfies with no new code. Doc1's
+Mode 6 is the only mode Google Cloud Identity satisfies with no new code. `cdd-sow-research`'s
 `oidc-session` adapter performs Authorization Code plus PKCE, and
 [`adapters/oidc/discovery.py`](../src/cdd_sow_research/adapters/oidc/discovery.py) requires only
 `authorization_endpoint`, `token_endpoint` and `jwks_uri`, all of which Google publishes. It
@@ -342,10 +342,10 @@ The final evidence pack must contain:
 | Gate | Status | Evidence |
 |---|---|---|
 | Repository and reusable infrastructure | Ready | Local gates and Terraform validation |
-| Doc1 Mode 5 code for a Google subject | Ready | Section 3a's three changes are implemented: per-installation subject token type, the Google ID-token profile verifier with its negative matrix, and scope derived from reviewed installation policy |
-| Named institution inputs | PARTIAL | Section 2's decisions stand and its created values are held in the gitignored local copy rather than published here, which is why its resource rows read `REPLACE_ME_*`; the values the 2026-08-24 record names are retired with that project. Section 3's portal origin is settled: Hrz9 is deployed and serving with this system embedded same-origin at `/agent`, so the parent origin exists. Sections 3 and 5 still need the dedicated Google OAuth client id, the browser-policy rows, and the standalone Mode 6 domain |
+| `cdd-sow-research` Mode 5 code for a Google subject | Ready | Section 3a's three changes are implemented: per-installation subject token type, the Google ID-token profile verifier with its negative matrix, and scope derived from reviewed installation policy |
+| Named institution inputs | PARTIAL | Section 2's decisions stand and its created values are held in the gitignored local copy rather than published here, which is why its resource rows read `REPLACE_ME_*`; the values the 2026-08-24 record names are retired with that project. Section 3's portal origin is settled: `journey-portal` is deployed and serving with this system embedded same-origin at `/agent`, so the parent origin exists. Sections 3 and 5 still need the dedicated Google OAuth client id, the browser-policy rows, and the standalone Mode 6 domain |
 | Identity provider capability | PARTIAL | Google Cloud Identity can serve Mode 5 and Mode 6; Mode 4 is not applicable and the preflight does not demand it |
-| Hrz9 portal half | **DEPLOYED**, on the 2026-08-29 rebuild | Serving behind IAP in the shared named project with this system mounted as an embedded app at `/agent`, same origin; the RM journey has been driven end to end in a browser against it. The code below is therefore no longer a claim about a repository but about a running system. `journey-portal` implements `private_key_jwt` signing behind a signing-key port with non-exportable Cloud KMS custody, the BFF JWKS route, CSRF plus exact `Origin` plus Fetch Metadata enforcement before any credential is minted, and a host authorization proof built from the verified principal. A cross-repo fixture verifies a portal-minted assertion against this repo's actual `PrivateKeyJwtVerifier`, with the replay, tamper, expiry, audience, client and foreign-key negatives refused. Its deployment inputs are tracked in its own dossier |
+| `journey-portal` half | **DEPLOYED**, on the 2026-08-29 rebuild | Serving behind IAP in the shared named project with this system mounted as an embedded app at `/agent`, same origin; the RM journey has been driven end to end in a browser against it. The code below is therefore no longer a claim about a repository but about a running system. `journey-portal` implements `private_key_jwt` signing behind a signing-key port with non-exportable Cloud KMS custody, the BFF JWKS route, CSRF plus exact `Origin` plus Fetch Metadata enforcement before any credential is minted, and a host authorization proof built from the verified principal. A cross-repo fixture verifies a portal-minted assertion against this repo's actual `PrivateKeyJwtVerifier`, with the replay, tamper, expiry, audience, client and foreign-key negatives refused. Its deployment inputs are tracked in its own dossier |
 | Base stack applied | **REDONE 2026-08-29** | The 2026-08-24 apply is retired with its project; what section 9a describes no longer exists. The stack was rebuilt from scratch in `asia-southeast1`, and which of its claims are re-proved against the rebuild rather than carried over is the catalog's deployment record to say, not this file |
 | Named Modes 4/5 edge | BLOCKED, on less | The portal half is no longer among the blockers: it exists and serves. What remains is the dedicated Google OAuth client id, a portal OIDC session holding its ID token, and a separate standalone domain for Mode 6. See "What the named edge still needs" |
 | Production-complete gate | BLOCKED | All eight conditions in `embedding-implementation-plan.md` Section 15.2 must pass |
@@ -393,12 +393,12 @@ disclosure rather than left for a reader to notice, which is the part that trans
 ## 9b. What the named edge still needs
 
 The Modes 4/5 edge did not stop for want of inputs that could be typed in. It stopped on three
-things that had to genuinely exist. **Hrz9's deployment has since happened, and it closed the
+things that had to genuinely exist. **`journey-portal`'s deployment has since happened, and it closed the
 first and most of the third.** What is recorded below is what each was, and what it is now.
 
 1. **A parent origin that is not the agent origin. CLOSED.** The manifest schema refuses an
    installation whose `parent_origins` contains its own agent origin, so a self-embed cannot
-   stand in for a host portal. The intended parent was the Hrz9 `journey-portal` shell, and that
+   stand in for a host portal. The intended parent was the `journey-portal` shell, and that
    shell is now deployed and serving behind IAP in the named project with this system mounted as
    an embedded app at `/agent`, same-origin. The portal supplies the parent origin this row
    wanted. The origin itself is a live identifier and is recorded in the catalog's private
@@ -408,7 +408,7 @@ first and most of the third.** What is recorded below is what each was, and what
    one, and no fictional value can: a cookie boundary that is not actually a separate origin is
    not a boundary.
 3. **Working identity providers. NARROWED to one input.** Mode 5 needs a BFF publishing a real
-   JWKS — that is Hrz9's BFF — and that BFF is now BUILT: it signs `private_key_jwt` behind a
+   JWKS — that is `journey-portal`'s BFF — and that BFF is now BUILT: it signs `private_key_jwt` behind a
    signing-key port with non-exportable Cloud KMS custody and serves its JWKS route. Neither
    repository owes code for it. What Mode 5 still waits on is a **dedicated Google OAuth client
    id** and a portal-side OIDC session holding that client's ID token; the managed subject-token

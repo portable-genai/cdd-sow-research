@@ -1,4 +1,4 @@
-# Contributing to the Doc1 CDD + Source-of-Wealth Agent
+# Contributing to the `cdd-sow-research` CDD + Source-of-Wealth Agent
 
 Thanks for your interest. This is a public engineering-portfolio reference build, so the
 bar is "production-grade in style, internally consistent, and green on the offline gate".

@@ -1,7 +1,7 @@
 """WP3: the eval smoke/promotion split (eval/run_eval.py --mode).
 
-smoke (default) is the offline pre-merge check; gate is the Hrz4 promotion authority and
-must refuse to run under local/onprem, so an offline smoke result is never relabelled a
+smoke (default) is the offline pre-merge check; gate is the model-quality-gate promotion authority
+and must refuse to run under local/onprem, so an offline smoke result is never relabelled a
 promotion verdict.
 """
 

@@ -3,16 +3,15 @@
 Runs one perpetual-KYC cycle for a subject inside the existing CDD lifecycle:
 
 1. observe the three monitored edges through the ports the dossier pipeline already uses
-   (``SanctionsListProviderPort`` screening, ``AdverseMediaPort``, ``CorporateRegistryPort``);
-2. load the stored baseline through the ``MonitoringStorePort`` (fail-closed on ACL);
-3. compute the whole outcome in PURE code with
-   :class:`~cdd_sow_research.domain.perpetual_kyc.PerpetualKycEngine` (signals, the re-score
-   and its per-signal uplift lines, the deterministic queue priority and SLA date);
-4. optionally ask the LLM to NARRATE that finished outcome, after redaction, with the
-   numbers already fixed: the narrative is prose about a decision the model did not make;
-5. route the assessment to Hrz7 for maker-checker disposition (rule R8) and persist it,
-   then advance the baseline; and
-6. write the already-redacted WORM audit record.
+   (``SanctionsListProviderPort`` screening, ``AdverseMediaPort``, ``CorporateRegistryPort``); 2.
+   load the stored baseline through the ``MonitoringStorePort`` (fail-closed on ACL); 3. compute the
+   whole outcome in PURE code with
+   :class:`~cdd_sow_research.domain.perpetual_kyc.PerpetualKycEngine` (signals, the re-score and its
+   per-signal uplift lines, the deterministic queue priority and SLA date); 4. optionally ask the
+   LLM to NARRATE that finished outcome, after redaction, with the numbers already fixed: the
+   narrative is prose about a decision the model did not make; 5. route the assessment to
+   human-review-console for maker-checker disposition (rule R8) and persist it, then advance the
+   baseline; and 6. write the already-redacted WORM audit record.
 
 Every consequential value is arithmetic the engine performed and an auditor can recompute.
 The service never blocks, freezes or downgrades a relationship: it queues an explainable

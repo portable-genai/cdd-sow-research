@@ -397,7 +397,7 @@ def test_startup_rejects_conflated_broker_and_resource_audience(mode5: Settings)
         ),
     )
 
-    with pytest.raises(ValueError, match="distinct from Doc1"):
+    with pytest.raises(ValueError, match="distinct from cdd-sow-research"):
         replace(mode5, identity=identity).validate_deployment()
 
 

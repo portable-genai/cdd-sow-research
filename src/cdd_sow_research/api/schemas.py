@@ -747,7 +747,7 @@ class PerpetualKycQueueResponse(BaseModel):
 # --------------------------------------------------------------------------- #
 # UBO graph
 #
-# FROZEN CONTRACT. ``UboGraphResponse`` is the shape a downstream consumer (Doc1's A2A
+# FROZEN CONTRACT. ``UboGraphResponse`` is the shape a downstream consumer (cdd-sow-research's A2A
 # ``resolve_ubo_graph`` skill, and G2 when it is built) reads, and it is versioned by the
 # agent card rather than by an unannounced edit here. Fields may be ADDED; a field may not
 # be renamed, retyped or removed without a card version bump. See

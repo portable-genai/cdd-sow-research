@@ -145,7 +145,8 @@ def test_readiness_answers_on_both_the_probe_path_and_the_versioned_one() -> Non
 
     On Google's serverless platform a request to ``<service>/healthz`` is answered by the
     frontend and never reaches the container, so an embedding host proxying to this service
-    cannot ask it whether it is ready: the console showed "Connecting to Doc1..." indefinitely
+    cannot ask it whether it is ready: the console showed "Connecting to cdd-sow-research..."
+    indefinitely
     against a service that was healthy and serving every other route. ``/healthzz`` and
     ``/v1/healthz`` arrive normally, which is how the reserved path was identified.
 

@@ -1,13 +1,13 @@
 # Common-base practices audit
 
 - **Repo:** `cdd-sow-research`
-- **Catalog id:** Doc1 (package `cdd_sow_research`, env prefix `CDD`)
+- **Catalog id:** `cdd-sow-research` (package `cdd_sow_research`, env prefix `CDD`)
 - **Catalogue reference:** [`common-base-practices.md`](https://github.com/portable-genai/.github/blob/main/common-base-practices.md) (checks A1..G7)
 - **Note:** This is the **reference repo** the catalogue was written from: its "Here:" evidence
   lines cite this repo's paths. Each check below was re-run against the current tree rather than
   assumed; the one non-PASS-worthy item (G7) is flagged as a minor drift, not a gap.
 
-Applicability: Doc1 ships a UI (`ui/`) and Terraform (`infra/terraform/`), so `[ui]` and
+Applicability: `cdd-sow-research` ships a UI (`ui/`) and Terraform (`infra/terraform/`), so `[ui]` and
 `[infra]` checks apply. **Load-bearing** checks (a FAIL breaks a shared catalog guarantee) are
 A1-A6, C1-C5, D1-D3 and E1; all are PASS here.
 
@@ -41,7 +41,7 @@ A1-A6, C1-C5, D1-D3 and E1; all are PASS here.
 | **D3** Whole gate runs offline, zero org secrets `[all]` **(load-bearing)** | PASS | `gate.yaml` calls the shared fleet-gate workflow with `CDD_PROFILE: local` and runs `make check`; no `secrets.` references. |
 | **D4** Non-root, minimal, healthchecked container `[infra]` | PASS | `Dockerfile`: `USER appuser` (uid 10001), `HEALTHCHECK` on `/healthz`, `EXPOSE 8090`, `CDD_PROFILE=gcp`; slim runtime stage. |
 | **D5** Deploy-time residency/sovereignty, parameterised `[infra]` | PASS | `infra/terraform/*` pins the allowlist-validated `var.region` (default `asia-southeast1`), org policy, CMEK, VPC-SC, WORM log bucket; CI `terraform fmt -check` + `validate` runs offline (`-backend=false`). |
-| **E1** Offline eval smoke guards merge; Hrz4 owns promotion `[agentic]` **(load-bearing)** | PASS | `eval/run_eval.py --mode smoke\|gate`; `--mode gate` routes through `EvaluationGatePort` to the promotion authority; `gate.yaml` runs `make check`, which runs `--mode smoke`, on every pull request. Thresholds are NOT duplicated as unlabelled constants: the `THRESHOLDS` dict is gone, every bar lives in `eval/rubrics/*.yaml` beside the argument for it, and `assert_covers` fails the build in BOTH directions. What was here before was a dict AND a loader that overlaid four rubric files on top of it, falling back to the dict when PyYAML was missing. |
+| **E1** Offline eval smoke guards merge; `model-quality-gate` owns promotion `[agentic]` **(load-bearing)** | PASS | `eval/run_eval.py --mode smoke\|gate`; `--mode gate` routes through `EvaluationGatePort` to the promotion authority; `gate.yaml` runs `make check`, which runs `--mode smoke`, on every pull request. Thresholds are NOT duplicated as unlabelled constants: the `THRESHOLDS` dict is gone, every bar lives in `eval/rubrics/*.yaml` beside the argument for it, and `assert_covers` fails the build in BOTH directions. What was here before was a dict AND a loader that overlaid four rubric files on top of it, falling back to the dict when PyYAML was missing. |
 | **E2** Safety metric with strictest threshold, no false green `[agentic]` | PASS | `pii_safety >= 0.99`; `eval/run_eval.py` imports `domain.pii_patterns` so the gate detector and the runtime redactor share one pattern source. `pkyc_priority >= 0.90` is scored against the golden set's own `expected_priority` / `expected_delta_direction` (an independent oracle, not a re-read of the engine) and `test_eval_perpetual_kyc_can_go_red.py` proves per change kind that a mis-tuned engine drives it red via `agent_eval_kit.assert_each_can_go_red`. |
 | **E3** Fixtures and golden data obviously fictional `[all]` | PASS | `eval/datasets/golden_cases.jsonl` uses "Acme Logistics Holdings (FICTIONAL)" etc.; the perpetual-KYC fixtures and the bundled sanctions/adverse-media snapshots are equally fictional; DEMO.md / COMPLIANCE.md state that a fixture hit is never a determination about a real party. |
 | **E4** Promotion verdict fails closed when nothing was evaluated `[agentic]` **(load-bearing)** | PASS | `agent_eval_kit.EvalReport.passed` requires `n_examples > 0` AND a non-empty `results`. Two further refusals run as the FIRST statements of the scored run rather than only in `tests/`: `assert_covers` reconciles the rubrics with the scored set in both directions, and `prove_adverse_media_relevance_can_go_red` shows the relevance predicate failing in BOTH directions, because a predicate that keeps everything is the original PROHIBITED-band defect and one that drops everything is the over-correction a one-sided proof would certify. The denominator rule is asserted against the corpus that actually divides each rate: `citation_accuracy` at 0.90 is measured over the citations the dossiers carry, not over six golden cases, which would not have supported it. The gate's inlined `FakeKnowledgeBase.ingest` was also missing the `page_texts` argument its port declares, so every case-document ingestion raised and the service continued without grounding: the run stayed green while no case document grounded a citation. `tests/unit/test_eval_fakes_match_their_ports.py` compares SIGNATURES, because a `runtime_checkable` Protocol compares only method names and would have passed. |
@@ -53,7 +53,7 @@ A1-A6, C1-C5, D1-D3 and E1; all are PASS here.
 | **G2** Compliance mapping table + adopter-owned crosswalk `[all]` | PASS | COMPLIANCE.md maps P-01..P-12 / R1..R6 to files; MAS Notice 626 crosswalk appendix marked adopter-owned. |
 | **G3** Documented, mechanised fork path `[all]` | PASS | `docs/ADOPTING.md` + `scripts/rename_fork.py` (`--dry-run` previews; writes only on `--yes`). |
 | **G4** Retired `[all]` | N-A (retired) | Retired practice. Releases are tracked by git tag and the `pyproject.toml` version. |
-| **G5** Role-specific FAQs referencing sibling systems `[all]` | PASS | `docs/faq/` (index + 5 files); security/compliance/features/portability FAQs cross-reference Hrz1-5 / Rsk1; adoption FAQ covers fork mechanics (no adjacent horizontal to name). |
+| **G5** Role-specific FAQs referencing sibling systems `[all]` | PASS | `docs/faq/` (index + 5 files); security/compliance/features/portability FAQs cross-reference `agent-guardrail-gateway`-5 / `compliance-advisory`; adoption FAQ covers fork mechanics (no adjacent horizontal to name). |
 | **G6** Contribution docs cover full extension touch list `[all]` | PASS | CONTRIBUTING.md has "Adding an adapter" and "Adding a new port or sub-service"; enforced by `test_port_protocols_matches_settings_adapters`. |
 | **G7** Markdown discipline: minimise em-dashes, validate mermaid `[all]` | PASS (minor drift) | Core product docs (README, SPEC, ARCHITECTURE, COMPLIANCE, DEMO, CONTRIBUTING) are at 0 em-dashes. Residual em-dashes remain in AGENTS.md and some historical planning docs; the corrected embedding design and implementation plan contain none. Convention is "minimise", non-load-bearing. |
 
@@ -97,7 +97,7 @@ the portfolio had recorded as unverified: a `global` Agent Search location **is*
 
 ## Gaps carried to systems/
 
-One combined production-enablement and exit gap remains, already recorded on the Doc1 row of
+One combined production-enablement and exit gap remains, already recorded on the `cdd-sow-research` row of
 the maintainer's per-system register:
 
 - **Modes 4/5 implementation and synthetic conformance complete; production enablement

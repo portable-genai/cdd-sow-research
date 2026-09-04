@@ -100,9 +100,9 @@ the human decisions below.
 This repo is one system in a catalog of composable GRC systems. Several concerns it
 *touches* are owned by sibling platform services, and you should integrate rather than
 rebuild them (see [`docs/faq/features-faq.md`](faq/features-faq.md) for the full map):
-the guardrail gateway (Hrz1), the governed knowledge base (Hrz2), the agent registry
-(Hrz3), the AI-quality / eval gate (Hrz4), observability + WORM audit (Hrz5), the
-compliance assistant (Rsk1), and the on-prem DLP gate (Rsk6). The `platform` profile's
+the guardrail gateway (`agent-guardrail-gateway`), the governed knowledge base (`enterprise-knowledge-base`), the agent registry
+(`agent-registry`), the AI-quality / eval gate (`model-quality-gate`), observability + WORM audit (`agent-observability`), the
+compliance assistant (`compliance-advisory`), and the on-prem DLP gate (`onprem-dlp`). The `platform` profile's
 adapters are already thin HTTP clients to those services.
 
 ## 6. Adoption checklist

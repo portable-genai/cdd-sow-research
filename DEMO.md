@@ -1,6 +1,6 @@
-# Demo guide: Doc1 CDD + Source-of-Wealth Agent
+# Demo guide: `cdd-sow-research` CDD + Source-of-Wealth Agent
 
-Step-by-step scripts for demoing Doc1 five ways:
+Step-by-step scripts for demoing `cdd-sow-research` five ways:
 
 - **Demo A: Long-running, auditable Source-of-Wealth case** (the headline flow): an RM
   closes evidence gaps with a client over several rounds, the system reconciles declared
@@ -211,7 +211,7 @@ What to point at on screen:
   the run establishes the baseline rather than crying wolf about a standing picture.
 - **The queue placement.** Priority and the disposition-due date are both computed from
   bank policy, not chosen by a model.
-- **The human-review banner and the Hrz7 routing line.** Nothing was blocked, frozen or
+- **The human-review banner and the `human-review-console` routing line.** Nothing was blocked, frozen or
   downgraded: the item is queued for a checker.
 - **Replayability.** Re-run the same command with the same `--as-of` and the output is
   identical, which is what makes the control auditable.
@@ -485,7 +485,7 @@ make run-ui         # :3000
    than passed off as blank, and a case with nothing readable indexed is refused as
    ungrounded rather than answered from the model's own knowledge.
 6. **The maker-checker gate still holds.** The dossier is still `requires_human_review`,
-   still routed to Hrz7. Nothing about running on real data relaxes P-06.
+   still routed to `human-review-console`. Nothing about running on real data relaxes P-06.
 
 ### 5.3 What to watch out for
 

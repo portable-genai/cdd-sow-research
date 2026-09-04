@@ -1,6 +1,6 @@
-# Runbook: Doc1 CDD + Source-of-Wealth Agent
+# Runbook: `cdd-sow-research` CDD + Source-of-Wealth Agent
 
-Operational notes for deploying and running Doc1 on the Gemini Enterprise Agent Platform in
+Operational notes for deploying and running `cdd-sow-research` on the Gemini Enterprise Agent Platform in
 `asia-southeast1`. This is a reference build; adapt to your own change-management and
 model-risk sign-off before any live use.
 
@@ -138,7 +138,7 @@ deployment selector, a retune is visible in `/healthz` and in the audit trail.
 
 The module never blocks, freezes or exits a relationship. If an operator asks for
 perpetual KYC to take an action automatically, the answer is no by design (P-06): the
-outcome is routed to Hrz7 and a checker disposes.
+outcome is routed to `human-review-console` and a checker disposes.
 
 ## 4b. Exporting and reloading a complete case
 
@@ -190,10 +190,10 @@ trail and case evidence remain intact.
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
 | `NotImplementedError` from a CLI command | `CDD_PROFILE=onprem` with placeholder adapters | Set `CDD_PROFILE=gcp` (or implement the on-prem adapter) |
-| `RetrievalEmptyError` on assess | No case evidence in Hrz2 for the subject | Confirm the KYC documents were ingested into Hrz2 with the case ACL tag |
+| `RetrievalEmptyError` on assess | No case evidence in `enterprise-knowledge-base` for the subject | Confirm the KYC documents were ingested into `enterprise-knowledge-base` with the case ACL tag |
 | Guardrail block on a benign case | Model Armor template too strict | Tune `model_armor.tf` filter confidence levels |
 | VPC-SC denies the apply | Runner identity outside the perimeter | Apply with `enable_vpc_sc = false`, add the identity, re-apply true |
 | `POST /v1/perpetual-kyc` returns 403 for a valid analyst | The stored baseline belongs to another tenant, or the caller holds no case-access role | Expected and correct: monitoring history is tenant-isolated. Check the caller's tenant and entitlements, never widen the record ACL |
 | The perpetual-KYC queue is empty for everyone | The caller carries no tenant tag (the listing fails closed), or `monitoring_store` is bound to the `onprem` placeholder | Confirm the identity supplies a tenant; confirm `CDD_PROFILE` and the `monitoring_store` binding |
 | Every perpetual-KYC signal looks `new` on every run | Baselines are not persisting: the store is not durable across replicas or restarts | On `gcp`/`platform` confirm the Firestore database and the `pkyc_baselines` / `pkyc_assessments` collections; `local` is in-process by design and resets with the process |
-| A pKYC assessment shows `routed_to_hrz7: false` | Hrz7 was unreachable when the cycle ran | The assessment is retained and still requires human review. Restore `CDD_HRZ7_URL` / `CDD_S2S_TOKEN`; the local router flushes its outbox on the next route or restart |
+| A pKYC assessment shows `routed_to_hrz7: false` | `human-review-console` was unreachable when the cycle ran | The assessment is retained and still requires human review. Restore `CDD_HRZ7_URL` / `CDD_S2S_TOKEN`; the local router flushes its outbox on the next route or restart |

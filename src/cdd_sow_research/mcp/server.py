@@ -1,4 +1,4 @@
-"""Serve the governed tool catalog Doc1 already declares, over MCP 2026-07-28.
+"""Serve the governed tool catalog cdd-sow-research already declares, over MCP 2026-07-28.
 
 The catalog declared four governed tools and served none of them: there was no MCP server
 process anywhere in the fleet. This supplies the callables that answer the existing catalog and
@@ -93,7 +93,8 @@ def build_handlers(actor: str) -> dict[str, mcpserve.Handler]:
 
 
 def build_server(actor: str, *, with_audit_tools: bool = True) -> Any:
-    """Build the MCP server for Doc1's catalog, refusing on any catalog/handler mismatch.
+    """Build the MCP server for cdd-sow-research's catalog, refusing on any catalog/handler
+    mismatch.
 
     ``with_audit_tools`` adds the kit's two READ-ONLY evidence tools, so a client that can reach
     this service can also verify and carry out its trail. Read-only is enforced in the kit:

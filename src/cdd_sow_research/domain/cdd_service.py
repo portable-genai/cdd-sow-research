@@ -110,7 +110,8 @@ class CddService:
         self._tracer = tracer
         self._audit = audit
         self._review = review_policy or CddReviewPolicy()
-        # Rule R8: when the dossier requires human review it is routed to Hrz7 (the maker-checker
+        # Rule R8: when the dossier requires human review it is routed to human-review-console (the
+        # maker-checker
         # console), not left as a boolean. Optional so unit tests and the CLI can omit it; when
         # unset the escalation still audits ESCALATED, it just is not forwarded to a console.
         self._review_router = review_router
@@ -192,7 +193,8 @@ class CddService:
     ) -> CDDCase:
         # The request body cannot choose its owning tenant. Stamp the verified server-side
         # tenant onto the dossier itself as well as its retrieval ACL so every downstream
-        # hand-off, including Hrz7 review routing, preserves the same tenant boundary.
+        # hand-off, including human-review-console review routing, preserves the same tenant
+        # boundary.
         subject = replace(case_input.subject, tenant=tenant) if tenant else case_input.subject
 
         # 1) Redact the case inputs (P-04) before they touch a model, index or audit.
@@ -286,7 +288,8 @@ class CddService:
         # 12) Audit (already-redacted prompt + a redacted response summary).
         self._audit_case(actor, redacted_summary, case, Decision.ESCALATED, escalated)
 
-        # 13) Route the escalation to Hrz7 (rule R8). A dossier always requires human review, so
+        # 13) Route the escalation to human-review-console (rule R8). A dossier always requires
+        # human review, so
         #     it is handed to the maker-checker console rather than terminating in a boolean; the
         #     adapter redacts before the wire. Best-effort: a console outage must not fail an
         #     already-assembled, already-audited dossier (the audit ESCALATED record is the
