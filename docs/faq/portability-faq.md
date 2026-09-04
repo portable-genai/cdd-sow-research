@@ -97,7 +97,7 @@ The `onprem` adapters are deliberate fail-fast placeholders (they raise
 `Settings` arg, so the *interface contract* for a sovereign migration is proven and
 enforced by CI today. The actual on-prem implementations are the migration work, scoped in
 [`docs/onprem-migration.md`](../onprem-migration.md). This repo is not the sovereign-exit
-*planner* (that is the sibling **Rsk5 exit-portability planner**: APRA CPS 230, MAS/HKMA
+*planner* (that is the sibling **the exit-and-portability planner exit-portability planner**: APRA CPS 230, MAS/HKMA
 outsourcing); this repo is one of the systems whose exit that planner reasons about.
 
 ### Does residency compromise portability?
@@ -106,7 +106,7 @@ No: residency is a deploy-time pin (the region, Org Policy resource-location all
 CMEK, VPC-SC), and portability is the ability to change *where* the stack runs by
 configuration. They are orthogonal. The region is validated to fail fast, and a second
 enterprise or a second region is a tfvars change, not a fork (ARCHITECTURE PT-13). Residency
-enforcement infra overlaps with the sibling **Rsk4 residency validator** (a CI gate for
+enforcement infra overlaps with the sibling **the data-residency validator residency validator** (a CI gate for
 region violations), which a fork should run rather than re-implement.
 
 ### What is NOT yet portable?

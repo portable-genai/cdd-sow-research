@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render Doc1's Agent Plugins 1.0.0 directory from what this repo already declares.
+"""Render cdd-sow-research's Agent Plugins 1.0.0 directory from what this repo already declares.
 
 Nothing here is hand-authored. The manifest's identity comes from the A2A agent card this repo
 already publishes, its keywords come from the governed tool catalog, and ``skills/`` is copied

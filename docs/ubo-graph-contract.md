@@ -150,8 +150,7 @@ A `UboFinding`:
 `adapters/_review_payload.py` gains `resolution_to_review`, alongside the dossier and
 perpetual-KYC builders.
 
-Reusing `route_monitoring` would have meant either mislabelling the action in the Hrz7
-console or inventing a queue priority nothing computed. A resolution is a different
+Reusing `route_monitoring` would have meant either mislabelling the action in the `human-review-console` or inventing a queue priority nothing computed. A resolution is a different
 consequential claim from a re-score: it names the natural persons a bank will record as
 the beneficial owners of a customer, on a stated control basis. What makes one resolution
 harder to dispose of than another is the OPACITY of the structure, not a risk band and not
@@ -172,12 +171,12 @@ recorded name never reaches the wire.
 
 **Decided: freeze it now, version it by the agent card.** Sections 1 to 3 above ARE the
 freeze. G2 has not agreed it, so it is a proposal in the sense that G2 may ask for changes;
-it is frozen in the sense that Doc1 will not change it silently. When G2 arrives, its
+it is frozen in the sense that `cdd-sow-research` will not change it silently. When G2 arrives, its
 consumer contract test pins the agent-card version, and any change that is not purely
 additive bumps that version.
 
 Two shapes rather than one, for a reason worth stating: `POST` is the consequential verb
-(findings, control basis, indicators) and always routes to Hrz7 under rule R8; `GET` returns
+(findings, control basis, indicators) and always routes to `human-review-console` under rule R8; `GET` returns
 the walked structure ALONE. The read was drawn there rather than at "the same body without
 routing" because a read that returned findings while skipping the route would make rule R8
 bypassable by choosing a verb. Evidence has no verdict to escalate; a resolution does.
@@ -195,6 +194,6 @@ This is a genuine difference from perpetual KYC, which DOES need a store: a pKYC
 is a DELTA against a remembered baseline, so without the baseline every unchanged fact
 looks new. A UBO resolution has no baseline. If a future requirement needs point-in-time
 retention (for example, evidencing what the bank believed on a given date), the durable
-record already exists in two places that are designed to hold it: the Hrz7 review item and
+record already exists in two places that are designed to hold it: the `human-review-console` review item and
 the WORM audit event. A store port would be added then, for that requirement, not now on
 speculation.

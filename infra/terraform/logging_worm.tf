@@ -25,7 +25,7 @@ resource "google_logging_project_bucket_config" "worm_audit" {
   project        = var.project_id
   location       = var.region # selected, allowlisted region (P-03)
   bucket_id      = local.worm_bucket_id
-  description    = "WORM audit bucket for the Doc1 CDD + Source-of-Wealth Agent (six-month default retention)."
+  description    = "WORM audit bucket for the cdd-sow-research CDD + Source-of-Wealth Agent (six-month default retention)."
   retention_days = var.retention_days # 180 days by default
 
   # IRREVERSIBLE when true (the default): see WARNING banner above.

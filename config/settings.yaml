@@ -262,8 +262,8 @@ identity:
   citation_subject_links: {}
   # Mode 5 has three distinct policy groups and is disabled while any is absent:
   # institutional subject-token policies (broker audience), BFF private_key_jwt
-  # clients/keys (canonical grant-endpoint audience), and dedicated Doc1 token keys
-  # (Doc1 resource audience). See tests for a fully synthetic configuration.
+  # clients/keys (canonical grant-endpoint audience), and dedicated cdd-sow-research token keys
+  # (cdd-sow-research resource audience). See tests for a fully synthetic configuration.
   # Each installation names the ONE subject token type it accepts. The default is the
   # RFC 9068 access-token profile; an installation that sets
   # subject_token_type: urn:ietf:params:oauth:token-type:id_token resolves its subject
@@ -486,10 +486,10 @@ adapters:
     local: cdd_sow_research.adapters.local.audit:LocalAppendOnlyAuditAdapter
     live: cdd_sow_research.adapters.local.audit:LocalAppendOnlyAuditAdapter
     onprem: cdd_sow_research.adapters.onprem.audit:OnPremAuditAdapter
-  # Rule R8: a dossier always requires human review, so it is ROUTED to the Hrz7 Human-Review &
+  # Rule R8: a dossier always requires human review, so it is ROUTED to the human-review-console Human-Review &
   # Maker-Checker Console (via the shared review-kit), never terminated in a local boolean.
   # local = enqueue to an in-memory outbox so the routing path runs offline; gcp/platform = submit
-  # over S2S to Hrz7's service intake (CDD_HRZ7_URL); onprem = sovereign-console placeholder.
+  # over S2S to human-review-console's service intake (CDD_HRZ7_URL); onprem = sovereign-console placeholder.
   review_router:
     gcp: cdd_sow_research.adapters.gcp.review_router:PlatformReviewRouter
     platform: cdd_sow_research.adapters.gcp.review_router:PlatformReviewRouter
@@ -497,7 +497,7 @@ adapters:
     live: cdd_sow_research.adapters.local.review_router:LocalReviewRouter
     onprem: cdd_sow_research.adapters.onprem.review_router:OnPremReviewRouter
   # Tracing is OpenTelemetry throughout. gcp exports spans straight to Cloud Trace; the
-  # explicit platform binding exports OTLP to the Hrz5 collector when
+  # explicit platform binding exports OTLP to the agent-observability collector when
   # OTEL_EXPORTER_OTLP_ENDPOINT is set, else falls back to Cloud Trace (an intentional,
   # documented default, not a silent gcp fallback). No /v1/spans HTTP client exists.
   tracer:
@@ -518,7 +518,7 @@ adapters:
     local: cdd_sow_research.adapters.local.registry_agent:LocalAgentRegistryAdapter
     live: cdd_sow_research.adapters.local.registry_agent:LocalAgentRegistryAdapter
     onprem: cdd_sow_research.adapters.onprem.registry_agent:OnPremAgentRegistryAdapter
-  # No platform binding: Hrz3 is an agent registry with no /v1/tools route or ToolSpec
+  # No platform binding: agent-registry is an agent registry with no /v1/tools route or ToolSpec
   # concept ("MCP" there is a protocol string + mcp:tool:* scope labels, not a catalogue of
   # callable tools), so tool_catalog stays gcp/local/onprem until such a contract exists.
   tool_catalog:

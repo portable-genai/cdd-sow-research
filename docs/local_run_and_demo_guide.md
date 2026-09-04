@@ -1,6 +1,6 @@
-# Local Execution & Demo Guide: Doc1 CDD + Source-of-Wealth Agent
+# Local Execution & Demo Guide: `cdd-sow-research` CDD + Source-of-Wealth Agent
 
-This guide describes how to run and demonstrate **Doc1 (CDD + Source-of-Wealth Agent)** in local mode. The local profile runs fully offline without requiring Google Cloud SDK or API keys, using SQLite and a deterministic schema-driven mock LLM engine.
+This guide describes how to run and demonstrate **`cdd-sow-research` (CDD + Source-of-Wealth Agent)** in local mode. The local profile runs fully offline without requiring Google Cloud SDK or API keys, using SQLite and a deterministic schema-driven mock LLM engine.
 
 ---
 

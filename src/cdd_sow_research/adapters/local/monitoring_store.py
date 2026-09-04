@@ -1,9 +1,9 @@
 """Local monitoring-store adapter (MonitoringStorePort) — a WORKING offline pKYC store.
 
-The ``local`` profile's stand-in for the durable, regional, CMEK-encrypted perpetual-KYC
-store. It keeps baselines and assessments in-process with the SAME fail-closed ACL
-contract the managed adapter enforces, so the whole perpetual-KYC journey (detect,
-re-score, queue, route to Hrz7) runs end to end with **no Google Cloud and no API key**.
+The ``local`` profile's stand-in for the durable, regional, CMEK-encrypted perpetual-KYC store. It
+keeps baselines and assessments in-process with the SAME fail-closed ACL contract the managed
+adapter enforces, so the whole perpetual-KYC journey (detect, re-score, queue, route to
+human-review-console) runs end to end with **no Google Cloud and no API key**.
 
 In-process rather than SQLite for the same reason the local SoW case store is:
 ``PerpetualKycAssessment`` is a deep frozen dataclass graph, and holding the aggregates as

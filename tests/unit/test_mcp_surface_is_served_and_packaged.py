@@ -1,7 +1,7 @@
 """The declared tool catalog is now SERVED, and the plugin is rendered from the declarations.
 
-Doc1 declared its capability surface twice over, as an A2A agent card and as a governed tool
-catalog of JSON Schemas, and served neither. There was no MCP server process anywhere in the
+cdd-sow-research declared its capability surface twice over, as an A2A agent card and as a governed
+tool catalog of JSON Schemas, and served neither. There was no MCP server process anywhere in the
 fleet, so a surface described in two places could be read by a human and reached by nobody.
 
 These guards are about the seam rather than the transport. What can go wrong here is not that

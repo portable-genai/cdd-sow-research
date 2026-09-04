@@ -1,4 +1,4 @@
-"""Serve Doc1's governed tool catalog over MCP 2026-07-28 on stdio.
+"""Serve cdd-sow-research's governed tool catalog over MCP 2026-07-28 on stdio.
 
 The actor is the audited caller and this transport verifies no end user, so it is read from the
 environment and recorded as a SERVICE caller. There is deliberately no default that looks like a

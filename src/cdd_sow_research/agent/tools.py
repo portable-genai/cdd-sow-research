@@ -156,7 +156,8 @@ def run_perpetual_kyc(
     Compares the current sanctions, adverse-media and corporate-registry picture against
     the stored baseline, re-scores the relationship with deterministic code (the model
     never produces the number), and places an explainable item on the human review queue.
-    The outcome always requires human review and is routed to Hrz7; nothing is acted on.
+    The outcome always requires human review and is routed to human-review-console; nothing is acted
+    on.
 
     Args:
       subject_name: The customer/entity name to monitor.
@@ -236,7 +237,7 @@ def resolve_ubo_graph(
     along each path) reaches the bank's threshold, the basis on which control was
     established, and deterministic nominee/shell indicators with an opacity score. Every
     percentage is computed by pure code; the model produces none of them. The outcome
-    always requires human review and is routed to Hrz7; nothing is acted on.
+    always requires human review and is routed to human-review-console; nothing is acted on.
 
     The returned shape is a FROZEN contract (docs/ubo-graph-contract.md): fields may be
     added, but none is renamed, retyped or removed without an agent-card version bump.
@@ -244,7 +245,7 @@ def resolve_ubo_graph(
     Args:
       entity_name: The corporate entity whose ownership to resolve.
       jurisdiction: ISO-ish country/region code (e.g. "SG").
-      tenant: Owning tenant; scopes the resolution's ACL and the Hrz7 review item.
+      tenant: Owning tenant; scopes the resolution's ACL and the human-review-console review item.
       as_of: ISO date to evaluate for (empty means today). Makes a run replayable.
       actor: Authenticated identity the request is made for.
 

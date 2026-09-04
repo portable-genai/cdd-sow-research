@@ -501,7 +501,8 @@ def test_the_review_severity_banding_is_bank_owned_policy():
 
 
 def test_the_review_payload_severity_and_dual_control_track_policy():
-    """The Hrz7 payload bands severity and the four-eyes gate on the policy numbers too, so
+    """The human-review-console payload bands severity and the four-eyes gate on the policy numbers
+    too, so
     'every threshold, limit and weight is bank-owned policy' holds on the live routing path."""
     from cdd_sow_research.adapters._review_payload import resolution_to_review
 

@@ -1,12 +1,11 @@
 """IdentityPort adapter for Mode 6 ("launch in new tab"): verify the agent's own session
 cookie, minted by ``/auth/callback`` after an OIDC Authorization Code + PKCE login.
 
-Deliberately distinct from the planned Mode 4 adapter that verifies an institution-issued
-OAuth access token for the Doc1 resource (docs/embedding-implementation-plan.md Phase 3):
-this adapter verifies a token the agent itself signed, so there is no external JWKS fetch
-on the per-request hot path, just a fast local signature check. See
-docs/embedding-and-identity.md Section 4.4 for the channel design and Section 13 for the
-threat model.
+Deliberately distinct from the planned Mode 4 adapter that verifies an institution-issued OAuth
+access token for the cdd-sow-research resource (docs/embedding-implementation-plan.md Phase 3): this
+adapter verifies a token the agent itself signed, so there is no external JWKS fetch on the
+per-request hot path, just a fast local signature check. See docs/embedding-and-identity.md Section
+4.4 for the channel design and Section 13 for the threat model.
 """
 
 from __future__ import annotations

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Load and validate Doc1 named-production environment files.
+"""Load and validate cdd-sow-research named-production environment files.
 
 Non-secret deployment decisions belong in ``.env``. Secret values belong in
 ``.env.secrets``. This loader rejects cross-file leakage, duplicate keys, and production
@@ -1224,7 +1224,8 @@ def terraform_environment(values: dict[str, str]) -> dict[str, str]:
                 # `none` is the explicit "resolved outside this deployment" sentinel and
                 # becomes Terraform's empty string, which skips the record set.
                 "TF_VAR_dns_managed_zone": (
-                    "" if values["DOC1_DNS_MANAGED_ZONE"] == "none"
+                    ""
+                    if values["DOC1_DNS_MANAGED_ZONE"] == "none"
                     else values["DOC1_DNS_MANAGED_ZONE"]
                 ),
                 "TF_VAR_installation_manifest_secret_id": values[
@@ -1585,13 +1586,13 @@ def main(argv: list[str] | None = None) -> int:
         disclosures = posture_disclosures(values)
         if args.command == "validate":
             state = "production-ready" if args.require_ready else "draft-valid"
-            print(f"Doc1 deployment environment: {state}")
+            print(f"cdd-sow-research deployment environment: {state}")
             for line in disclosures:
                 print(line)
             return 0
         if args.command == "verify-secrets":
             verify_secret_versions(values)
-            print("Doc1 Secret Manager versions match reviewed SHA-256 digests")
+            print("cdd-sow-research Secret Manager versions match reviewed SHA-256 digests")
             return 0
         command = args.argv
         if command and command[0] == "--":

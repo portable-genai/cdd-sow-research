@@ -1,7 +1,7 @@
-"""Contract test for the Hrz4 remote-evaluation adapter (RemoteEvaluationAdapter).
+"""Contract test for the model-quality-gate remote-evaluation adapter (RemoteEvaluationAdapter).
 
-Guards the corrected Hrz4 client contract (see the shared evaluation client contract): a
-structured ``target``, top-level ``dataset_id`` equal to ``target.dataset_id``, selection by the
+Guards the corrected model-quality-gate client contract (see the shared evaluation client contract):
+a structured ``target``, top-level ``dataset_id`` equal to ``target.dataset_id``, selection by the
 registered ``doc1-cdd-sow`` bundle with no bare metric names, response parsing from ``results[]``,
 and a POST promotion gate.
 """
@@ -101,7 +101,7 @@ def test_evaluate_sends_structured_target_and_parses_results():
     # Structured target, not a bare string.
     assert body["target"]["model"] == "gemini-3.5-flash"
     assert body["target"]["dataset_id"] == "golden_cases"
-    # Top-level dataset_id equals target.dataset_id (Hrz4 422s on divergence).
+    # Top-level dataset_id equals target.dataset_id (model-quality-gate 422s on divergence).
     assert body["dataset_id"] == body["target"]["dataset_id"] == "golden_cases"
     # Selection by registered bundle; NO bare metric names on the wire.
     assert body["bundle"] == "doc1-cdd-sow"

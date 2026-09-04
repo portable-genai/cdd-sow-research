@@ -1,6 +1,6 @@
 # On-prem migration (exit / portability): General Principle P-12
 
-Doc1 makes the sovereign exit **contract demonstrable**, not the completed migration.
+`cdd-sow-research` makes the sovereign exit **contract demonstrable**, not the completed migration.
 `CDD_PROFILE=onprem` selects fail-fast placeholders and proves the domain boundary. A working
 sovereign deployment still requires implementing, validating, and operating every adapter
 below. The domain core, services, API, CLI, and agent wiring are designed not to change.
@@ -22,7 +22,7 @@ imports and constructs each on-prem placeholder and asserts interface parity.
 
 ## The migration checklist
 
-To run Doc1 on a sovereign / on-premise platform, these adapter bodies are the primary
+To run `cdd-sow-research` on a sovereign / on-premise platform, these adapter bodies are the primary
 application-code surface to implement. The domain and services stay unchanged. Deployment
 also requires sovereign packaging and dependencies, settings and secrets, IdP and browser-flow-store
 configuration, infrastructure and operations, and credentialed integration tests:
@@ -35,7 +35,7 @@ configuration, infrastructure and operations, and credentialed integration tests
 | `AdverseMediaPort` | `onprem/adverse_media.py` | An internal news/sanctions index (or keep air-gapped) |
 | `CorporateRegistryPort` | `onprem/registry.py` | An on-prem corporate-registry / UBO source |
 | `OwnershipGraphPort` | `onprem/ownership_graph.py` | An on-prem source for ONE cited registry hop (the engine owns the traversal) |
-| `ComplianceClientPort` | `onprem/compliance.py` | The Rsk1 compliance service on-prem |
+| `ComplianceClientPort` | `onprem/compliance.py` | The `compliance-advisory` compliance service on-prem |
 | `LLMPort` | `onprem/llm.py` | An on-prem model-serving endpoint |
 | `GuardrailPort` | `onprem/guardrail.py` | An on-prem prompt/response screening backend (R1) |
 | `PIIRedactionPort` | `onprem/redaction.py` | An on-prem PII de-identifier (R1, P-04) |

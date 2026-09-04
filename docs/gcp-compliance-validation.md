@@ -1,4 +1,4 @@
-# GCP compliance validation: Doc1 CDD + Source-of-Wealth Agent
+# GCP compliance validation: `cdd-sow-research` CDD + Source-of-Wealth Agent
 
 This document validates the **GCP setup** (`infra/terraform/*` plus the `adapters/gcp/*`
 runtime behaviour) against the project's own compliance principles (P-01..P-12, R1..R6 in
@@ -7,7 +7,7 @@ in-region KYC workload (MAS by default, plus HKMA/APRA/FSA/FCA-style residency e
 
 Scope: the managed `gcp` profile only. The `local`, `platform`, and `onprem` profiles are
 out of scope here. Some controls are intentionally delegated to sibling platform services
-(Hrz2 governed RAG store, Hrz5 audit, Rsk1 compliance) and are noted as boundary items.
+(`enterprise-knowledge-base` store, `agent-observability`, `compliance-advisory` compliance) and are noted as boundary items.
 
 Status legend: **Met** (control present and correct), **Accepted** (a hardening was
 considered and a deliberate choice was made to leave it), **Boundary** (delegated to a
@@ -66,10 +66,10 @@ One hardening was considered and **deliberately not taken**: HSM-backed CMEK. Th
 - **CMEK protection level = SOFTWARE (Accepted).** Considered HSM; chose to keep SOFTWARE.
   Still regional customer-managed CMEK. `protection_level = "HSM"` in `kms.tf` is the upgrade
   path if HSM assurance becomes a requirement.
-- **Hrz2 governed RAG store (R3 case-scoped ACL) (Boundary).** Retrieval storage, its CMEK, and
-  the `case:<subject_id>` ACL enforcement live in Hrz2, not this repo. Verify residency and CMEK
-  in Hrz2's own setup.
-- **Hrz5 audit / Rsk1 compliance / Hrz3 registry (Boundary).** Consumed via `platform` adapters;
+- **`enterprise-knowledge-base` store (R3 case-scoped ACL) (Boundary).** Retrieval storage, its CMEK, and
+  the `case:<subject_id>` ACL enforcement live in `enterprise-knowledge-base`, not this repo. Verify residency and CMEK
+  in `enterprise-knowledge-base`'s own setup.
+- **`agent-observability` / `compliance-advisory` compliance / `agent-registry` (Boundary).** Consumed via `platform` adapters;
   their residency and retention are those services' responsibility.
 - **Agent Runtime (reasoningEngine) (Boundary).** Created by the Agent Platform SDK at deploy
   time; `agent_runtime.tf` reserves only the CMEK staging bucket and the runtime SA. Confirm

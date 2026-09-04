@@ -123,8 +123,8 @@ worm_locked = false
 # region              = "europe-west2"
 # scheduler_time_zone = "Europe/London"
 
-# Scenario D — "inside the platform". A platform deployment where Hrz1 (guardrail), Hrz5
-# (WORM audit) and IAP/Hrz3 (identity) front those concerns, so this repo does NOT
+# Scenario D — "inside the platform". A platform deployment where agent-guardrail-gateway (guardrail), agent-observability
+# (WORM audit) and IAP/agent-registry (identity) front those concerns, so this repo does NOT
 # provision its own Model Armor / DLP / WORM bucket+sink and does not serve /auth/*.
 # IMMUTABLE per deployment: a compliant standalone deploy has a locked WORM bucket, which
 # Terraform cannot destroy for the retention window, so flipping true->false is

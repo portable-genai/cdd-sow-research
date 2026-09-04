@@ -6,14 +6,14 @@ an intent, and inheriting the unset default silently ignores it.
 
 Two edge variables are covered here.
 
-``CDD_FRAME_ANCESTORS`` is the clickjacking control. Blanked, a two-state read builds an
-empty ``frame_ancestors`` tuple, and the middleware then emits the header
-``Content-Security-Policy: frame-ancestors`` with no directive value. Browsers treat a
-valueless directive as a parse error and discard it, and the ``== ("'self'",)`` branch that
-sets ``X-Frame-Options`` is skipped at the same time, so BOTH clickjacking headers vanish
-at once and the page becomes framable by anyone. Doc1 refuses the whole boot instead: the
-value is validated inside ``WebSecuritySettings``, the type the middleware reads from, so
-no code path can construct a service whose CSP is empty.
+``CDD_FRAME_ANCESTORS`` is the clickjacking control. Blanked, a two-state read builds an empty
+``frame_ancestors`` tuple, and the middleware then emits the header ``Content-Security-Policy:
+frame-ancestors`` with no directive value. Browsers treat a valueless directive as a parse error and
+discard it, and the ``== ("'self'",)`` branch that sets ``X-Frame-Options`` is skipped at the same
+time, so BOTH clickjacking headers vanish at once and the page becomes framable by anyone.
+cdd-sow-research refuses the whole boot instead: the value is validated inside
+``WebSecuritySettings``, the type the middleware reads from, so no code path can construct a service
+whose CSP is empty.
 
 ``CDD_API_HOST`` is the bind guard. hex-service-kit makes a present-but-empty value
 raise ``ConfiguredEmptyError`` rather than inherit the profile default, which on a secure

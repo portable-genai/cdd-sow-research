@@ -1457,7 +1457,8 @@ class Settings:
                     )
                 if configured_installation.subject_token_audience == installation.resource_audience:
                     raise ValueError(
-                        "broker subject-token audience must be distinct from Doc1 resource audience"
+                        "broker subject-token audience must be distinct from cdd-sow-research "
+                        "resource audience"
                     )
                 if subject_policy.tenant != installation.tenant:
                     raise ValueError(
@@ -1478,7 +1479,8 @@ class Settings:
                 for installation in loaded.manifest.installations
             ):
                 raise ValueError(
-                    "embedded-grant token audience must equal every Doc1 resource audience"
+                    "embedded-grant token audience must equal every cdd-sow-research resource "
+                    "audience"
                 )
             for key in grant.token.keys:
                 if optional_setting(key.public_key_env) is None:

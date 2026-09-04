@@ -1,4 +1,4 @@
-# Portable Doc1 UI image. Installation policy is mounted at runtime, so the image bytes
+# Portable cdd-sow-research UI image. Installation policy is mounted at runtime, so the image bytes
 # remain identical across institutions.
 FROM node:22.22.0-alpine@sha256:e4bf2a82ad0a4037d28035ae71529873c069b13eb0455466ae0bc13363826e34 AS builder
 

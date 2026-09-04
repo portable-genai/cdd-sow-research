@@ -1,6 +1,6 @@
 # Design: Long-Running, Auditable Source-of-Wealth Cases
 
-> **Status: Phases 1–2 implemented; surfaces in progress.** This document extends Doc1's
+> **Status: Phases 1–2 implemented; surfaces in progress.** This document extends `cdd-sow-research`'s
 > *one-shot* assessment (`CddService.assess()` → `CDDCase`) with a **stateful,
 > multi-iteration Source-of-Wealth (SoW) case** that lives for weeks while a
 > Relationship Manager (RM) closes evidence gaps with the client, and with an
@@ -83,8 +83,8 @@ flowchart LR
 
 - Not a workflow/BPM engine. State lives in a small, explicit case aggregate, not a
   generic orchestrator.
-- Not a new retrieval backend. The governed RAG store is still **Hrz2** (R3); evidence
-  bytes still live in the case vault and get ingested into Hrz2 with case ACL tags.
+- Not a new retrieval backend. The governed RAG store is still `enterprise-knowledge-base` (R3); evidence
+  bytes still live in the case vault and get ingested into `enterprise-knowledge-base` with case ACL tags.
 - Not autonomous approval. The agent is still decision-support (P-06); only a human
   checker moves a case to `APPROVED`.
 
@@ -145,7 +145,7 @@ stateDiagram-v2
 | `READY_FOR_REVIEW` | No blocking gaps; awaiting maker-checker. | Agent |
 | `IN_REVIEW` | A checker (MLRO) has the case. | Checker |
 | `APPROVED` | Checker signed off; an immutable snapshot is sealed. | Checker |
-| `BLOCKED` | Hrz1 guardrail blocked an input/output; needs human clearing. | Reviewer |
+| `BLOCKED` | `agent-guardrail-gateway` blocked an input/output; needs human clearing. | Reviewer |
 | `ON_HOLD` | Client unresponsive past SLA; parked. | RM |
 | `WITHDRAWN` | Case abandoned. | RM |
 
@@ -168,7 +168,7 @@ different sensitivity and a different store:
 | Tier | Holds | Store (gcp profile) | PII? | Mutability |
 |------|-------|---------------------|------|------------|
 | **Case state** | `SowCase` aggregate, iterations, ledger metadata, gaps, RFIs, reconciliation, current audit view. | Regional document store (Firestore-in-Datastore-mode or Spanner) in `asia-southeast1`, CMEK-encrypted, ACL-scoped to case principals. | Operational PII allowed **inside the perimeter** (the RM works the real client). | Mutable, **versioned** (optimistic concurrency). |
-| **Evidence bytes** | Raw KYC documents the client sends each round. | Case vault object store (existing pattern) + ingested into **Hrz2** with `case:<subject_id>` ACL tags (R3). | Yes (encrypted at rest, CMEK). | Append-only. |
+| **Evidence bytes** | Raw KYC documents the client sends each round. | Case vault object store (existing pattern) + ingested into `enterprise-knowledge-base` with `case:<subject_id>` ACL tags (R3). | Yes (encrypted at rest, CMEK). | Append-only. |
 | **Audit trail** | Every transition + analysis as an `AuditEvent`. | Cloud Logging locked WORM bucket (existing, 180-day default retention). | **Redacted only** (P-04). | Immutable / WORM. |
 
 Key boundary: **the case-state tier may hold un-redacted operational data** because the
@@ -190,7 +190,7 @@ flowchart TB
         ITERS["SowIteration[] (append-only)<br/>iter 0, 1, 2, … each with evidence + analysis"]
         LEDGER["EvidenceLedger (append-only)<br/>every EvidenceItem ever submitted"]
     end
-    subgraph worm["WORM audit (Hrz5)"]
+    subgraph worm["WORM audit (`agent-observability`)"]
         EV["AuditEvent[] (redacted, immutable)"]
     end
     ITERS --> AGG
@@ -245,7 +245,7 @@ Every value and claim carries the **existing `Citation`** (`source_id`, `source_
 `title`, `url`, `page`, `snippet`, `score`). "Proof at a glance" = the citation chip
 (already rendered by [`CitationCard.tsx`](../ui/components/CitationCard.tsx)); "more
 detail" = expand to the `EvidenceItem` showing the Document AI extracted fields, the
-ingestion record (chunks, Hrz2 doc id), which iteration it arrived in, and who supplied it.
+ingestion record (chunks, `enterprise-knowledge-base` doc id), which iteration it arrived in, and who supplied it.
 No new citation primitive is needed: the audit view *reuses* `Citation` everywhere, which
 is also what keeps `citation_accuracy` measurable by the existing eval.
 
@@ -328,7 +328,7 @@ class EvidenceItem:
     id: str
     document: KycDocument                 # existing
     extract: DocumentExtract | None = None  # existing (Document AI output)
-    ingest: IngestResult | None = None      # existing (Hrz2 ingestion record)
+    ingest: IngestResult | None = None      # existing (`enterprise-knowledge-base` ingestion record)
     iteration_no: int = 0                 # which round it arrived in
     received_at: datetime = field(default_factory=utcnow)
     provided_by: str = ""                 # "client" | RM identity
@@ -499,13 +499,13 @@ class CaseStorePort(Protocol):
     def get_snapshot(self, case_id: str, version: int) -> SowSnapshot: ...
 ```
 
-Evidence bytes and retrieval stay on the existing `KnowledgeBaseClientPort` (Hrz2, R3); the
-audit trail stays on `AuditSinkPort` (Hrz5, WORM). No other new ports are required.
+Evidence bytes and retrieval stay on the existing `KnowledgeBaseClientPort` (`enterprise-knowledge-base`, R3); the
+audit trail stays on `AuditSinkPort` (`agent-observability`, WORM). No other new ports are required.
 
 ### 8.2 Domain services
 
 - **`SowCaseService`**: orchestrates the long-running workflow: `open()`,
-  `add_evidence()` (extract → ingest to Hrz2 → append to ledger, opening/extending an
+  `add_evidence()` (extract → ingest to `enterprise-knowledge-base` → append to ledger, opening/extending an
   iteration), `analyze()` (retrieve → call the existing `SourceOfWealthService.build()`,
   then the gap engine, then RFI drafting → produce a `SowAuditView` → legal state
   transition → `audit.record`), `review()` (checker decision → `seal()` snapshot). It
@@ -528,9 +528,9 @@ flowchart LR
     SVC --> RFI["RfiDraftingService<br/>(LLM: wording only)"]
     SVC --> POL["CaseTransitionPolicy"]
     SVC --> STORE[("CaseStorePort<br/>new")]
-    SVC --> KB[("KnowledgeBaseClientPort<br/>Hrz2, existing")]
-    SVC --> AUD[("AuditSinkPort<br/>Hrz5 WORM, existing")]
-    SVC --> SAFE[("Guardrail + Redaction<br/>Hrz1, existing")]
+    SVC --> KB[("KnowledgeBaseClientPort<br/>`enterprise-knowledge-base`, existing")]
+    SVC --> AUD[("AuditSinkPort<br/>`agent-observability` WORM, existing")]
+    SVC --> SAFE[("Guardrail + Redaction<br/>`agent-guardrail-gateway`, existing")]
 ```
 
 ---
@@ -566,7 +566,7 @@ panels with inline citation chips. The audit view extends that vocabulary:
 - A **reconciliation header** (declared vs evidenced, coverage %, a confidence band).
 - A **source-group accordion**: one collapsible per `WealthSourceKind`, showing the
   group's evidenced band + corroboration colour; expand to the `EvidenceItem` cards, each
-  with its citation chip ("proof") and a "details" expander (extracted fields, Hrz2 doc id,
+  with its citation chip ("proof") and a "details" expander (extracted fields, `enterprise-knowledge-base` doc id,
   iteration, provider).
 - A **gaps panel**, severity-ranked, each gap linking to the source group and the evidence
   it implicates.
@@ -585,7 +585,7 @@ reads before disposing.
 |---------|------------------------------|
 | **R1 redact-before-everything** | Every round runs redact → screen(INPUT) before extraction/ingest; screen(OUTPUT) before the audit view leaves the perimeter. Case-state tier may hold operational PII inside VPC-SC; the WORM audit stores **redacted** records only (§5.1). |
 | **R2 WORM audit** | Every transition and analysis emits an immutable, redacted `AuditEvent`; snapshots are sealed write-once. The iteration log + WORM trail reconstruct any past state. |
-| **R3 case ACL / governed RAG** | Evidence bytes are still ingested into **Hrz2** with `case:<subject_id>` tags and retrieved by case principals only; the case store is ACL-scoped to the same principals. |
+| **R3 case ACL / governed RAG** | Evidence bytes are still ingested into `enterprise-knowledge-base` with `case:<subject_id>` tags and retrieved by case principals only; the case store is ACL-scoped to the same principals. |
 | **P-06 maker-checker** | `APPROVED` requires four-eyes (checker ≠ maker); HIGH/PROHIBITED or sanctions/terrorism still escalate via the same policy logic. |
 | **Residency** | The case-state and snapshot stores are regional (`asia-southeast1`), CMEK-encrypted, inside VPC-SC, same posture as the existing services. |
 | **P-02 no lock-in** | `CaseStorePort` follows the 18-port convention (gcp / platform / onprem adapters); the domain stays pure stdlib. |
@@ -593,7 +593,7 @@ reads before disposing.
 
 ---
 
-## 12. Eval additions (Hrz4 / P-08)
+## 12. Eval additions (`model-quality-gate` / P-08)
 
 The existing metrics (`sow_groundedness` ≥ 0.80, `risk_band_accuracy` ≥ 0.80,
 `citation_accuracy` ≥ 0.90, `pii_safety` ≥ 0.99) still apply per round. The longitudinal
@@ -632,7 +632,7 @@ iteration and no open gaps is exactly today's behaviour, so nothing regresses.
   the deterministic math, surfacing only bands and a qualitative delta. Needs MLRO sign-off.
 - **Stale-evidence windows.** The `STALE_EVIDENCE` policy window (e.g. bank statements ≤ 3
   months) is jurisdiction-specific: should it live in `config/settings.yaml` or come from
-  Rsk1 (compliance)? Leaning Rsk1, cached.
+  `compliance-advisory` (compliance)? Leaning `compliance-advisory`, cached.
 - **Case-state PII boundary.** Confirm with security that operational PII may persist in
   the regional, CMEK, ACL-scoped case store inside VPC-SC (§5.1); the design hinges on it.
 - **Snapshot retention.** Should sealed `SowSnapshot`s share the 180-day default WORM retention,
@@ -729,7 +729,7 @@ A deterministic, auditable customer-risk **scorecard** that complements the LLM
   audit decision.
 
 *Open:* SDD-driven lighter evidence requirements (feeding the gap engine's mandatory-doc
-matrix off the tier), and per-product/channel policy tables sourced from compliance (Rsk1).
+matrix off the tier), and per-product/channel policy tables sourced from compliance (`compliance-advisory`).
 
 ## 18. Source of Funds (SoF) — distinct from Source of Wealth
 
@@ -756,7 +756,7 @@ deterministic engine and audit panel (`domain/source_of_funds_service.py`):
   disposes (P-06); SoF never auto-blocks.
 
 *Open:* expected-activity time-series monitoring (per-period inflow vs profile, feeding the
-ongoing-monitoring trigger engine) and product-specific expected-activity templates (Rsk1).
+ongoing-monitoring trigger engine) and product-specific expected-activity templates (`compliance-advisory`).
 
 ## 19. Ongoing monitoring + periodic review
 
@@ -783,4 +783,4 @@ drive a re-review and folds them into one auditable outcome:
 
 *Open:* a scheduler/runbook to enqueue due reviews (Cloud Scheduler → the case store) and
 perpetual-KYC event ingestion (transaction-monitoring + registry-change webhooks) feeding
-the trigger engine (Rsk1).
+the trigger engine (`compliance-advisory`).

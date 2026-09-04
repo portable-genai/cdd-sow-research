@@ -14,7 +14,7 @@ ACL is discarded. The audit actor and the entitlement principals both come from 
 verified `Principal`. Per identity mode: `local-persona` = seeded dev personas (no IdP, offline only),
 IAP = the edge-injected signed assertion, `oidc-session` = the agent's own session cookie
 minted after an OIDC Authorization Code + PKCE login, `oauth-access-token` = the verified
-Mode 4 Doc1-audience token, and `embedded-grant` = the dedicated Mode 5 token minted only
+Mode 4 `cdd-sow-research`-audience token, and `embedded-grant` = the dedicated Mode 5 token minted only
 after the brokered PKCE exchange. Identity and channel are exact selectors independent of
 the runtime profile.
 
@@ -114,7 +114,7 @@ optional external head anchor (`CDD_LOCAL_AUDIT_ANCHOR`) that detects tail-trunc
 full-rewrite (which the chain alone cannot, since it carries no secret). The module
 docstring states exactly which tamper classes are and are not caught. In production the
 `gcp` profile uses a locked WORM bucket, which provides non-rewritability itself. This repo
-does not *replace* the platform audit system (Hrz5), see
+does not *replace* the platform audit system (`agent-observability`), see
 [features-faq.md](features-faq.md).
 
 ### Supply chain: are dependencies pinned and scanned?

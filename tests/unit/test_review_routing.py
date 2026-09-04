@@ -1,9 +1,9 @@
-"""R8 routing: an escalated CDD dossier is routed to Hrz7 via the shared review-kit.
+"""R8 routing: an escalated CDD dossier is routed to human-review-console via the shared review-kit.
 
-Every CDD dossier requires human review (P-06), so rule R8 says it MUST be handed to the Hrz7
-maker-checker console rather than left as a boolean. These tests prove the producer half of that
-loop end-to-end against the offline local router (an in-memory outbox), and prove the redact-
-before-wire boundary so no raw customer identifier reaches the console.
+Every CDD dossier requires human review (P-06), so rule R8 says it MUST be handed to the
+human-review-console maker-checker console rather than left as a boolean. These tests prove the
+producer half of that loop end-to-end against the offline local router (an in-memory outbox), and
+prove the redact- before-wire boundary so no raw customer identifier reaches the console.
 """
 
 from __future__ import annotations
@@ -98,13 +98,15 @@ def test_assess_routes_escalated_dossier_to_outbox(
     assert case.subject.tenant == "demo-bank"
 
     pending = router.outbox.pending()
-    assert len(pending) == 1, "the escalated dossier must be routed to Hrz7 exactly once"
+    assert len(pending) == 1, (
+        "the escalated dossier must be routed to human-review-console exactly once"
+    )
     review = pending[0].review
     assert review.action == f"cdd_dossier:{case.subject.type.value}"
     assert review.case_ref == case.id
     assert review.maker == ACTOR
     assert review.tenant == "demo-bank"
-    assert review.source_key == f"doc1:{case.subject.tenant}:{case.id}:cdd_dossier"
+    assert review.source_key == f"cdd-sow-research:{case.subject.tenant}:{case.id}:cdd_dossier"
 
 
 def _high_risk_case_with_pii() -> CDDCase:
@@ -211,7 +213,7 @@ def _pkyc_assessment():
 
 
 def test_perpetual_kyc_assessment_is_redacted_before_the_wire():
-    """R1: no raw identifier reaches Hrz7 from the perpetual-KYC hand-off either."""
+    """R1: no raw identifier reaches human-review-console from the perpetual-KYC hand-off either."""
     review = assessment_to_review(_pkyc_assessment(), maker=ACTOR)
 
     assert review.action == "perpetual_kyc_rescore"

@@ -29,8 +29,8 @@ an edge, a percentage or a verdict in this module and is not imported by it**: i
 the finished resolution elsewhere. Given the same hops and the same ``as_of``, the whole
 resolution is byte-identical, so an auditor can recompute it.
 
-A resolution is consequential decision support: it always sets ``requires_human_review``
-and never auto-blocks. The orchestrator (``ubo_graph_service``) routes it to Hrz7 for
+A resolution is consequential decision support: it always sets ``requires_human_review`` and never
+auto-blocks. The orchestrator (``ubo_graph_service``) routes it to human-review-console for
 maker-checker disposition (rule R8). Indicators are INDICATORS, never conclusions.
 
 Pure standard library; no ports, no I/O, no clock of its own (the caller supplies
@@ -159,7 +159,8 @@ class UboGraphEngine:
     min_shell_signals: int = 2
     #: Opacity weight per flag kind (the deterministic score, clamped to [0, 1]).
     flag_weight: Mapping[str, float] = field(default_factory=dict)
-    #: Descending ``(floor, severity)`` bands mapping opacity to the Hrz7 review severity.
+    #: Descending ``(floor, severity)`` bands mapping opacity to the human-review-console review
+    #: severity.
     opacity_severity_bands: tuple[tuple[float, str], ...] = _DEFAULT_OPACITY_BANDS
     #: The FATF-derived country lists the secrecy-jurisdiction indicator scores through.
     country_risk_policy: CountryRiskPolicy = field(default_factory=CountryRiskPolicy)

@@ -1,6 +1,6 @@
 """The profile has ONE source of truth, and it fails closed on an unset variable.
 
-The standing gate for the absence-read-as-consent class, mirroring Hrz7
+The standing gate for the absence-read-as-consent class, mirroring human-review-console
 (``human-review-console/tests/test_profile_single_source.py``). Guarding this fail-open in the
 identity adapter alone leaves another module re-deriving the same decision with its own raw
 fallback, which is how a write path stays open. A drift guard is therefore part of the defence,

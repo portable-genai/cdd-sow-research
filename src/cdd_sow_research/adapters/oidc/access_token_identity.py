@@ -71,7 +71,7 @@ def verify_rfc9068_access_token(
 
     Mode 5 may reuse this function with a distinct broker-audience policy. It must still
     apply its own BFF, subject, instance, and grant bindings. Mode 6 ID tokens and
-    Doc1-issued embedded-grant tokens fail the exact issuer/audience/policy checks.
+    cdd-sow-research-issued embedded-grant tokens fail the exact issuer/audience/policy checks.
     """
 
     header = _protected_header(token)
@@ -168,7 +168,7 @@ def verify_rfc9068_access_token(
 
 
 class OAuthAccessTokenAuthenticationAdapter:
-    """Verify one Doc1-audience access token under exact installation policy."""
+    """Verify one cdd-sow-research-audience access token under exact installation policy."""
 
     #: Verifies an RFC 9068 access token against reviewed issuer policy and the
     #: installation manifest, never against token-selected trust inputs.

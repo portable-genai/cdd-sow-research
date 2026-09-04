@@ -1,8 +1,8 @@
-# COMPLIANCE: Doc1 CDD + Source-of-Wealth Agent
+# COMPLIANCE: `cdd-sow-research` CDD + Source-of-Wealth Agent
 
 This maps every General Principle (P-01..P-12) and dependency rule (R1..R6, R8) to a concrete
-control in **this** repo. Where a principle does not apply to Doc1, it is marked **n/a** with
-the reason. Doc1 handles customer KYC data, so the data-protection and audit controls are
+control in **this** repo. Where a principle does not apply to `cdd-sow-research`, it is marked **n/a** with
+the reason. `cdd-sow-research` handles customer KYC data, so the data-protection and audit controls are
 load-bearing.
 
 > The synthetic KYC data in `tests/` and `eval/` is **fictional**. This build is a
@@ -13,16 +13,16 @@ load-bearing.
 
 ## General Principles
 
-| # | Principle | How Doc1 implements it | Evidence |
+| # | Principle | How `cdd-sow-research` implements it | Evidence |
 |---|-----------|----------------------|----------|
 | **P-01** | Managed-first, minimal surface | Only the managed services the pinned stack uses are enabled; the agent is hosted on Agent Runtime | `infra/terraform/apis.tf`, `agent/root_agent.py` |
 | **P-02** | No vendor lock-in (ports and adapters) | Domain depends only on `Protocol` ports; a profile switch rebinds adapters with no domain change. The `local` family proves the same domain runs entirely off-cloud (SQLite FTS5, deterministic LLM, no Google Cloud SDK) | `ports/`, `config.py`, `adapters/local/*`, `adapters/onprem/*` |
 | **P-03** | Data residency (in-country) | Region selected at deploy from a residency allowlist (defaults `asia-southeast1`), validated to fail fast; regional endpoints; `gcp.resourceLocations` Org Policy; VPC-SC perimeter | `config/settings.yaml`, `infra/terraform/variables.tf`, `org_policy.tf`, `vpc_sc.tf` |
 | **P-04** | Minimise PII to the model | `redaction.redact` runs before any model/index/registry/audit call; spans capture no content | `domain/cdd_service.py`, `adapters/gcp/dlp_redaction.py`, `agent/callbacks.py` |
 | **P-05** | Human oversight of automation | Decision-support only; the agent proposes, a human disposes; never an autonomous approver | `domain/review_policy.py`, `agent/root_agent.py` instruction |
-| **P-06** | Maker-checker | A CDD dossier always `requires_human_review=True`; HIGH/PROHIBITED or sanctions/terrorism escalate; a perpetual-KYC re-score is consequential in the same way and is likewise always flagged and queued, never acted on; every escalation is ROUTED to the Hrz7 maker-checker console (rule R8), not left as a boolean | `domain/review_policy.py`, `domain/cdd_service.py`, `domain/perpetual_kyc_service.py`, `ports/review_router.py`, `adapters/*/review_router.py` |
+| **P-06** | Maker-checker | A CDD dossier always `requires_human_review=True`; HIGH/PROHIBITED or sanctions/terrorism escalate; a perpetual-KYC re-score is consequential in the same way and is likewise always flagged and queued, never acted on; every escalation is ROUTED to the `human-review-console` maker-checker console (rule R8), not left as a boolean | `domain/review_policy.py`, `domain/cdd_service.py`, `domain/perpetual_kyc_service.py`, `ports/review_router.py`, `adapters/*/review_router.py` |
 | **P-07** | Audited everything | Every assessment writes a WORM `AuditEvent` (already redacted) with the decision and citations. Browser-flow transitions write a sanitized atomic outbox for idempotent audit delivery | `domain/cdd_service.py`, `adapters/gcp/cloud_logging_audit.py`, `adapters/gcp/firestore_browser_flow_store.py` |
-| **P-08** | Quality / model-risk gate | Offline eval gate scores groundedness, risk-band accuracy, citation accuracy, PII safety and perpetual-KYC queue placement; `pkyc_priority` is scored against the golden set's own expectation (an independent oracle) and is proven able to go red per change kind; Hrz4 at promotion | `eval/run_eval.py`, `eval/rubrics/*.yaml`, `tests/unit/test_eval_perpetual_kyc_can_go_red.py`, the hosted GitHub Actions check |
+| **P-08** | Quality / model-risk gate | Offline eval gate scores groundedness, risk-band accuracy, citation accuracy, PII safety and perpetual-KYC queue placement; `pkyc_priority` is scored against the golden set's own expectation (an independent oracle) and is proven able to go red per change kind; `model-quality-gate` at promotion | `eval/run_eval.py`, `eval/rubrics/*.yaml`, `tests/unit/test_eval_perpetual_kyc_can_go_red.py`, the hosted GitHub Actions check |
 | **P-09** | CMEK does not cascade | One regional CMEK key has an explicit IAM binding per service agent. A separate non-exportable asymmetric KMS key signs Mode 5 tokens, with HSM as the named-production default | `infra/terraform/kms.tf`, `adapters/gcp/kms_embed_token.py` |
 | **P-10** | Provenance on every claim | Every dossier statement carries a source-and-page `Citation`; the model only cites retrieved/derived sources; every perpetual-KYC signal and queued reason carries the citation behind it | `domain/models.py` (`Citation`), `domain/_grounded.py`, `domain/perpetual_kyc.py` |
 | **P-11** | Defense in depth | Domain pipeline screens and redacts; the ADK model-boundary callbacks screen, redact and audit again | `agent/callbacks.py` |
@@ -32,18 +32,18 @@ load-bearing.
 
 ## Dependency rules
 
-Doc1 exercises the **whole platform**. Each rule is satisfied by consuming the sibling service
+`cdd-sow-research` exercises the **whole platform**. Each rule is satisfied by consuming the sibling service
 through a `platform` adapter (with an on-prem stub), never by re-implementing the concern.
 
-| Rule | Requirement | How Doc1 satisfies it | Evidence |
+| Rule | Requirement | How `cdd-sow-research` satisfies it | Evidence |
 |------|-------------|---------------------|----------|
-| **R1** | Customer PII handling: Hrz1 guardrail + DLP redaction mandatory | The full safety pipeline runs on every assessment: redact, screen INPUT, screen OUTPUT | `domain/cdd_service.py`, `ports/safety.py`, `adapters/{gcp,platform}/*guardrail*`, `*redaction*` |
-| **R2** | Audit to Hrz5 | Every assessment writes an immutable WORM `AuditEvent`; the `platform` adapter posts to Hrz5 `/v1/audit` | `adapters/gcp/cloud_logging_audit.py`, `adapters/platform/remote_audit.py` |
-| **R3** | Governed RAG via Hrz2 | KYC documents are ingested into Hrz2 with `case:<subject_id>` ACL tags and retrieved via Hrz2 governed search | `ports/knowledge_base.py`, `adapters/platform/remote_knowledge_base.py` |
-| **R4** | Register in Hrz3 | The A2A AgentCard is published and resolvable via Hrz3 (`platform` registry adapter) | `agent/agent_card.py`, `adapters/platform/remote_registry.py` |
-| **R5** | Hrz4 promotion gate | `EvaluationGatePort.gate` checks the Hrz4 thresholds before promotion; the offline gate guards merges | `ports/observability.py`, `adapters/platform/remote_evaluation.py`, `eval/run_eval.py` |
-| **R6** | Validated by Rsk3 at intake | As a new project, Doc1 is validated by the Rsk3 intake validator. n/a in-repo (Rsk3 is the validator, not a Doc1 dependency at runtime); Doc1 consumes **Rsk1** for regulatory CDD/AML checks | `adapters/platform/remote_compliance.py` (Rsk1), intake handled by Rsk3 externally |
-| **R8** | Route `requires_human_review` to Hrz7 | Every escalated dossier, and every perpetual-KYC re-score, is submitted to the Hrz7 Human-Review & Maker-Checker Console through the shared `review-kit` client (redact-before-wire, idempotent per run); `local` enqueues to a transactional outbox so the routing path runs offline, `gcp`/`platform` submit over S2S to Hrz7's service intake | `ports/review_router.py` (`route`, `route_monitoring`), `adapters/{local,gcp,onprem}/review_router.py`, `adapters/_review_payload.py` |
+| **R1** | Customer PII handling: `agent-guardrail-gateway` + DLP redaction mandatory | The full safety pipeline runs on every assessment: redact, screen INPUT, screen OUTPUT | `domain/cdd_service.py`, `ports/safety.py`, `adapters/{gcp,platform}/*guardrail*`, `*redaction*` |
+| **R2** | Audit to `agent-observability` | Every assessment writes an immutable WORM `AuditEvent`; the `platform` adapter posts to `agent-observability` `/v1/audit` | `adapters/gcp/cloud_logging_audit.py`, `adapters/platform/remote_audit.py` |
+| **R3** | Governed RAG via `enterprise-knowledge-base` | KYC documents are ingested into `enterprise-knowledge-base` with `case:<subject_id>` ACL tags and retrieved via `enterprise-knowledge-base` governed search | `ports/knowledge_base.py`, `adapters/platform/remote_knowledge_base.py` |
+| **R4** | Register in `agent-registry` | The A2A AgentCard is published and resolvable via `agent-registry` (`platform` registry adapter) | `agent/agent_card.py`, `adapters/platform/remote_registry.py` |
+| **R5** | `model-quality-gate` promotion gate | `EvaluationGatePort.gate` checks the `model-quality-gate` thresholds before promotion; the offline gate guards merges | `ports/observability.py`, `adapters/platform/remote_evaluation.py`, `eval/run_eval.py` |
+| **R6** | Validated by `architecture-validator` at intake | As a new project, `cdd-sow-research` is validated by the `architecture-validator` intake validator. n/a in-repo (`architecture-validator` is the validator, not a `cdd-sow-research` dependency at runtime); `cdd-sow-research` consumes `compliance-advisory` for regulatory CDD/AML checks | `adapters/platform/remote_compliance.py` (`compliance-advisory`), intake handled by `architecture-validator` externally |
+| **R8** | Route `requires_human_review` to `human-review-console` | Every escalated dossier, and every perpetual-KYC re-score, is submitted to the `human-review-console` Human-Review & Maker-Checker Console through the shared `review-kit` client (redact-before-wire, idempotent per run); `local` enqueues to a transactional outbox so the routing path runs offline, `gcp`/`platform` submit over S2S to `human-review-console`'s service intake | `ports/review_router.py` (`route`, `route_monitoring`), `adapters/{local,gcp,onprem}/review_router.py`, `adapters/_review_payload.py` |
 
 ---
 
@@ -55,7 +55,7 @@ through a `platform` adapter (with an on-prem stub), never by re-implementing th
   **jurisdiction-driven** (`pii.jurisdictions` in `config/settings.yaml`,
   `domain/pii_patterns.py`), defaulting to the Singapore NRIC/FIN and extensible per
   adopter so a non-SG deployment scrubs (and gates on) its own identifiers.
-- **Case-scoped ACL (R3).** Documents are ingested into Hrz2 with `case:<subject_id>` tags;
+- **Case-scoped ACL (R3).** Documents are ingested into `enterprise-knowledge-base` with `case:<subject_id>` tags;
   retrieval passes the case principals so one analyst's case cannot read another's evidence.
 - **Maker-checker on a consequential output (P-06).** The dossier always requires human
   review; sanctions/terrorism hits or a HIGH/PROHIBITED band escalate to enhanced review.
@@ -82,7 +82,7 @@ the **MAS (Singapore) reference mapping** for the home jurisdiction; a fork adds
 [`docs/ADOPTING.md`](docs/ADOPTING.md)): it is a template, not legal advice, and your
 compliance function owns the mapping and any gaps.
 
-| Doc1 control | MAS reference | What a supervisor looks for |
+| `cdd-sow-research` control | MAS reference | What a supervisor looks for |
 |---|---|---|
 | P-04 redact-before-everything; R1 safety pipeline | MAS Notice 626 §8 (CDD), PDPA (data protection) | PII minimised before processing; customer data protected in transit and at rest |
 | P-06 maker-checker; P-05 human oversight | MAS Notice 626 §6 (senior-management oversight); MAS FEAT (Accountability) | A qualified human disposes of every consequential output; the AI is decision-support |
@@ -95,7 +95,7 @@ compliance function owns the mapping and any gaps.
 
 **To add another regulator** (FCA, RBI, OJK, HKMA, APRA, ...): copy this table, replace the
 "MAS reference" column with that supervisor's instrument and section numbers, and re-review
-the "what a supervisor looks for" column with local counsel. The Doc1-control column is
-stable across regulators; only the mapping changes. The sibling **Rsk2 control-mapping
-toolkit** and **Rsk1 compliance assistant** exist to generate and maintain these crosswalks
+the "what a supervisor looks for" column with local counsel. The `cdd-sow-research`-control column is
+stable across regulators; only the mapping changes. The sibling **the cloud control-mapping toolkit control-mapping
+toolkit** and **`compliance-advisory`** exist to generate and maintain these crosswalks
 at scale, so a large estate should integrate them rather than hand-maintaining this table.

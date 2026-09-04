@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "cdd-sow-research"
 version = "0.0.1"
-description = "B1 CDD + Source-of-Wealth Agent — grounded research that turns a KYC pack, corporate registries and adverse media into a cited CDD dossier, built ports-and-adapters on the Gemini Enterprise Agent Platform."
+description = "CDD + Source-of-Wealth Agent — grounded research that turns a KYC pack, corporate registries and adverse media into a cited CDD dossier, built ports-and-adapters on the Gemini Enterprise Agent Platform."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
@@ -21,7 +21,7 @@ dependencies = [
   "hex-service-kit @ git+https://github.com/portable-genai/hex-service-kit@v0.0.6",
   "agent-eval-kit @ git+https://github.com/portable-genai/agent-eval-kit@v0.0.1",
   # review-kit: the producer half of rule R8 (route a requires_human_review escalation to the
-  # Hrz7 maker-checker console the same way from every producer). Public, pinned by tag, zero-cred.
+  # human-review-console maker-checker console the same way from every producer). Public, pinned by tag, zero-cred.
   "review-kit @ git+https://github.com/portable-genai/review-kit@v0.0.1",
   "pydantic>=2.7",
   "pyyaml>=6.0",
@@ -56,7 +56,7 @@ gcp = [
   "google-cloud-kms>=3.5",
   "opentelemetry-sdk>=1.27",
   "opentelemetry-exporter-gcp-trace>=1.7",
-  "opentelemetry-exporter-otlp>=1.27",  # platform tracer -> Hrz5 OTel collector (OTLP)
+  "opentelemetry-exporter-otlp>=1.27",  # platform tracer -> agent-observability OTel collector (OTLP)
   "requests>=2.31",  # authenticated OTLP/HTTP session for a private Cloud Run collector
   "a2a-sdk[http-server]>=1.1",
   "mcp>=2.1",

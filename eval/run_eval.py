@@ -7,7 +7,7 @@ Two named layers (--mode):
   fails if the agent's dossiers fall below the model-risk thresholds agreed for a
   regulated financial-crime agent (see ``eval/rubrics/*.yaml``). It is a smoke check, NOT
   the promotion authority.
-* **gate** — the promotion verdict from the shared **Hrz4** AI-quality service via the
+* **gate** — the promotion verdict from the shared model-quality-gate AI-quality service via the
   ``EvaluationGatePort`` (requires ``CDD_PROFILE=platform|gcp``); it fails closed on the
   reconciled evaluate + gate result.
 
@@ -24,14 +24,15 @@ The smoke evaluator is a deterministic, dependency-light heuristic in this file:
 **no GCP credentials and no Google Cloud SDK**, runs the real ``CddService`` pipeline
 against in-memory fake adapters, and computes the four metrics with conservative
 set/string heuristics. ``--mode gate`` instead routes through ``EvaluationGatePort`` to
-the Hrz4 authority (the richer judged check run pre-promotion).
+the model-quality-gate authority (the richer judged check run pre-promotion).
 # verify: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/run-evaluation
 
 Usage::
 
     python eval/run_eval.py                      # offline smoke check (CI, default)
     python eval/run_eval.py --dataset path.jsonl # custom golden set
-    python eval/run_eval.py --mode gate          # promotion verdict via Hrz4 (platform/gcp)
+    python eval/run_eval.py --mode gate          # promotion verdict via model-quality-gate
+    (platform/gcp)
 
 Exit code is ``0`` iff ``EvalReport.passed`` (every metric meets its threshold).
 """
@@ -910,7 +911,7 @@ def run_offline(dataset: Path, thresholds: dict[str, float]) -> EvalReport:
 
 
 def run_gate(dataset: Path) -> tuple[EvalReport, bool]:
-    """Route through the Hrz4 promotion gate (EvaluationGatePort -> gcp/platform).
+    """Route through the model-quality-gate promotion gate (EvaluationGatePort -> gcp/platform).
 
     The promotion verdict is the shared authority's, not this repo's: it calls
     ``evaluate`` (the scored EvalReport) then ``gate`` (the PASS/FAIL verdict), and the
@@ -936,7 +937,8 @@ def run_gate(dataset: Path) -> tuple[EvalReport, bool]:
 def main(argv: list[str] | None = None) -> int:
     """Dispatch --mode via the shared eval_main scaffold (fail-closed exit codes).
 
-    The offline smoke evaluator and the Hrz4 gate runner below are this repo's own; eval_main
+    The offline smoke evaluator and the model-quality-gate runner below are this repo's own;
+    eval_main
     provides the CLI, the aligned report rendering, and the fail-closed exit codes (gate mode
     exits 0 only when both the scored report and the authority's verdict pass).
     """
@@ -946,7 +948,7 @@ def main(argv: list[str] | None = None) -> int:
         default_dataset=DEFAULT_DATASET,
         description="Offline / GCP evaluation gate for B1 (A4 / P-08).",
         smoke_label="offline heuristic (no GCP creds)",
-        gate_label="Hrz4 promotion gate (EvaluationGatePort)",
+        gate_label="model-quality-gate promotion gate (EvaluationGatePort)",
         argv=argv,
     )
 

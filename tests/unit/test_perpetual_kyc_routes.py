@@ -1,4 +1,5 @@
-"""The perpetual-KYC REST surface: server-derived ACL, cross-tenant isolation, Hrz7 routing.
+"""The perpetual-KYC REST surface: server-derived ACL, cross-tenant isolation, human-review-console
+routing.
 
 Drives the two routes against the real local monitoring store and the seeded dev personas
 (the default ``analyst`` in tenant ``demo-bank`` and the cross-tenant ``other-tenant``
@@ -9,7 +10,7 @@ The invariants pinned here:
 * the record's tenant is stamped from the VERIFIED principal, never the request body;
 * a cross-tenant caller reading a subject's baseline gets 403 (not 404, not another
   tenant's history), and their queue listing is empty; and
-* the response always carries ``requires_human_review`` and the Hrz7 routing flag.
+* the response always carries ``requires_human_review`` and the human-review-console routing flag.
 """
 
 from __future__ import annotations
@@ -36,7 +37,7 @@ _SUBJECT = {
 
 
 class _RecordingRouter:
-    """Stands in for the Hrz7 hand-off so the test never needs a live console."""
+    """Stands in for the human-review-console hand-off so the test never needs a live console."""
 
     def __init__(self) -> None:
         self.routed: list[PerpetualKycAssessment] = []

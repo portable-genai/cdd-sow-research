@@ -40,7 +40,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="an ACL principal to read as; repeatable. Defaults to the case and tenant tags.",
     )
     parser.add_argument("--tenant", default="", help="tenant id, when the store is partitioned")
-    parser.add_argument("--apply", action="store_true", help="actually delete; default is a dry run")
+    parser.add_argument(
+        "--apply", action="store_true", help="actually delete; default is a dry run"
+    )
     return parser.parse_args(argv)
 
 

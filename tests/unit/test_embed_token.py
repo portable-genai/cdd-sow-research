@@ -188,7 +188,7 @@ def test_embed_token_requires_consumed_grant() -> None:
 @pytest.mark.parametrize(
     ("claim_changes", "message"),
     [
-        ({"token_use": "session"}, "not a Doc1"),
+        ({"token_use": "session"}, "not a cdd-sow-research"),
         ({"source_iss": ""}, "source_iss"),
         ({"source_sub": ""}, "source_sub"),
         ({"sub": "attacker"}, "provenance"),

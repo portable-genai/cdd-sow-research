@@ -71,7 +71,7 @@ SKILLS: tuple[AgentSkill, ...] = (
             "board majority, contractual, or the senior-managing-official fallback), and "
             "deterministic nominee/shell indicators with an opacity score. Cycles and "
             "cross-holdings terminate; every percentage is pure code, never the model. "
-            "Always flagged for human review and routed to Hrz7."
+            "Always flagged for human review and routed to human-review-console."
         ),
     ),
     AgentSkill(
@@ -81,7 +81,8 @@ SKILLS: tuple[AgentSkill, ...] = (
             "Run one perpetual-KYC cycle: diff the current sanctions, adverse-media and "
             "corporate-registry picture against the stored baseline, re-score the "
             "relationship deterministically over bank-owned policy weights, and queue an "
-            "explainable review item. Always flagged for human review and routed to Hrz7."
+            "explainable review item. Always flagged for human review and routed to "
+            "human-review-console."
         ),
     ),
     AgentSkill(

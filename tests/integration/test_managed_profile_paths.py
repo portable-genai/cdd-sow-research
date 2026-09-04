@@ -1,8 +1,9 @@
 """The managed paths that were proved once, by hand, and that nothing re-ran.
 
-Track C item 4 states the gap exactly: Doc1, Hrz9 and Hrz5 were exercised against the real
-services by running them, which found defects no offline profile can reach. That is evidence
-those paths worked **at the moment they were run**, and nothing re-runs them.
+Track C item 4 states the gap exactly: cdd-sow-research, journey-portal and agent-observability were
+exercised against the real services by running them, which found defects no offline profile can
+reach. That is evidence those paths worked **at the moment they were run**, and nothing re-runs
+them.
 
 ``test_gcp_smoke.py`` is not that. It does one trivial liveness call per adapter, which proves
 each service is reachable and answers -- a different and much weaker claim. Every defect the

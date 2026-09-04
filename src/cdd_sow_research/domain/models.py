@@ -1,4 +1,4 @@
-"""Vertical domain models for the CDD + Source-of-Wealth Agent (catalog id Doc1).
+"""Vertical domain models for the CDD + Source-of-Wealth Agent (catalog id cdd-sow-research).
 
 The domain models are split in two (see ARCHITECTURE.md, "Kernel vs vertical"):
 
@@ -390,7 +390,7 @@ class OwnershipSummary:
 # registry hops plus bank-owned policy. **The LLM never emits a node, an edge or a
 # percentage**: it narrates the finished resolution and nothing else. A resolution is
 # consequential decision support, so it always sets ``requires_human_review`` and is
-# routed to Hrz7 (rule R8); it never auto-blocks and never concludes.
+# routed to human-review-console (rule R8); it never auto-blocks and never concludes.
 # --------------------------------------------------------------------------- #
 class OwnershipNodeKind(enum.StrEnum):
     """What a node in the ownership graph IS (drives who can be a UBO)."""
@@ -1297,7 +1297,7 @@ class MonitoringAssessment:
 #
 # Every number below is computed by pure code (``domain/perpetual_kyc.py``): the model
 # only narrates the outcome. A pKYC outcome is consequential, so it always carries
-# ``requires_human_review`` and is routed to Hrz7 (rule R8); it never auto-blocks.
+# ``requires_human_review`` and is routed to human-review-console (rule R8); it never auto-blocks.
 # --------------------------------------------------------------------------- #
 class SignalSource(enum.StrEnum):
     """Where a perpetual-KYC signal came from (the monitored external edge)."""

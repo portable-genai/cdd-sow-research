@@ -73,7 +73,7 @@ def test_redaction_parity_same_request_every_implementation():
     results: dict[str, RedactionResult] = {"local": _adapter("redaction", "local").redact(PII_TEXT)}
 
     with respx.mock:
-        # The Hrz1 gateway is DLP-backed; serve its documented /v1/redact answer for
+        # The agent-guardrail-gateway is DLP-backed; serve its documented /v1/redact answer for
         # the same request (DLP-style info-type masks).
         respx.post(f"{GUARDRAIL_GATEWAY}/v1/redact").respond(
             200,
@@ -207,7 +207,8 @@ def test_knowledge_base_parity_same_passages_across_implementations():
         respx.post(f"{KNOWLEDGE_BASE}/v1/ingest").respond(
             200, json={"document_id": document.id, "chunks": 1, "status": "indexed"}
         )
-        # Hrz2 serves the same passages for the same query (SPEC §6 /v1/search shape).
+        # enterprise-knowledge-base serves the same passages for the same query (SPEC §6 /v1/search
+        # shape).
         respx.post(f"{KNOWLEDGE_BASE}/v1/search").respond(
             200, json={"passages": [to_jsonable(p) for p in local_passages]}
         )

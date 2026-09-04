@@ -1,4 +1,4 @@
-# UBO-graph resolution rubric - Hrz4 AI Quality and Model-Risk gate (P-08).
+# UBO-graph resolution rubric - model-quality-gate AI Quality and Model-Risk gate (P-08).
 #
 # "UBO accuracy" measures whether the deterministic ownership engine, given a declared
 # corporate structure, reaches the beneficial owners, the effective percentages, the

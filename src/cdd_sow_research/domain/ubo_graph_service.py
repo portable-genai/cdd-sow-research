@@ -12,14 +12,14 @@ existing CDD lifecycle, in the same five moves the perpetual-KYC orchestrator ma
 3. optionally ask the LLM to NARRATE that finished resolution, after redaction, with
    every number already fixed: the narrative is prose about a structure the model did not
    resolve, schema-validated and discarded on failure;
-4. route the resolution to Hrz7 for maker-checker disposition (rule R8); and
+4. route the resolution to human-review-console for maker-checker disposition (rule R8); and
 5. write the already-redacted WORM audit record.
 
 **No store port.** A resolution is a pure function of the registry layers plus policy, so
 it is recomputable rather than stateful: nothing here is a delta against a remembered
 baseline the way perpetual KYC is, and persisting it would create a second, staler answer
 to a question the engine can answer exactly. The durable record of a resolution is the
-Hrz7 review item plus the WORM audit event, both of which already carry it.
+human-review-console review item plus the WORM audit event, both of which already carry it.
 
 Every consequential value is arithmetic the engine performed and an auditor can recompute.
 The service never blocks, exits or downgrades a relationship, and never concludes that a

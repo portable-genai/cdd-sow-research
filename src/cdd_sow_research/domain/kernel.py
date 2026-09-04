@@ -142,7 +142,7 @@ class LlmResponse:
 
 
 # --------------------------------------------------------------------------- #
-# Safety (guardrail + PII redaction) — Hrz1 Guardrail Gateway concerns (rule R1)
+# Safety (guardrail + PII redaction) — agent-guardrail-gateway concerns (rule R1)
 # --------------------------------------------------------------------------- #
 class GuardrailCategory(enum.Enum):
     PROMPT_INJECTION = "prompt_injection"
@@ -214,7 +214,7 @@ class MemoryItem:
 
 
 # --------------------------------------------------------------------------- #
-# Audit & observability — Hrz5 Observability & Audit concerns (rule R2)
+# Audit & observability — agent-observability & Audit concerns (rule R2)
 # --------------------------------------------------------------------------- #
 class Decision(enum.Enum):
     ALLOWED = "allowed"
@@ -248,7 +248,7 @@ class AuditEvent:
 
 
 # --------------------------------------------------------------------------- #
-# Evaluation gate — Hrz4 AI Quality & Model-Risk concerns (rule R5)
+# Evaluation gate — model-quality-gate concerns (rule R5)
 # --------------------------------------------------------------------------- #
 # ``EvalMetricResult`` and ``EvalReport`` were declared here. They now come from
 # ``agent_eval_kit.report``, imported at the top of this module. The commons ``EvalReport`` is a
@@ -261,7 +261,7 @@ class AuditEvent:
 
 
 # --------------------------------------------------------------------------- #
-# Governance — Hrz3 Agent Registry & Governance concerns (A2A AgentCard, rule R4)
+# Governance — agent-registry concerns (A2A AgentCard, rule R4)
 # --------------------------------------------------------------------------- #
 @dataclass(frozen=True, slots=True)
 class AgentSkill:
@@ -292,7 +292,7 @@ class ToolSpec:
 
 
 # --------------------------------------------------------------------------- #
-# Knowledge-base ingestion (the case's governed RAG store IS Hrz2)
+# Knowledge-base ingestion (the case's governed RAG store IS enterprise-knowledge-base)
 # --------------------------------------------------------------------------- #
 @dataclass(frozen=True, slots=True)
 class IngestResult:

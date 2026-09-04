@@ -7,7 +7,7 @@ here. Read it first. This file carries only what is specific to this one.
 
 ## What this is
 
-**Doc1** (catalog id) is a grounded **CDD + Source-of-Wealth agent** for
+`cdd-sow-research` (catalog id) is a grounded **CDD + Source-of-Wealth agent** for
 financial-crime / KYC work. It turns a customer's KYC pack, corporate registries and
 adverse media into a cited **CDD dossier** (`CDDCase`): a source-of-wealth narrative, a
 risk rating, adverse-media findings, and a beneficial-ownership/UBO summary, every claim
@@ -166,7 +166,7 @@ gate. Break them and CI fails:
 
 ## Platform dependencies
 
-This repo is **Doc1**. Its platform dependencies are **Hrz1** guardrail, **Hrz2** enterprise
-KB (this agent's governed RAG store), **Hrz3** registry, **Hrz4** AI-quality/eval gate,
-**Hrz5** observability/audit, and **Rsk1** compliance assistant, each backed by a
+This repo is `cdd-sow-research`. Its platform dependencies are `agent-guardrail-gateway`, `enterprise-knowledge-base` enterprise
+KB (this agent's governed RAG store), `agent-registry`, `model-quality-gate` AI-quality/eval gate,
+`agent-observability`/audit, and `compliance-advisory`, each backed by a
 `platform/` HTTP adapter.

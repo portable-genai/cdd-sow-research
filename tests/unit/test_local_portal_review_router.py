@@ -1,4 +1,6 @@
-"""The local journey bridge persists and directly delivers CDD escalations to Hrz7."""
+"""The local journey bridge persists and directly delivers CDD escalations
+to human-review-console.
+"""
 
 from __future__ import annotations
 
@@ -53,7 +55,10 @@ def test_local_router_persists_then_submits_to_service_intake(
     submitted_review = submit.call_args.args[0]
     assert submitted_review.maker == "analyst@bank.test"
     assert submitted_review.tenant == "demo-bank"
-    assert submitted_review.source_key == "doc1:demo-bank:cdd-subj-acme-holdings:cdd_dossier"
+    assert (
+        submitted_review.source_key
+        == "cdd-sow-research:demo-bank:cdd-subj-acme-holdings:cdd_dossier"
+    )
     assert router.outbox.pending() == ()
 
 
@@ -65,7 +70,7 @@ def test_local_router_retries_a_record_left_by_an_unavailable_console(
     monkeypatch.setenv("CDD_S2S_TOKEN", "synthetic-local-secret")
     with patch(
         "cdd_sow_research.adapters.local.review_router.ReviewClient.submit",
-        side_effect=ReviewClientError("Hrz7 down"),
+        side_effect=ReviewClientError("human-review-console down"),
     ):
         router = LocalReviewRouter(Settings())
         router.route(_completed_case(), maker="analyst@bank.test")

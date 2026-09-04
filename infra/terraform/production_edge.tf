@@ -50,7 +50,7 @@ resource "google_service_account" "ui" {
   count        = var.production_edge_enabled ? 1 : 0
   project      = var.project_id
   account_id   = "${local.app_sa_id}-ui"
-  display_name = "Doc1 portable UI serving identity"
+  display_name = "cdd-sow-research portable UI serving identity"
 
   depends_on = [google_project_service.required]
 }

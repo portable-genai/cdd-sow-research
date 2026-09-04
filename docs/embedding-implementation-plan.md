@@ -38,10 +38,10 @@ These priorities are ordered by dependency closure and security risk, not by dem
 
 | Priority | Outcome | Why it comes now | Current status |
 |---|---|---|---|
-| **P1** | Separate identity/channel security posture from runtime and make both adapter maps exact | Without this, identity can select unrelated managed adapters, runtime can weaken bind/CORS/HSTS posture, and missing platform bindings can fall through to GCP. It also makes the existing Hrz9 native launch explicit instead of relying on legacy inference. Every later mode depends on fail-closed selection. | Complete |
-| **P2** | Build the shared isolated-embed foundation and browser-flow state | Modes 4 and 5 need the same dedicated-origin UI, installation policy, loader, MessagePort protocol, authenticated transport, document viewer, CSP, audit context, and atomic browser-flow state. This phase also closes the Hrz9 `/apps/doc1` to canonical `/agent` migration. | Complete locally |
+| **P1** | Separate identity/channel security posture from runtime and make both adapter maps exact | Without this, identity can select unrelated managed adapters, runtime can weaken bind/CORS/HSTS posture, and missing platform bindings can fall through to GCP. It also makes the existing `journey-portal` native launch explicit instead of relying on legacy inference. Every later mode depends on fail-closed selection. | Complete |
+| **P2** | Build the shared isolated-embed foundation and browser-flow state | Modes 4 and 5 need the same dedicated-origin UI, installation policy, loader, MessagePort protocol, authenticated transport, document viewer, CSP, audit context, and atomic browser-flow state. This phase also closes the `journey-portal` `/apps/doc1` to canonical `/agent` migration. | Complete locally |
 | **P3** | Implement Mode 4 direct-token identity | This is the smaller end-to-end embed slice and validates issuer, audience, tenant, UI transport, and browser boundaries before the broker is added. | Complete locally; production registration is external |
-| **P4** | Implement Mode 5 brokered PKCE grant | This is the recommended isolated-front-end integration because the reusable Doc1 token never crosses host JavaScript. The registered host BFF remains an authenticated authorization client. P4 depends on P1 and P2 and reuses P3 claim-policy primitives, not its ID-token verifier. | Complete locally; production IdP, BFF, and storage choices are external |
+| **P4** | Implement Mode 5 brokered PKCE grant | This is the recommended isolated-front-end integration because the reusable `cdd-sow-research` token never crosses host JavaScript. The registered host BFF remains an authenticated authorization client. P4 depends on P1 and P2 and reuses P3 claim-policy primitives, not its ID-token verifier. | Complete locally; production IdP, BFF, and storage choices are external |
 | **P5** | Produce channel/identity proof and production deployment controls | The claim needs the same artifact in two hosts, two issuers, browser tests, negative tests, fallback, deployable UI, and audit evidence. Runtime and data-exit claims remain separately bounded. | Full synthetic evidence complete; named production enablement blocked externally |
 
 P1 through P4 and the full synthetic portion of P5 are complete locally. Production closure
@@ -68,7 +68,7 @@ for P5 still needs the client and cloud inputs listed in Section 12.2.
 - Treat Mode 4 as a trusted-host integration. DOM isolation does not make the host unable to see
   a token that the host supplies.
 - Treat Mode 5 as the preferred isolated-front-end integration. Browser JavaScript carries a
-  single-use launch code, while the iframe owns the PKCE verifier and receives the Doc1 token
+  single-use launch code, while the iframe owns the PKCE verifier and receives the `cdd-sow-research` token
   directly. The registered BFF, identity service, and broker remain in the authorization trust
   boundary.
 - Use structured, server-derived audit context. Client observations may be recorded only when
@@ -91,26 +91,26 @@ flowchart LR
 P3 is not a prerequisite for the Mode 5 protocol, but delivering it first exercises the common
 issuer and authorization policy with less moving state.
 
-### 4.1 Internal Hrz9 dependency
+### 4.1 Internal `journey-portal` dependency
 
-Hrz9 (`journey-portal`) is the existing Mode 1 host. Its internal workspace dependency is
-closed: the Doc1 artifact stays fixed at `/agent`, and Hrz9 retains `/apps/doc1` only as a
+`journey-portal` is the existing Mode 1 host. Its internal workspace dependency is
+closed: the `cdd-sow-research` artifact stays fixed at `/agent`, and `journey-portal` retains `/apps/doc1` only as a
 compatibility entry.
 
-- P1 updated the Hrz9 launcher to set both axes explicitly. Local native journeys use
+- P1 updated the `journey-portal` launcher to set both axes explicitly. Local native journeys use
   `CDD_CHANNEL_PROFILE=native` and `CDD_IDENTITY_PROFILE=local-persona`, remain loopback-only,
   and retain the insecure-demo acknowledgement. Secure hosted journeys use
   `CDD_CHANNEL_PROFILE=native` and `CDD_IDENTITY_PROFILE=iap`. A `live` runtime never selects
   identity implicitly.
-- P2 made Hrz9 expose `/agent/*`, including `/agent/_next/*` and `/agent/api/*`, to the
-  canonical Doc1 `/agent` artifact. The existing `/apps/doc1` entry URL remains as a tested
+- P2 made `journey-portal` expose `/agent/*`, including `/agent/_next/*` and `/agent/api/*`, to the
+  canonical `cdd-sow-research` `/agent` artifact. The existing `/apps/doc1` entry URL remains as a tested
   redirect to `/agent/`; the canonical artifact emits only `/agent` asset and API URLs.
 - P2 added cross-repository build, proxy, asset, API, identity, and existing RM-journey tests.
 
-The byte-identical native claim is now available and remains bounded to the Doc1 UI and API
-artifacts. Hrz9 consumes the canonical `/agent` build and the cross-repository journey gate
-passes. Hrz9 shell code, its reverse-proxy configuration, and deployment manifests are host
-integration artifacts and are not expected to be byte-identical to Doc1.
+The byte-identical native claim is now available and remains bounded to the `cdd-sow-research` UI and API
+artifacts. `journey-portal` consumes the canonical `/agent` build and the cross-repository journey gate
+passes. `journey-portal` shell code, its reverse-proxy configuration, and deployment manifests are host
+integration artifacts and are not expected to be byte-identical to `cdd-sow-research`.
 
 ## 5. Phase 0: design and status correction
 
@@ -149,7 +149,7 @@ identity policy. Combining multiple credentials on one protected route is out of
 |---|---|
 | Add `identity.mode` with `CDD_IDENTITY_PROFILE` override. Canonical values: `local-persona`, `iap`, `oidc-session`, `oauth-access-token`, `embedded-grant`, `onprem`. | `src/cdd_sow_research/config.py`, `config/settings.yaml`, `.env.example` |
 | Add `channel.mode` with `CDD_CHANNEL_PROFILE` override. Canonical values are `native`, `sandboxed`, and `standalone`; no channel is inferred from a credential or the legacy standalone flag. Sandboxed startup requires a valid installation manifest and dedicated public origin. | `src/cdd_sow_research/config.py`, `config/settings.yaml`, `.env.example` |
-| Make the Hrz9 Mode 1 launcher pass explicit native channel and identity settings. P2 now serves the canonical `NEXT_PUBLIC_BASE_PATH=/agent` artifact and keeps `/apps/doc1` as a compatibility entry. Local journeys select acknowledged loopback `local-persona`; secure hosted journeys select `iap`. | `../journey-portal/scripts/run_journeys.py`, Hrz9 launcher/config tests |
+| Make the `journey-portal` Mode 1 launcher pass explicit native channel and identity settings. P2 now serves the canonical `NEXT_PUBLIC_BASE_PATH=/agent` artifact and keeps `/apps/doc1` as a compatibility entry. Local journeys select acknowledged loopback `local-persona`; secure hosted journeys select `iap`. | `../journey-portal/scripts/run_journeys.py`, `journey-portal` launcher/config tests |
 | Keep `CDD_PROFILE` as the runtime adapter profile. Remove identity from the implied fallback behavior of that value. | `src/cdd_sow_research/config.py`, `src/cdd_sow_research/api/deps.py` |
 | Remove the generic runtime-to-`gcp` adapter fallback. Every named runtime must bind every runtime/data port explicitly, including intentional `platform` reuse of a GCP adapter; unknown or incomplete profiles fail startup. `IdentityPort` is removed from this runtime map and keyed only by exact identity mode. | `src/cdd_sow_research/config.py`, `config/settings.yaml`, `tests/contract/test_port_parity.py` |
 | Retire `deployment.standalone` / `CDD_STANDALONE` from application auth and route selection. It is a deprecated control-ownership compatibility input, never the channel axis. `channel.mode` controls framing, `identity.mode` controls `/auth/*`, adapter bindings control services, and infrastructure inputs control provisioning. Diagnose conflicts only with explicit identity/control-ownership behavior the old flag actually governed, never from channel mismatch. | `src/cdd_sow_research/config.py`, `src/cdd_sow_research/api/app.py`, `config/settings.yaml`, Terraform |
@@ -190,9 +190,9 @@ channel differs.
 Channel migration is explicit:
 
 - local Mode 3 and Mode 6 set `CDD_CHANNEL_PROFILE=standalone`;
-- Hrz9 Mode 1 sets `CDD_CHANNEL_PROFILE=native` and an explicit
+- `journey-portal` Mode 1 sets `CDD_CHANNEL_PROFILE=native` and an explicit
   `CDD_IDENTITY_PROFILE=local-persona` for the acknowledged loopback demo or `iap` for secure
-  hosted use; its `/apps/doc1` URL remains an Hrz9-owned compatibility route;
+  hosted use; its `/apps/doc1` URL remains an `journey-portal`-owned compatibility route;
 - `sandboxed` is accepted only with the canonical installation manifest and dedicated origin;
 - other secure deployments without a channel value fail with a migration instruction.
 
@@ -273,12 +273,12 @@ Acceptance:
     UI requests and logout pass.
 16. OIDC multi-audience ID tokens require correct `azp`, and every configured token-endpoint
     authentication method passes positive and downgrade/unsupported-method tests.
-17. Hrz9 local and hosted launchers set explicit native channel and identity values, preserve the
+17. `journey-portal` local and hosted launchers set explicit native channel and identity values, preserve the
     `/apps/doc1` compatibility URL, and never select identity from the runtime profile.
 
 ## 7. Phase 2: shared isolated-embed foundation
 
-Status: complete locally, including the Hrz9 canonical-artifact dependency.
+Status: complete locally, including the `journey-portal` canonical-artifact dependency.
 
 ### 7.1 Goal
 
@@ -338,12 +338,12 @@ Public and internal route ownership:
 - ingress maps `/agent/auth/*` to FastAPI `/auth/*`;
 - the standalone origin root redirects to `/agent/`.
 
-In P2, Hrz9 exposes the canonical `/agent/*` surface, including `/agent/_next/*` and
-`/agent/api/*`, to the unmodified Doc1 artifact. Its existing `/apps/doc1` entry URL remains a
+In P2, `journey-portal` exposes the canonical `/agent/*` surface, including `/agent/_next/*` and
+`/agent/api/*`, to the unmodified `cdd-sow-research` artifact. Its existing `/apps/doc1` entry URL remains a
 tested redirect or alias to `/agent/`. The canonical artifact emits only `/agent` URLs; old
-`/apps/doc1/_next/*` and `/apps/doc1/api/*` routes remain only if Hrz9 deliberately retains and
-tests them for stale clients. Cross-repository tests build Doc1 once, record its digest, traverse
-the Hrz9 proxy and RM journey, and compare that digest with the isolated and standalone proof.
+`/apps/doc1/_next/*` and `/apps/doc1/api/*` routes remain only if `journey-portal` deliberately retains and
+tests them for stale clients. Cross-repository tests build `cdd-sow-research` once, record its digest, traverse
+the `journey-portal` proxy and RM journey, and compare that digest with the isolated and standalone proof.
 
 Phase 2 extends the minimal `scripts/embed_dev_proxy.py` or equivalent Phase 1 auth-route fixture
 to implement the whole contract, strip `/agent/api`, preserve streaming and security headers, and
@@ -637,9 +637,9 @@ Add:
   tenant, installation, citation, state, and evidence authorization, plus ticket expiry,
   second-start, callback replay, process restart, target tampering, open-redirect input, fragment
   removal, no-referrer/no-store headers, and ticket/log/trace redaction;
-- Hrz9 cross-repository tests for the `/apps/doc1` entry redirect or alias, canonical
+- `journey-portal` cross-repository tests for the `/apps/doc1` entry redirect or alias, canonical
   `/agent`, `/agent/_next/*`, and `/agent/api/*` behavior, prefix stripping, cookies, streams,
-  explicit native identity, existing RM journey, and matching Doc1 build digest;
+  explicit native identity, existing RM journey, and matching `cdd-sow-research` build digest;
 - a two-origin Chromium browser smoke test in CI from this phase;
 - a fallback-policy test proving each deployment rejects the other deployment's credential type.
 
@@ -661,8 +661,8 @@ Acceptance:
 11. The complete opaque citation journey reaches the separately configured Mode 6 origin, binds
     the same authorized user through reviewed identity linkage, consumes once, and never exposes
     the original target or reusable credential to host JavaScript.
-12. Hrz9 consumes the canonical `/agent` artifact behind its `/apps/doc1` entry compatibility
-    URL, and cross-repository evidence bounds the native same-artifact claim to a matching Doc1
+12. `journey-portal` consumes the canonical `/agent` artifact behind its `/apps/doc1` entry compatibility
+    URL, and cross-repository evidence bounds the native same-artifact claim to a matching `cdd-sow-research`
     build digest.
 
 ## 8. Phase 3: Mode 4 direct-token isolated embed
@@ -672,8 +672,8 @@ Status: complete locally; named production issuer registration remains external.
 ### 8.1 Goal and trust statement
 
 Deliver the smaller isolated-embed slice. The host obtains and supplies a short-lived OAuth
-access token whose audience is Doc1. This mode is only suitable when the agent deployment owner
-explicitly trusts the host application with that token and the corresponding Doc1 API access.
+access token whose audience is `cdd-sow-research`. This mode is only suitable when the agent deployment owner
+explicitly trusts the host application with that token and the corresponding `cdd-sow-research` API access.
 
 ### 8.2 Backend adapter
 
@@ -694,7 +694,7 @@ Required checks:
 - compact signed JWT with protected JOSE header `typ=at+jwt`;
 - algorithm allowlist `RS256` and `ES256`;
 - exact configured issuer;
-- exact Doc1 resource audience;
+- exact `cdd-sow-research` resource audience;
 - required `exp` and `iat`, plus `nbf` validation when present or policy-required, with bounded
   clock skew;
 - maximum accepted `exp - iat` from issuer policy, default 300 seconds and capped by the
@@ -723,7 +723,7 @@ installation binding before the domain service runs.
 
 1. Host creates `<cdd-agent installation-id="...">`.
 2. Iframe loads configuration and completes the origin/version handshake.
-3. Host obtains a Doc1-audience access token.
+3. Host obtains a `cdd-sow-research`-audience access token.
 4. Host transfers it through the negotiated private channel.
 5. Iframe stores it only in memory and attaches it to every protected request.
 6. Iframe requests refresh before expiry and erases the old token.
@@ -762,7 +762,7 @@ registrations, target-project apply, operational approvals and live evidence rem
 
 ### 9.1 Goal
 
-Keep the reusable Doc1 token out of host JavaScript while preserving single sign-on. The iframe
+Keep the reusable `cdd-sow-research` token out of host JavaScript while preserving single sign-on. The iframe
 owns a PKCE verifier; the host receives only an opaque instance identifier and later carries a
 single-use launch code.
 
@@ -832,7 +832,7 @@ corresponding internal `/v1/embed/*` routes.
    - called directly by the iframe;
    - accepts launch code, instance ID, and PKCE verifier;
    - atomically consumes the grant;
-   - returns a Doc1 access token valid for at most five minutes.
+   - returns a `cdd-sow-research` access token valid for at most five minutes.
 
 Rate limit all three endpoints. Responses must use `Cache-Control: no-store`. Logs and traces
 must redact grant codes, verifiers, credentials, and issued tokens.
@@ -861,12 +861,12 @@ The issued token is:
 - JOSE `typ=at+jwt` with required `token_use=doc1-embedded-grant`;
 - signed by a dedicated asymmetric embed-token key set, separate from Mode 6 session keys,
   with a deployment-pinned protected algorithm (`ES256` by default, `RS256` supported);
-- issued by the configured Doc1 embed issuer, with accepted-key rotation;
-- audience-restricted to Doc1;
+- issued by the configured `cdd-sow-research` embed issuer, with accepted-key rotation;
+- audience-restricted to `cdd-sow-research`;
 - installation- and tenant-bound;
 - contains exact signed `source_iss` and original `source_sub` claims from the verified
   institutional subject credential; its canonical actor is derived from that pair, while the
-  Doc1 token issuer and authenticated BFF client remain separate fields;
+  `cdd-sow-research` token issuer and authenticated BFF client remain separate fields;
 - scoped to the intersection of installation policy, BFF grant, and subject credential;
 - requires `iat` and `exp`, validates optional `nbf`, permits at most 30 seconds of configured
   clock skew, and enforces `exp - iat <= 300 seconds`;
@@ -910,7 +910,7 @@ Add:
 Acceptance:
 
 1. The PKCE challenge is registered before the host is involved.
-2. Host JavaScript never receives the subject credential, verifier, or issued Doc1 token.
+2. Host JavaScript never receives the subject credential, verifier, or issued `cdd-sow-research` token.
 3. A copied launch code cannot be redeemed without the verifier.
 4. A code can be consumed exactly once.
 5. One registered instance can issue at most one code; a lost response requires a new instance.
@@ -1081,7 +1081,7 @@ The implementation followed these independently reviewable vertical slices:
 1. **PR 1: identity/runtime separation**
    - compatibility migration;
    - exact binding;
-   - Hrz9 explicit native identity/channel settings while retaining its compatibility build;
+   - `journey-portal` explicit native identity/channel settings while retaining its compatibility build;
    - minimal public OIDC-route proxy fixture and callback/cookie test;
    - health/version metadata;
    - no isolated-embed channel enabled.
@@ -1089,7 +1089,7 @@ The implementation followed these independently reviewable vertical slices:
    - fixed `/agent` path;
    - loader, iframe route, protocol, CSP;
    - shared UI transport;
-   - `BrowserFlowStorePort`, opaque citation continuation, and Hrz9 canonical-route migration;
+   - `BrowserFlowStorePort`, opaque citation continuation, and `journey-portal` canonical-route migration;
    - no new identity mode enabled.
 3. **PR 3: Mode 4**
    - access-token adapter;
@@ -1129,8 +1129,8 @@ Modes 4 and 5 may be called implemented in code only when:
 2. identity, channel, and runtime axes combine without changing the domain core;
 3. every runtime has an explicit binding for every runtime/data port, while `IdentityPort` is
    selected only by exact identity mode;
-4. one immutable UI and API build runs in two synthetic host applications, and Hrz9 consumes the
-   same canonical Doc1 build behind its compatibility entry route;
+4. one immutable UI and API build runs in two synthetic host applications, and `journey-portal` consumes the
+   same canonical `cdd-sow-research` build behind its compatibility entry route;
 5. two independent synthetic issuers pass positive, negative, and rotation verification;
 6. Mode 4 accurately exposes its trusted-host boundary;
 7. Mode 5 keeps the reusable token out of parent JavaScript and passes BFF session,

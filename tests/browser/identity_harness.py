@@ -1,6 +1,6 @@
 """Production-backed synthetic identity services for browser portability evidence.
 
-The harness owns issuer keys and synthetic credentials, while Doc1's production adapters
+The harness owns issuer keys and synthetic credentials, while cdd-sow-research's production adapters
 own every verification and grant decision. Browser fixtures may receive a short-lived
 Mode 4 access token and a Mode 5 launch code. They never receive the Mode 5 subject token,
 BFF private-key assertion, or BFF private key.
@@ -909,7 +909,7 @@ def _request_context(request: Request) -> RequestContext:
 
 
 def _app(state: _HarnessState) -> FastAPI:
-    app = FastAPI(title="Doc1 synthetic identity evidence harness")
+    app = FastAPI(title="cdd-sow-research synthetic identity evidence harness")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
@@ -1000,7 +1000,7 @@ def _app(state: _HarnessState) -> FastAPI:
     ) -> Response:
         body = await request.body()
         return Response(
-            b"%PDF-1.4\n%Doc1 identity harness\n" + base64.b64encode(body),
+            b"%PDF-1.4\n%cdd-sow-research identity harness\n" + base64.b64encode(body),
             media_type="application/pdf",
             headers={
                 "Cache-Control": "no-store",

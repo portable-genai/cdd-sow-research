@@ -18,7 +18,7 @@ Redact-before-everything (P-04, R1): the orchestrator redacts case inputs before
 index, registry or audit call. National-identifier detection is **jurisdiction-driven**
 (`pii.jurisdictions` in `config/settings.yaml`, `domain/pii_patterns.py`) so a non-Singapore
 deployment scrubs, and gates on, its own identifiers (PAN, Aadhaar, NINO, NIK, ...), not
-just the SG NRIC. The runtime guardrail/DLP itself is the sibling **Hrz1** gateway; this repo
+just the SG NRIC. The runtime guardrail/DLP itself is the sibling `agent-guardrail-gateway`; this repo
 consumes it rather than re-implementing it.
 
 ### How is the work auditable / reproducible?
@@ -26,7 +26,7 @@ consumes it rather than re-implementing it.
 Every assessment writes an immutable, already-redacted WORM `AuditEvent` with the decision
 and the citation set (P-07). Every dossier statement carries a source-and-page `Citation`
 (P-10). The consequential math is deterministic, so an auditor can recompute any figure or
-decision from the same inputs. The enterprise WORM audit system is **Hrz5**; the in-repo
+decision from the same inputs. The enterprise WORM audit system is `agent-observability`; the in-repo
 hash-chained store is the offline/local stand-in (see
 [security-faq.md](security-faq.md) for its exact tamper-evidence limits).
 
@@ -34,7 +34,7 @@ hash-chained store is the offline/local stand-in (see
 
 An offline eval gate (`eval/run_eval.py`) scores groundedness, risk-band accuracy, citation
 accuracy, and PII safety against a golden set, failing the build below threshold (P-08). The
-enterprise promotion gate and model documentation / red-team harness are the sibling **Hrz4**
+enterprise promotion gate and model documentation / red-team harness are the sibling `model-quality-gate`
 system; this repo's gate mirrors its thresholds so merges are guarded locally. A fork must
 rebuild the golden set for its own vertical, or the gate measures the wrong thing.
 
@@ -43,9 +43,8 @@ rebuild the golden set for its own vertical, or the gate measures the wrong thin
 `COMPLIANCE.md` maps the internal P-01..P-12 / R1..R6 controls to concrete code, plus an
 **adopter-owned regulator crosswalk appendix** with the MAS (Singapore) reference mapping as
 the template. To add FCA / RBI / OJK / HKMA / APRA, copy the appendix table, swap the
-regulator-reference column, and re-review with local counsel, the Doc1-control column is
-stable across regulators. At scale, the sibling **Rsk2 control-mapping toolkit** and **Rsk1
-compliance assistant** generate and maintain these crosswalks; a large estate should
+regulator-reference column, and re-review with local counsel, the `cdd-sow-research`-control column is
+stable across regulators. At scale, the sibling **the cloud control-mapping toolkit control-mapping toolkit** and **`compliance-advisory`** generate and maintain these crosswalks; a large estate should
 integrate them rather than hand-maintain the table.
 
 ### Is data residency enforced?
@@ -53,7 +52,7 @@ integrate them rather than hand-maintain the table.
 Yes, at deploy time: a single approved region (default `asia-southeast1`),
 validated to fail fast, with regional endpoints, a `gcp.resourceLocations` Org Policy
 allowlist, CMEK, and a VPC-SC perimeter (P-03, P-09). The residency-violation CI gate is the
-sibling **Rsk4 residency validator**; the exit/concentration-risk plan is **Rsk5**. This repo
+sibling **the data-residency validator residency validator**; the exit/concentration-risk plan is **the exit-and-portability planner**. This repo
 enforces residency in its own infra and is one of the systems those tools reason about.
 
 ### Can we run it against real customer data today?

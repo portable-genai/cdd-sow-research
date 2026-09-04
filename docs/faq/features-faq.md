@@ -5,7 +5,7 @@ LLM, and, importantly, where its responsibilities **stop** and a sibling catalog
 takes over. Cross-references: [`README.md`](../../README.md), [`DEMO.md`](../../DEMO.md),
 [`docs/sow-longitudinal-audit-design.md`](../sow-longitudinal-audit-design.md).
 
-### What does Doc1 actually produce?
+### What does `cdd-sow-research` actually produce?
 
 A cited **CDD dossier** and a long-running **Source-of-Wealth case**. From a customer's KYC
 pack, corporate registries and adverse media it produces: a source-of-wealth narrative, a
@@ -37,27 +37,27 @@ logic and its outputs. It **integrates** (via the `platform` profile's HTTP adap
 several cross-cutting concerns that are owned by sibling platform systems, do not rebuild
 these in a fork:
 
-| Concern | Owned by (catalog id / repo) | Doc1's role |
+| Concern | Owned by (catalog id / repo) | `cdd-sow-research`'s role |
 |---|---|---|
-| Runtime guardrail: PII redaction, prompt-injection / jailbreak defense | **Hrz1** `agent-guardrail-gateway` | consumes it on every assessment (input + output screen) |
-| Governed RAG / ACL-aware knowledge base with citations | **Hrz2** `enterprise-knowledge-base` | ingests case docs into it, retrieves grounded passages from it |
-| Agent registry, versioning, identity, entitlements | **Hrz3** `agent-registry` | publishes its A2A AgentCard for discovery |
-| AI-quality / eval / model-risk promotion gate | **Hrz4** `model-quality-gate` | its eval metrics gate promotion; the offline gate mirrors it |
-| Observability + immutable WORM prompt/response audit | **Hrz5** `agent-observability` | writes audit events to it; traces spans through it |
-| Regulatory Q&A / CDD-AML control checklists | **Rsk1** `compliance-advisory` | consumes it for regulatory compliance checks |
-| On-prem, CPU-only DLP scrub before egress | **Rsk6** `onprem-dlp` | the sovereign-DLP option behind the redaction port |
+| Runtime guardrail: PII redaction, prompt-injection / jailbreak defense | `agent-guardrail-gateway` | consumes it on every assessment (input + output screen) |
+| Governed RAG / ACL-aware knowledge base with citations | `enterprise-knowledge-base` | ingests case docs into it, retrieves grounded passages from it |
+| Agent registry, versioning, identity, entitlements | `agent-registry` | publishes its A2A AgentCard for discovery |
+| AI-quality / eval / model-risk promotion gate | `model-quality-gate` | its eval metrics gate promotion; the offline gate mirrors it |
+| Observability + immutable WORM prompt/response audit | `agent-observability` | writes audit events to it; traces spans through it |
+| Regulatory Q&A / CDD-AML control checklists | `compliance-advisory` | consumes it for regulatory compliance checks |
+| On-prem, CPU-only DLP scrub before egress | `onprem-dlp` | the sovereign-DLP option behind the redaction port |
 
 So the guardrail, knowledge base, audit sink, and eval platform are *dependencies*, not
-features of this repo. Doc1's own screening/scorecard/monitoring sub-services are
+features of this repo. `cdd-sow-research`'s own screening/scorecard/monitoring sub-services are
 case-level diligence logic, distinct from the platform's runtime controls.
 
 ### How does this relate to the other financial-crime systems in the catalog?
 
-Doc1 is onboarding-time CDD + Source of Wealth. Adjacent (mostly proposed) FCC systems
+`cdd-sow-research` is onboarding-time CDD + Source of Wealth. Adjacent (mostly proposed) FCC systems
 handle different points in the lifecycle and should not be duplicated here: **G2**
 sanctions-screening copilot (hit disposition at scale), **G6** perpetual-KYC re-rating
 (event-driven re-assessment of the existing book), **G7** UBO structure unwrap (deep
-ownership traversal), and **G1** AML alert triage (transaction-monitoring alerts). Doc1's
+ownership traversal), and **G1** AML alert triage (transaction-monitoring alerts). `cdd-sow-research`'s
 built-in screening and monitoring are the case-level slice; the dedicated FCC systems are
 the enterprise-scale versions. Check
 [the organization's repository index](https://github.com/portable-genai) before building a

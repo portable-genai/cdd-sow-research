@@ -1,10 +1,10 @@
 """Local ownership-graph adapter (OwnershipGraphPort) — a fictional layered structure.
 
-The ``local`` profile's stand-in for the grounded registry hop: a deterministic,
-in-process fixture that serves one cited hop at a time for an **entirely invented**
-multi-jurisdiction structure, so the whole UBO journey (walk, effective ownership, the
-control ladder, the indicators, the Hrz7 route) runs end to end with no Google Cloud and
-no API key. SDK-free and unconditional (there is no emulator for a company registry).
+The ``local`` profile's stand-in for the grounded registry hop: a deterministic, in-process fixture
+that serves one cited hop at a time for an **entirely invented** multi-jurisdiction structure, so
+the whole UBO journey (walk, effective ownership, the control ladder, the indicators, the
+human-review-console route) runs end to end with no Google Cloud and no API key. SDK-free and
+unconditional (there is no emulator for a company registry).
 
 The fixture is deliberately shaped to exercise every branch the engine has:
 

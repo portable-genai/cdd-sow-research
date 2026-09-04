@@ -22,7 +22,7 @@ from tests.fixtures import sample_cases
 
 ACTOR = "analyst@bank.example"
 
-#: The complete attribute key set a Doc1 span may carry, per span name. Widening one of
+#: The complete attribute key set a cdd-sow-research span may carry, per span name. Widening one of
 #: these is a decision about what leaves the trust boundary, so it is made here rather than
 #: at a call site.
 _ALLOWED = {

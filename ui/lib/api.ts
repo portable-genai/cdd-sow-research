@@ -90,7 +90,7 @@ export async function perpetualKycQueue(): Promise<PerpetualKycAssessment[]> {
 }
 
 // Resolving is the consequential verb: it always requires human review and is routed to
-// Hrz7 server-side. There is a companion GET /v1/ubo-graph/{id} that returns the walked
+// human-review-console server-side. There is a companion GET /v1/ubo-graph/{id} that returns the walked
 // structure alone (no verdict), which the console does not need because the resolution
 // already carries the graph.
 export async function resolveUboGraph(request_: UboGraphRequest): Promise<UboResolution> {
@@ -111,7 +111,7 @@ export async function health(): Promise<{
 }> {
   // `/v1/healthz`, not `/healthz`: the platform reserves the latter, so a request to it through
   // the embedding host's reverse proxy is answered by the frontend and never reaches the API.
-  // The console then waits forever on "Connecting to Doc1..." against a healthy service.
+  // The console then waits forever on "Connecting to cdd-sow-research..." against a healthy service.
   return request("/v1/healthz");
 }
 

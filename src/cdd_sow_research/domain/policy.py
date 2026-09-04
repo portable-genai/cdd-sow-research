@@ -391,7 +391,8 @@ _DEFAULT_FLAG_WEIGHT: dict[str, float] = {
 #: Review severity a resolution earns from its opacity score, as descending ``(floor,
 #: severity)`` bands: the first band the score clears is the one it earns, and a score below
 #: every floor is LOW. A resolution carries no risk band and no queue priority to borrow, so
-#: its Hrz7 severity is banded on how OPAQUE the structure is; these cut-offs are the bank's,
+#: its human-review-console severity is banded on how OPAQUE the structure is; these cut-offs are
+#: the bank's,
 #: not a constant in the engine or the review adapter (B4).
 _DEFAULT_OPACITY_SEVERITY_BANDS: tuple[tuple[float, str], ...] = (
     (0.75, "critical"),

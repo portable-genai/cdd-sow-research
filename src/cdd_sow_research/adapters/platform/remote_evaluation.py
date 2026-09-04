@@ -1,8 +1,8 @@
-"""Remote-platform evaluation adapter - thin HTTP client to Hrz4.
+"""Remote-platform evaluation adapter - thin HTTP client to model-quality-gate.
 
-At promotion Doc1's quality is checked against the shared **Hrz4 AI Quality / model-risk**
-service (``model-quality-gate``). This adapter implements :class:`EvaluationGatePort`
-against Hrz4's real, hardened contract (SPEC §6):
+At promotion cdd-sow-research's quality is checked against the shared **model-quality-gate AI
+Quality / model-risk** service (``model-quality-gate``). This adapter implements
+:class:`EvaluationGatePort` against model-quality-gate's real, hardened contract (SPEC §6):
 
 * ``evaluate`` -> ``POST /v1/evaluations {target, dataset_id, bundle}`` -> EvalReport.
 * ``gate``     -> ``POST /v1/gate {target, dataset_id, bundle}`` -> ``{passed}``.
@@ -32,18 +32,21 @@ from . import _s2s
 
 _DEFAULT_URL = "http://localhost:8084"
 
-#: The registered Hrz4 metric bundle for this vertical (Hrz4 owns the metrics + bars).
+#: The registered model-quality-gate metric bundle for this vertical (model-quality-gate owns the
+#: metrics + bars).
 _BUNDLE = "doc1-cdd-sow"
 #: Prompt/agent version tag; bump when the prompt corpus changes, or source it from a registry.
 _PROMPT_VERSION = "v1"
 
 
 class RemoteEvaluationError(CddError):
-    """Raised when the Hrz4 quality service returns a non-2xx response."""
+    """Raised when the model-quality-gate quality service returns a non-2xx response."""
 
 
 class RemoteEvaluationAdapter:
-    """HTTP client for the Hrz4 ``model-quality-gate`` service (via PromotionGateClient)."""
+    """HTTP client for the model-quality-gate ``model-quality-gate`` service (via
+    PromotionGateClient).
+    """
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
@@ -61,14 +64,16 @@ class RemoteEvaluationAdapter:
         )
 
     def evaluate(self, dataset_path: str) -> EvalReport:
-        """Score ``dataset_path`` via Hrz4 and return the client's report, evidence intact."""
+        """Score ``dataset_path`` via model-quality-gate and return the client's report, evidence
+        intact.
+        """
         try:
             return self._client.evaluate(dataset_path)
         except GateClientError as exc:
             raise RemoteEvaluationError(str(exc)) from exc
 
     def gate(self, target: str) -> bool:
-        """Promotion gate: True iff Hrz4 reports ``target`` passes."""
+        """Promotion gate: True iff model-quality-gate reports ``target`` passes."""
         try:
             return self._client.gate(target)
         except GateClientError as exc:

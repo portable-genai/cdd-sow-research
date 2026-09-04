@@ -1,4 +1,4 @@
-"""Identity adapter for Doc1-issued embedded-grant resource tokens."""
+"""Identity adapter for cdd-sow-research-issued embedded-grant resource tokens."""
 
 from __future__ import annotations
 

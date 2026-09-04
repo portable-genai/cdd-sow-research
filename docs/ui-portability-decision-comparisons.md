@@ -1,6 +1,6 @@
 # UI portability decision comparisons
 
-This document explains the main UI portability choices for Doc1, especially the implemented
+This document explains the main UI portability choices for `cdd-sow-research`, especially the implemented
 Mode 4 and Mode 5 isolated embeds. It compares credible alternatives that an adopter,
 architect, security reviewer, or platform team may ask about.
 
@@ -11,8 +11,8 @@ production gate remains open.
 The decisions optimize four things together:
 
 1. one capability can appear in native, sandboxed, and standalone channels;
-2. Doc1 verifies identity rather than trusting host-supplied identity fields;
-3. one immutable Doc1 artifact can move between hosts and deployments; and
+2. `cdd-sow-research` verifies identity rather than trusting host-supplied identity fields;
+3. one immutable `cdd-sow-research` artifact can move between hosts and deployments; and
 4. the design states its trust boundaries instead of describing browser isolation as
    complete API isolation.
 
@@ -32,7 +32,7 @@ capability across these channels while making each channel's trust boundary expl
 
 | Option | Host compatibility | Isolation | Release coupling | Decision |
 |---|---|---|---|---|
-| Cross-origin iframe plus small loader | Plain HTML and all major frameworks | Browser-enforced origin boundary | Doc1 releases independently | **Selected** |
+| Cross-origin iframe plus small loader | Plain HTML and all major frameworks | Browser-enforced origin boundary | `cdd-sow-research` releases independently | **Selected** |
 | Web Component using Shadow DOM | Broad framework support | CSS encapsulation, not a security boundary; host JavaScript can inspect it | Shared page dependency risk | Example wrapper only, not the security boundary |
 | Module Federation | Good for compatible JavaScript stacks | No isolation from host JavaScript | Host and remote runtime versions must stay compatible | Rejected as the normative contract |
 | Framework-native package | Familiar to one host stack | No origin isolation | Separate React, Angular, and Vue release trains | Optional convenience wrapper only |
@@ -44,8 +44,8 @@ may improve ergonomics but cannot become a portability or security dependency.
 
 | Option | Credential location | User experience | Trust boundary | Decision |
 |---|---|---|---|---|
-| Mode 4 direct access token | Host JavaScript and iframe memory | Embedded, usually no second prompt | Host can reuse the Doc1 token and is inside its API-data boundary | Keep as the lower-friction compatibility option |
-| Mode 5 brokered PKCE grant | Subject credential stays at host BFF; Doc1 token stays in iframe | Embedded, no second prompt when the BFF has a broker-recognized user credential | Host front end does not receive the reusable Doc1 token; registered BFF remains trusted | **Recommended isolated integration** |
+| Mode 4 direct access token | Host JavaScript and iframe memory | Embedded, usually no second prompt | Host can reuse the `cdd-sow-research` token and is inside its API-data boundary | Keep as the lower-friction compatibility option |
+| Mode 5 brokered PKCE grant | Subject credential stays at host BFF; `cdd-sow-research` token stays in iframe | Embedded, no second prompt when the BFF has a broker-recognized user credential | Host front end does not receive the reusable `cdd-sow-research` token; registered BFF remains trusted | **Recommended isolated integration** |
 | Mode 6 top-level OIDC | First-party standalone session | May require a top-level sign-in | Separate standalone deployment and ordinary OIDC boundary | **Required universal fallback** |
 
 Why: Mode 5 gives the strongest ordinary host-front-end separation, but it cannot remove
@@ -70,12 +70,12 @@ profile. One deployment surface selects one exact identity mode.
 | Option | Artifact reuse | Host integration cost | Evidence quality | Decision |
 |---|---|---|---|---|
 | Fixed `/agent` artifact with host-owned redirect or proxy alias | One build across channels | Host maps its entry route to the canonical surface | Same digest is proven | **Selected and implemented** |
-| Rebuild for `/apps/doc1` or another host path | One build per host path | Easy for the current host | Same source is not the same artifact | Transitional Hrz9 build retired |
+| Rebuild for `/apps/doc1` or another host path | One build per host path | Easy for the current host | Same source is not the same artifact | Transitional `journey-portal` build retired |
 | Runtime-selected Next.js `basePath` | Would be ideal if supported | Appears simple | Next.js asset paths are build-time, so this does not produce one immutable build | Not viable with the current stack |
 | Root-only `/` deployment | Simple artifact | Consumes an entire origin and complicates shared edge routing | Portable only when every adopter grants a dedicated origin root | Not the reference contract |
 
 Why: the same-artifact claim requires identical bytes, not repeated builds from the same
-source. Hrz9 keeps `/apps/doc1` as an entry compatibility URL while its proxy serves the
+source. `journey-portal` keeps `/apps/doc1` as an entry compatibility URL while its proxy serves the
 canonical `/agent` artifact.
 
 ## 6. Installation and security policy source
@@ -170,8 +170,8 @@ must separately permit the loader and frame.
 
 | Option | Semantic fit | Verification requirement | Decision |
 |---|---|---|---|
-| RFC 9068-style JWT OAuth access token for the Doc1 audience | Resource authorization token | Pin type, algorithm, issuer, audience, client, subject, tenant, scope, and time claims | **Selected v1 profile** |
-| OIDC ID token | Authenticates a user to an OIDC client | Audience and token purpose are wrong for a Doc1 resource API | Reject |
+| RFC 9068-style JWT OAuth access token for the `cdd-sow-research` audience | Resource authorization token | Pin type, algorithm, issuer, audience, client, subject, tenant, scope, and time claims | **Selected v1 profile** |
+| OIDC ID token | Authenticates a user to an OIDC client | Audience and token purpose are wrong for a `cdd-sow-research` resource API | Reject |
 | Opaque OAuth access token with introspection | Valid resource credential | Requires authoritative introspection availability and egress | Later adapter |
 | Host-signed custom JWT | Can be made to work | Creates a bespoke protocol and claim contract | Reject unless it is standardized as the reviewed access-token profile |
 | Unsigned host identity headers | No token integration | Host can assert any actor or tenant | Reject |
@@ -183,8 +183,8 @@ different policy validators and must not be interchangeable.
 
 | Option | Token exposure | Replay and binding | Decision |
 |---|---|---|---|
-| Iframe-first PKCE registration plus BFF-authorized single-use code | Reusable Doc1 token stays out of host JavaScript | Code is bound to iframe verifier, installation, subject, client, tenant, scope, and expiry | **Selected** |
-| BFF returns a reusable Doc1 token to host JavaScript | Host receives full API credential | Simple but becomes Mode 4 trust | Rejected for Mode 5 |
+| Iframe-first PKCE registration plus BFF-authorized single-use code | Reusable `cdd-sow-research` token stays out of host JavaScript | Code is bound to iframe verifier, installation, subject, client, tenant, scope, and expiry | **Selected** |
+| BFF returns a reusable `cdd-sow-research` token to host JavaScript | Host receives full API credential | Simple but becomes Mode 4 trust | Rejected for Mode 5 |
 | Parent registers the PKCE challenge | Parent can substitute its own verifier | Weakens iframe ownership of redemption | Rejected |
 | Run the institution login redirect inside the iframe | Token may stay in frame | Often blocked by IdP framing and third-party storage policy | Not the normal path |
 | Server injects an auth header through a same-origin proxy | Browser sees no token | Host BFF can read all requests and responses | Classified as native trusted BFF, not cross-origin Mode 5 |
@@ -200,10 +200,10 @@ remove the registered BFF from the authorization boundary.
 | OIDC ID token sent to the broker | Commonly available | Wrong token purpose and client audience | Reject |
 | Arbitrary external token accepted directly | Broad compatibility | Token-type confusion and issuer-specific behavior | Reject |
 | Explicit RFC 8693 exchange policy for a named source token type | Adds institution-specific compatibility | Exchange service and mapping remain trusted dependencies | Allowed reviewed extension |
-| Unsigned BFF session assertion | Easy for host | Doc1 cannot verify the human identity | Reject |
+| Unsigned BFF session assertion | Easy for host | `cdd-sow-research` cannot verify the human identity | Reject |
 
 Why: the v1 subject credential preserves the exact upstream issuer and original subject.
-The Doc1-issued embed token carries that provenance separately from its own token issuer
+The `cdd-sow-research`-issued embed token carries that provenance separately from its own token issuer
 and from the BFF client identity.
 
 ## 16. Mode 5 BFF client authentication
@@ -252,7 +252,7 @@ transport.
 | In-frame evidence card plus opaque, server-resolved Mode 6 continuation | Full provenance and authenticated top-level original | Host sees no raw target; final redirect follows reauthorization and confirmation | **Selected** |
 | External `_blank` link from sandbox | Direct | Requires popup capability and exposes the target to host/browser handling | Rejected |
 | Put the original URL in a host message | Host can render a link | Leaks sensitive query values and makes host a navigation broker | Rejected |
-| Never permit the live original | Simplest | Weakens Doc1's source-traceability claim | Not acceptable for completion |
+| Never permit the live original | Simplest | Weakens `cdd-sow-research`'s source-traceability claim | Not acceptable for completion |
 | Proxy every public website into the iframe | Keeps navigation in frame | Creates SSRF, content rewriting, legal, and active-content risk | Rejected |
 
 Why: the server creates a short-lived opaque ticket from an authorized citation record.
@@ -292,7 +292,7 @@ control and requires separate prevention or transaction confirmation.
 | Deterministic issuer-qualified `(source_iss, source_sub)` | Stable when the issuer preserves subject semantics | Prevents cross-issuer subject collisions | **Selected default** |
 | Email address | Human-readable | Mutable, reassignable, and not globally unique | Display metadata only |
 | Host-supplied actor ID | Convenient | Host can impersonate another user | Reject |
-| Doc1 embed-token issuer plus unqualified subject | Locally simple | Erases upstream identity provenance | Reject |
+| `cdd-sow-research` embed-token issuer plus unqualified subject | Locally simple | Erases upstream identity provenance | Reject |
 | Reviewed server-side subject-link policy | Supports pairwise subject identifiers | Requires governed mapping and evidence | Allowed only when exact issuer and subject cannot remain stable across clients |
 
 Why: the audit can attribute an action to a verified subject and session. It does not by
@@ -311,16 +311,16 @@ Why: DPoP addresses bearer-token theft after redemption, not malicious code alre
 running in the iframe or misuse by an authorized BFF. It should not delay the first
 honest, short-lived implementation.
 
-## 24. Hrz9 migration
+## 24. `journey-portal` migration
 
 | Option | Mode 1 continuity | Same-artifact proof | Decision |
 |---|---|---|---|
-| P1 keeps the `/apps/doc1` compatibility build; P2 moves Hrz9 to canonical `/agent` and retains an entry alias | No broken journey between PRs | Native proof becomes valid after P2 cross-repo evidence | **Selected migration, complete** |
-| Change Doc1 to `/agent` immediately | Breaks current Hrz9 assets and API routing | Eventually valid | Rejected because dependency closure is missing |
-| Keep rebuilding Doc1 at `/apps/doc1` permanently | Current journey stays green | Native channel never uses the same artifact as isolated and standalone | Rejected |
-| Change Hrz9 public journey contract with no alias | Clean target | Breaks bookmarks, tests, and integration assumptions | Rejected |
+| P1 keeps the `/apps/doc1` compatibility build; P2 moves `journey-portal` to canonical `/agent` and retains an entry alias | No broken journey between PRs | Native proof becomes valid after P2 cross-repo evidence | **Selected migration, complete** |
+| Change `cdd-sow-research` to `/agent` immediately | Breaks current `journey-portal` assets and API routing | Eventually valid | Rejected because dependency closure is missing |
+| Keep rebuilding `cdd-sow-research` at `/apps/doc1` permanently | Current journey stays green | Native channel never uses the same artifact as isolated and standalone | Rejected |
+| Change `journey-portal` public journey contract with no alias | Clean target | Breaks bookmarks, tests, and integration assumptions | Rejected |
 
-Why: Hrz9 was an internal implementation dependency, not an external production blocker.
+Why: `journey-portal` was an internal implementation dependency, not an external production blocker.
 It now consumes the canonical artifact, and the build, proxy, asset, API, identity, and
 journey tests pass.
 
@@ -342,9 +342,9 @@ case/document data exit.
 
 The selected design is one canonical `/agent` artifact with three independent
 configuration axes. Modes 4 and 5 run in a dedicated-origin sandbox whose UI and API are
-same-origin with each other. Mode 4 accepts a tightly profiled Doc1 OAuth access token and
+same-origin with each other. Mode 4 accepts a tightly profiled `cdd-sow-research` OAuth access token and
 explicitly trusts the host with it. Mode 5 uses iframe-first PKCE and an authenticated
-host BFF to keep the reusable Doc1 token out of ordinary host JavaScript. Mode 6 is a
+host BFF to keep the reusable `cdd-sow-research` token out of ordinary host JavaScript. Mode 6 is a
 separately configured top-level OIDC fallback.
 
 One canonical manifest governs installation, framing, issuer, tenant, client, scope, and
