@@ -23,9 +23,9 @@ number in this module and is not imported by it**: it only narrates the finished
 assessment elsewhere. Given the same inputs and the same ``as_of`` date, the whole
 assessment is byte-identical, so an auditor can recompute it.
 
-A pKYC outcome is consequential decision support: it always sets
-``requires_human_review`` and never auto-blocks. The orchestrator
-(``perpetual_kyc_service``) routes it to Hrz7 for maker-checker disposition (rule R8).
+A pKYC outcome is consequential decision support: it always sets ``requires_human_review`` and never
+auto-blocks. The orchestrator (``perpetual_kyc_service``) routes it to human-review-console for
+maker-checker disposition (rule R8).
 
 Pure standard library; no ports, no I/O, no clock of its own (the caller supplies
 ``as_of``).

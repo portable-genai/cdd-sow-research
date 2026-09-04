@@ -51,7 +51,7 @@ if (errors.length > 0) {
   process.exit(1);
 }
 
-const output = `/* Doc1 embed loader v1. Generated from embed/cdd-agent.ts. */\n${transpiled.outputText}`;
+const output = `/* cdd-sow-research embed loader v1. Generated from embed/cdd-agent.ts. */\n${transpiled.outputText}`;
 const integrity = `sha384-${createHash("sha384").update(output).digest("base64")}`;
 await mkdir(outputDirectory, { recursive: true });
 await writeFile(outputPath, output, "utf8");

@@ -196,7 +196,7 @@ def _start_stack(
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        _wait_ready(api_health, api_process, "Doc1 API")
+        _wait_ready(api_health, api_process, "cdd-sow-research API")
 
     if not _ready(base_url):
         parsed = urlsplit(base_url)
@@ -217,7 +217,7 @@ def _start_stack(
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        _wait_ready(base_url, ui_process, "Doc1 UI")
+        _wait_ready(base_url, ui_process, "cdd-sow-research UI")
     return api_process, ui_process
 
 

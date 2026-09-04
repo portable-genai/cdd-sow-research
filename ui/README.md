@@ -1,6 +1,6 @@
-# Doc1 UI: CDD + Source-of-Wealth Agent console
+# `cdd-sow-research` UI: CDD + Source-of-Wealth Agent console
 
-A small React / Next.js console that renders the Doc1 CDD dossier with inline citation chips.
+A small React / Next.js console that renders the `cdd-sow-research` CDD dossier with inline citation chips.
 CI performs a production Next.js build and builds the tenant-neutral `ui/Dockerfile`. Installation
 policy is mounted at runtime, so one immutable image serves every reviewed institution.
 
@@ -12,7 +12,7 @@ CDD_API_INTERNAL_ORIGIN=http://127.0.0.1:8090 npm run dev
 # open http://127.0.0.1:3000/agent/
 ```
 
-Point it at a running Doc1 API (`make run-api` in the repo root). Next.js proxies the
+Point it at a running `cdd-sow-research` API (`make run-api` in the repo root). Next.js proxies the
 canonical same-origin `/agent/api/*` browser path to `CDD_API_INTERNAL_ORIGIN`; the browser
 never needs a second API origin. The console submits a
 subject to `POST /v1/cdd` and renders the returned `CDDCase`: the source-of-wealth

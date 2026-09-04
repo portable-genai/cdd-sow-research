@@ -267,7 +267,8 @@ def _print_perpetual_kyc(assessment: PerpetualKycAssessment) -> None:
     if item is not None:
         typer.secho(
             f"  Queue: {item.priority.value.upper()}, disposition due {item.sla_due}, "
-            f"routed to Hrz7: {'yes' if item.routed_to_hrz7 else 'no (retained locally)'}",
+            f"routed to human-review-console: "
+            f"{'yes' if item.routed_to_hrz7 else 'no (retained locally)'}",
             bold=True,
         )
         for reason in item.reasons:
@@ -399,7 +400,8 @@ def ubo_graph(
     """Resolve an entity's cross-jurisdiction UBO graph and print the working.
 
     Every percentage is the deterministic product of the cited registry hops; the model
-    produces none of them. The outcome always requires human review and is routed to Hrz7.
+    produces none of them. The outcome always requires human review and is routed to
+    human-review-console.
     """
 
     def _do() -> UboResolution:
@@ -507,10 +509,15 @@ def eval(  # noqa: A001 - "eval" is the documented command name
     mode: str = typer.Option(
         "smoke",
         "--mode",
-        help="smoke (offline pre-merge check) | gate (Hrz4 promotion verdict; needs platform|gcp).",
+        help=(
+            "smoke (offline pre-merge check) | gate (model-quality-gate promotion verdict; needs "
+            "platform|gcp)."
+        ),
     ),
 ) -> None:
-    """Run the eval: --mode smoke (offline pre-merge) or gate (Hrz4 promotion authority)."""
+    """Run the eval: --mode smoke (offline pre-merge) or gate (model-quality-gate promotion
+    authority).
+    """
 
     def _do() -> int:
         import subprocess

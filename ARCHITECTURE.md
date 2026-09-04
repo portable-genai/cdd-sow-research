@@ -1,4 +1,4 @@
-# Architecture: Doc1 CDD + Source-of-Wealth Agent
+# Architecture: `cdd-sow-research` CDD + Source-of-Wealth Agent
 
 This document goes deeper than the [README](README.md): the complete port to adapter
 table, the assessment pipeline as a sequence diagram, the runtime topology on Agent
@@ -14,7 +14,7 @@ pieces fit together; it does not redefine them.
 
 ## 1. Hexagonal overview
 
-Doc1 is a **ports-and-adapters** (hexagonal) application. The domain core in
+`cdd-sow-research` is a **ports-and-adapters** (hexagonal) application. The domain core in
 [`src/cdd_sow_research/domain/`](src/cdd_sow_research/domain/) owns all orchestration and has
 **no** dependency on Google Cloud, ADK, FastAPI, or any framework (only the Python standard
 library). Everything the domain needs from the outside world is a `typing.Protocol`
@@ -112,20 +112,20 @@ to siblings.
 | # | Port (`Protocol`) | Concern | `gcp` adapter | `local` adapter | `platform` adapter | `onprem` placeholder |
 |---|-------------------|---------|---------------|-----------------|--------------------|----------------------|
 | 1 | `DocumentExtractionPort` | KYC extraction | `gcp.document_ai_extraction` | `local.extraction` (plain-text / pypdf) | n/a | `onprem.extraction` |
-| 2 | `KnowledgeBaseClientPort` | Governed RAG (Hrz2, R3) | `gcp.agent_search_kb` | `local.knowledge_base` (SQLite FTS5) | `platform.remote_knowledge_base` | `onprem.knowledge_base` |
+| 2 | `KnowledgeBaseClientPort` | Governed RAG (`enterprise-knowledge-base`, R3) | `gcp.agent_search_kb` | `local.knowledge_base` (SQLite FTS5) | `platform.remote_knowledge_base` | `onprem.knowledge_base` |
 | 3 | `DocumentStorePort` | Uploaded evidence custody, plus `restore` for bundle reload (P-12) | `gcp.document_store` (regional CMEK GCS) | `local.document_store` (SQLite blobs) | `gcp.document_store` (explicit reuse) | `onprem.document_store` |
 | 4 | `AdverseMediaPort` | Adverse media | `gcp.gemini_adverse_media` | `local.adverse_media` (egress off) | n/a | `onprem.adverse_media` |
 | 5 | `CorporateRegistryPort` | UBO / ownership | `gcp.registry_lookup` | `local.registry` (deterministic UBO) | n/a | `onprem.registry` |
-| 6 | `ComplianceClientPort` | Regulatory check (Rsk1) | n/a | `local.compliance` (in-process) | `platform.remote_compliance` | `onprem.compliance` |
+| 6 | `ComplianceClientPort` | Regulatory check (`compliance-advisory`) | n/a | `local.compliance` (in-process) | `platform.remote_compliance` | `onprem.compliance` |
 | 7 | `LLMPort` | Reasoning / triage | `gcp.gemini_llm` | `local.llm` (deterministic schema-driven) | n/a | `onprem.llm` |
-| 8 | `GuardrailPort` | Screening (Hrz1, R1) | `gcp.model_armor_guardrail` | `local.guardrail` (heuristic) | `platform.remote_guardrail` | `onprem.guardrail` |
-| 9 | `PIIRedactionPort` | PII redaction (Hrz1, R1) | `gcp.dlp_redaction` | `local.redaction` (regex) | `platform.remote_redaction` | `onprem.redaction` |
-| 10 | `AuditSinkPort` | WORM audit (Hrz5, R2) | `gcp.cloud_logging_audit` | `local.audit` (hash-chained append-only SQLite) | `platform.remote_audit` | `onprem.audit` |
-| 11 | `ReviewRouterPort` | Maker-checker routing (Hrz7, R8) | `gcp.review_router` | `local.review_router` | `gcp.review_router` (reused) | `onprem.review_router` |
-| 12 | `ObservabilityTracerPort` | Tracing + FinOps | `gcp.cloud_trace_tracer` | `local.tracer` (no-op) | `platform.otlp_tracer` (OTLP to the Hrz5 collector, Cloud Trace fallback) | `onprem.tracer` |
-| 13 | `EvaluationGatePort` | Eval gate (Hrz4, R5) | `gcp.genai_eval` | `local.evaluation` (offline gate) | `platform.remote_evaluation` | `onprem.evaluation` |
-| 14 | `AgentRegistryPort` | A2A registry (Hrz3, R4) | `gcp.a2a_registry` | `local.registry_agent` (in-process) | `platform.remote_registry` | `onprem.registry_agent` |
-| 15 | `ToolCatalogPort` | Governed MCP tools (Hrz3) | `gcp.mcp_tool_catalog` | `local.tool_catalog` (in-process) | n/a (no Hrz3 tools contract) | `onprem.tool_catalog` |
+| 8 | `GuardrailPort` | Screening (`agent-guardrail-gateway`, R1) | `gcp.model_armor_guardrail` | `local.guardrail` (heuristic) | `platform.remote_guardrail` | `onprem.guardrail` |
+| 9 | `PIIRedactionPort` | PII redaction (`agent-guardrail-gateway`, R1) | `gcp.dlp_redaction` | `local.redaction` (regex) | `platform.remote_redaction` | `onprem.redaction` |
+| 10 | `AuditSinkPort` | WORM audit (`agent-observability`, R2) | `gcp.cloud_logging_audit` | `local.audit` (hash-chained append-only SQLite) | `platform.remote_audit` | `onprem.audit` |
+| 11 | `ReviewRouterPort` | Maker-checker routing (`human-review-console`, R8) | `gcp.review_router` | `local.review_router` | `gcp.review_router` (reused) | `onprem.review_router` |
+| 12 | `ObservabilityTracerPort` | Tracing + FinOps | `gcp.cloud_trace_tracer` | `local.tracer` (no-op) | `platform.otlp_tracer` (OTLP to the `agent-observability` collector, Cloud Trace fallback) | `onprem.tracer` |
+| 13 | `EvaluationGatePort` | Eval gate (`model-quality-gate`, R5) | `gcp.genai_eval` | `local.evaluation` (offline gate) | `platform.remote_evaluation` | `onprem.evaluation` |
+| 14 | `AgentRegistryPort` | A2A registry (`agent-registry`, R4) | `gcp.a2a_registry` | `local.registry_agent` (in-process) | `platform.remote_registry` | `onprem.registry_agent` |
+| 15 | `ToolCatalogPort` | Governed MCP tools (`agent-registry`) | `gcp.mcp_tool_catalog` | `local.tool_catalog` (in-process) | n/a (no `agent-registry` tools contract) | `onprem.tool_catalog` |
 | 16 | `CaseStorePort` | Durable long-running SoW cases | `gcp.firestore_case_store` (regional CMEK Firestore) | `local.case_store` (in-process) | `gcp.firestore_case_store` (vertical-owned) | `onprem.case_store` |
 | 17 | `SanctionsListProviderPort` | Sanctions/PEP/watchlist snapshot | `gcp.sanctions_provider` (synced CMEK bucket) | `local.sanctions_provider` (bundled snapshot) | `gcp.sanctions_provider` (explicit reuse) | `onprem.sanctions_provider` |
 | 18 | `BrowserFlowStorePort` | Citation continuation and Mode 5 grant state | `gcp.firestore_browser_flow_store` (regional transactional Firestore) | `local.browser_flow_store` (transactional SQLite) | `gcp.firestore_browser_flow_store` (vertical-owned shared state) | `onprem.browser_flow_store` |
@@ -136,8 +136,8 @@ to siblings.
 > Dotted paths are relative to the `cdd_sow_research.adapters` package; the fully-qualified
 > bindings in [`config/settings.yaml`](config/settings.yaml) under `adapters:` are the build
 > contract (module paths and class names there are fixed). Seven ports have a sibling-service
-> `platform` adapter, matching the platform services Doc1 consumes (Hrz1 x2, Hrz2, Hrz5, Hrz4,
-> Rsk1, Hrz3); `IdentityPort` additionally has a `platform` binding that reuses the gcp IAP adapter.
+> `platform` adapter, matching the platform services `cdd-sow-research` consumes (`agent-guardrail-gateway` x2, `enterprise-knowledge-base`, `agent-observability`, `model-quality-gate`,
+> `compliance-advisory`, `agent-registry`); `IdentityPort` additionally has a `platform` binding that reuses the gcp IAP adapter.
 
 ---
 
@@ -151,13 +151,13 @@ directions). As a flowchart:
 flowchart TD
     redact["redact(case inputs)"] --> screenIn["guardrail.screen(INPUT)"]
     screenIn -->|blocked| blockedAudit["audit BLOCKED, raise"]
-    screenIn -->|allowed| ingest["per KYC doc: extract then ingest to Hrz2 (case ACL)"]
+    screenIn -->|allowed| ingest["per KYC doc: extract then ingest to `enterprise-knowledge-base` (case ACL)"]
     ingest --> search["knowledge_base.search"]
     search -->|empty| emptyErr["RetrievalEmptyError"]
     search --> research["adverse_media.scan, registry.resolve"]
     research --> sow["SoW narrative (LLM + self-critique)"]
     sow --> risk["risk rating (LLM, then hard-signal raise)"]
-    risk --> comp["compliance.check (Rsk1)"]
+    risk --> comp["compliance.check (`compliance-advisory`)"]
     comp --> assemble["assemble CDDCase"]
     assemble --> screenOut["guardrail.screen(OUTPUT)"]
     screenOut --> audit["audit.record(redacted), ESCALATED"]
@@ -175,9 +175,9 @@ sequenceDiagram
     participant Red as PIIRedactionPort (DLP)
     participant Grd as GuardrailPort (Model Armor)
     participant Doc as DocumentExtractionPort
-    participant KB as KnowledgeBaseClientPort (Hrz2)
+    participant KB as KnowledgeBaseClientPort (`enterprise-knowledge-base`)
     participant LLM as LLMPort (Gemini 3.5 Flash)
-    participant Rsk1 as ComplianceClientPort (Rsk1)
+    participant `compliance-advisory` as ComplianceClientPort (`compliance-advisory`)
     participant Aud as AuditSinkPort (WORM)
 
     Analyst->>Svc: assess(case_input, actor)
@@ -195,8 +195,8 @@ sequenceDiagram
         KB-->>Svc: case evidence passages
         Svc->>LLM: synthesise SoW, rate risk
         LLM-->>Svc: structured artifacts plus citations
-        Svc->>Rsk1: check regulatory CDD and AML expectations
-        Rsk1-->>Svc: cited compliance answer
+        Svc->>`compliance-advisory`: check regulatory CDD and AML expectations
+        `compliance-advisory`-->>Svc: cited compliance answer
         Svc->>Grd: screen(dossier, OUTPUT)
         Grd-->>Svc: verdict(allowed=true)
         Svc->>Aud: record(AuditEvent decision=ESCALATED, redacted)
@@ -205,10 +205,10 @@ sequenceDiagram
 ```
 
 Key invariants:
-- **Redact before everything**: customer PII never reaches the model, the Hrz2 index, a trace
+- **Redact before everything**: customer PII never reaches the model, the `enterprise-knowledge-base` index, a trace
   span, or the WORM sink (P-04, R1). The `AuditEvent` stores `redacted_prompt` and
   `redacted_response`.
-- **Both directions screened**: INPUT before ingest/retrieval, OUTPUT before return (Hrz1).
+- **Both directions screened**: INPUT before ingest/retrieval, OUTPUT before return (`agent-guardrail-gateway`).
 - **Hard signals raise the band**: a sanctions or terrorism adverse-media hit forces
   PROHIBITED, a PEP owner forces at least HIGH; the model can never soften them.
 - **Always reviewed**: the dossier is consequential, so `requires_human_review` is always
@@ -231,24 +231,24 @@ flowchart TB
             ROOT --- GSUB
         end
         DOC["Document AI<br/>(KYC extraction)"]
-        Hrz2["Hrz2 Enterprise KB<br/>(governed RAG, case ACL)"]
+        `enterprise-knowledge-base`["`enterprise-knowledge-base`<br/>(governed RAG, case ACL)"]
         MA["Model Armor<br/>(regional endpoint)"]
         DLP["Sensitive Data Protection / DLP"]
         LOG["Cloud Logging<br/>locked WORM bucket"]
         TR["Cloud Trace<br/>(OTel, content OFF)"]
-        EVAL["Gen AI evaluation service + Hrz4"]
-        Rsk1["Rsk1 Compliance Assistant"]
+        EVAL["Gen AI evaluation service + `model-quality-gate`"]
+        `compliance-advisory`["`compliance-advisory`"]
         KMS["Cloud KMS<br/>regional CMEK"]
     end
 
     APP["FastAPI / CLI / UI / A2A"] --> ROOT
     ROOT --> DOC
-    ROOT --> Hrz2
+    ROOT --> `enterprise-knowledge-base`
     ROOT --> MA
     ROOT --> DLP
     ROOT --> LOG
     ROOT --> TR
-    ROOT --> Rsk1
+    ROOT --> `compliance-advisory`
     EVAL -. promotion gate .-> ROOT
     KMS -. encrypts .-> DOC
     KMS -. encrypts .-> LOG
@@ -256,7 +256,7 @@ flowchart TB
 
 - **One region for everything** (`asia-southeast1`); regional endpoints plus per-service
   CMEK give the residency guarantee a global endpoint would not.
-- **The governed RAG store is Hrz2**, not a Doc1-owned backend; case documents are ingested with
+- **The governed RAG store is `enterprise-knowledge-base`**, not a `cdd-sow-research`-owned backend; case documents are ingested with
   `case:<subject_id>` ACL tags and retrieved only by case principals (R3).
 - **Eval gate** is a promotion-time check, not an inline request dependency.
 
@@ -264,14 +264,14 @@ flowchart TB
 
 ## 5. Dependency relationship to the platform
 
-Doc1 (catalog **Doc1**, group `doc`) exercises the whole platform. The dependency rules R1..R6
+`cdd-sow-research` (catalog `cdd-sow-research`, group `doc`) exercises the whole platform. The dependency rules R1..R6
 require that those concerns are consumed from the platform when present rather than
-re-implemented. Doc1 satisfies this two ways without changing the domain: the `gcp` adapters
+re-implemented. `cdd-sow-research` satisfies this two ways without changing the domain: the `gcp` adapters
 call managed services directly (standalone), and the `platform` adapters delegate over HTTP.
 
 ```mermaid
 flowchart LR
-    subgraph b1["Doc1 (this repo)"]
+    subgraph b1["`cdd-sow-research` (this repo)"]
         DOMAIN[Domain core]
         SAFE[Guardrail / Redaction]
         KBP[KnowledgeBaseClient]
@@ -281,26 +281,26 @@ flowchart LR
     end
 
     subgraph platform["profile = platform (inside the platform)"]
-        Hrz1[agent-guardrail-gateway]
-        Hrz2[enterprise-knowledge-base]
-        Hrz5[agent-observability]
-        Rsk1[compliance-advisory]
+        `agent-guardrail-gateway`[agent-guardrail-gateway]
+        `enterprise-knowledge-base`[enterprise-knowledge-base]
+        `agent-observability`[agent-observability]
+        `compliance-advisory`[compliance-advisory]
     end
 
-    SAFE -- platform --> Hrz1
-    KBP -- platform --> Hrz2
-    AUD -- platform --> Hrz5
-    CMP -- platform --> Rsk1
+    SAFE -- platform --> `agent-guardrail-gateway`
+    KBP -- platform --> `enterprise-knowledge-base`
+    AUD -- platform --> `agent-observability`
+    CMP -- platform --> `compliance-advisory`
 ```
 
-| Dependency | Repo | Backs Doc1 ports | HTTP contract (SPEC §6) |
+| Dependency | Repo | Backs `cdd-sow-research` ports | HTTP contract (SPEC §6) |
 |------------|------|----------------|-------------------------|
-| **Hrz1** Guardrail Gateway | `agent-guardrail-gateway` | `GuardrailPort`, `PIIRedactionPort` | `POST /v1/guardrail/screen`, `POST /v1/redact` |
-| **Hrz2** Enterprise KB | `enterprise-knowledge-base` | `KnowledgeBaseClientPort` | `POST /v1/ingest`, `POST /v1/search` |
-| **Hrz3** Registry | `agent-registry` | `AgentRegistryPort` | `POST/GET /v1/agents` |
-| **Hrz4** AI Quality | `model-quality-gate` | `EvaluationGatePort` | `POST /v1/evaluations`, `POST /v1/gate` (both `{target, dataset_id, bundle: "doc1-cdd-sow"}`) |
-| **Hrz5** Observability/Audit | `agent-observability` | `AuditSinkPort` | `POST /v1/audit` |
-| **Rsk1** Compliance Assistant | `compliance-advisory` | `ComplianceClientPort` | `POST /ask` |
+| `agent-guardrail-gateway` | `agent-guardrail-gateway` | `GuardrailPort`, `PIIRedactionPort` | `POST /v1/guardrail/screen`, `POST /v1/redact` |
+| `enterprise-knowledge-base` | `enterprise-knowledge-base` | `KnowledgeBaseClientPort` | `POST /v1/ingest`, `POST /v1/search` |
+| `agent-registry` | `agent-registry` | `AgentRegistryPort` | `POST/GET /v1/agents` |
+| `model-quality-gate` AI Quality | `model-quality-gate` | `EvaluationGatePort` | `POST /v1/evaluations`, `POST /v1/gate` (both `{target, dataset_id, bundle: "doc1-cdd-sow"}`) |
+| `agent-observability` | `agent-observability` | `AuditSinkPort` | `POST /v1/audit` |
+| `compliance-advisory` | `compliance-advisory` | `ComplianceClientPort` | `POST /ask` |
 
 The sibling-backed `platform` adapters are thin HTTP clients whose JSON field names mirror
 the domain dataclasses exactly (enums as strings). Other platform ports use explicit managed,
@@ -379,14 +379,14 @@ error, so a regression is a red build rather than a policy violation discovered 
 |---|---------------------|------------------------|-------|
 | SC-5 | **Deterministic hard signals the model cannot soften.** Consequential floors (sanctions hit ⇒ PROHIBITED, PEP owner ⇒ at least HIGH) are applied *after* the LLM by pure code, so no prompt or model change can lower them. | `RiskRatingService` applies the deterministic band raise after the LLM rating; screening/scorecard engines are pure functions. | `tests/unit/test_sub_services.py`, `test_scorecard.py`, `test_screening.py` |
 | SC-6 | **Maker-checker on every consequential output.** The system never auto-actions: the dossier always requires human review, and the audit decision is ESCALATED, so four-eyes is structural (P-06). | `CddReviewPolicy.requires_review()` returns `True` unconditionally; snapshots seal only under a distinct approver. | `::test_normal_path_audited_as_escalated`; the review-policy unit tests. |
-| SC-7 | **Quality is a promotion gate, not a dashboard.** Groundedness, risk-band accuracy, citation accuracy and PII safety are scored against thresholds and a failing score blocks the build/promotion. | [`eval/run_eval.py`](eval/run_eval.py) (pii_safety ≥ 0.99); CI enforces it; at promotion the Hrz4 service is the authority (R5). | `make eval` exits non-zero on any miss. |
+| SC-7 | **Quality is a promotion gate, not a dashboard.** Groundedness, risk-band accuracy, citation accuracy and PII safety are scored against thresholds and a failing score blocks the build/promotion. | [`eval/run_eval.py`](eval/run_eval.py) (pii_safety ≥ 0.99); CI enforces it; at promotion the `model-quality-gate` service is the authority (R5). | `make eval` exits non-zero on any miss. |
 
 ### 7.3 Identity and secrets
 
 | # | Principle (generic) | Mechanism in this repo | Proof |
 |---|---------------------|------------------------|-------|
 | SC-8 | **Resolve identity server-side; ignore client-asserted actors.** The request body's actor/ACL claims are discarded; the audit actor and entitlement principals come only from a verified credential, and failure to verify is a 401 (fail closed). | [`api/security.py`](src/cdd_sow_research/api/security.py) `get_principal`; adapters verify the IAP assertion or the agent's own session cookie. | `tests/unit/test_identity.py`, `test_oidc_session_identity.py` |
-| SC-9 | **Pin algorithms and keep token-type policies distinct.** JWT verification pins accepted algorithms, resolves keys only from reviewed issuer/JWKS policy with a bounded cache, and fails closed. ID tokens, OAuth access tokens, sessions, and embed tokens must not share audience or claim semantics. | Mode 6 ID tokens, Mode 4 access tokens, Mode 5 subject credentials, BFF `private_key_jwt`, and dedicated Doc1 embed tokens use separate policies and verifiers over reviewed low-level JWKS primitives. | Unit, integration, and three-browser synthetic evidence cover RSA/EC, rotation, token-type confusion, replay, wrong issuer/audience/client/tenant/origin, and leak scans. |
+| SC-9 | **Pin algorithms and keep token-type policies distinct.** JWT verification pins accepted algorithms, resolves keys only from reviewed issuer/JWKS policy with a bounded cache, and fails closed. ID tokens, OAuth access tokens, sessions, and embed tokens must not share audience or claim semantics. | Mode 6 ID tokens, Mode 4 access tokens, Mode 5 subject credentials, BFF `private_key_jwt`, and dedicated `cdd-sow-research` embed tokens use separate policies and verifiers over reviewed low-level JWKS primitives. | Unit, integration, and three-browser synthetic evidence cover RSA/EC, rotation, token-type confusion, replay, wrong issuer/audience/client/tenant/origin, and leak scans. |
 | SC-10 | **Config holds the *names* of secrets, never values.** Settings reference the environment variable that holds each secret (`client_secret_env`, `session_signing_key_env`); values are read at adapter construction and never logged or serialized. | [`config/settings.yaml`](config/settings.yaml) `identity:` block; `IssuerSettings` docstrings state the rule. | `grep -i "secret" config/settings.yaml` shows names only. |
 
 ### 7.4 Auditability and detection

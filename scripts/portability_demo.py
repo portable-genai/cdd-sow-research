@@ -368,7 +368,7 @@ def act_6_case_bundle(workdir: Path) -> None:
 
 
 def main() -> int:
-    print("Doc1 portability-seam tour: bounded offline proof")
+    print("cdd-sow-research portability-seam tour: bounded offline proof")
     print("(runtime seam, local identity, audit integrity and open export). No cloud or API key.")
     workdir = Path(tempfile.mkdtemp(prefix="cdd-portability-"))
     audit_path = str(workdir / "audit.db")

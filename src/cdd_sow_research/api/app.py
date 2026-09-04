@@ -985,7 +985,7 @@ def adverse_media(
 
 
 # --------------------------------------------------------------------------- #
-# Perpetual KYC (MonitoringStorePort; ACL derived server-side, routed to Hrz7)
+# Perpetual KYC (MonitoringStorePort; ACL derived server-side, routed to human-review-console)
 # --------------------------------------------------------------------------- #
 def _as_of(value: str) -> date:
     """Parse the optional replay date, defaulting to today (UTC)."""
@@ -1003,7 +1003,8 @@ def run_perpetual_kyc(
     """Run one perpetual-KYC cycle: detect change, re-score, queue for human review.
 
     The re-score is deterministic pure code and the outcome always requires human review;
-    the assessment is routed to Hrz7 and never acted on here. The subject's tenant is
+    the assessment is routed to human-review-console and never acted on here. The subject's tenant
+    is
     stamped from the VERIFIED principal, so a monitoring record cannot be planted in (or
     read from) another tenant's ACL: a cross-tenant caller gets 403, not 404.
     """
@@ -1057,11 +1058,12 @@ def perpetual_kyc_queue(
 
 
 # --------------------------------------------------------------------------- #
-# UBO graph (OwnershipGraphPort; ACL derived server-side, routed to Hrz7)
+# UBO graph (OwnershipGraphPort; ACL derived server-side, routed to human-review-console)
 #
 # Two verbs with deliberately different consequences. POST resolves: it produces the
 # findings, the control basis and the indicators, which is a consequential claim, so it
-# always requires human review and is routed to Hrz7 under rule R8. GET returns the WALKED
+# always requires human review and is routed to human-review-console under rule R8. GET returns the
+# WALKED
 # STRUCTURE ONLY (layers, edges, citations) with no finding, no basis and no flag, so it
 # is evidence rather than a decision and stays a side-effect-free read. See
 # docs/ubo-graph-contract.md for why the read was drawn there and not elsewhere.
@@ -1076,7 +1078,8 @@ def resolve_ubo_graph(
 
     Every percentage is the deterministic product of the cited registry hops, computed by
     pure code an auditor can recompute; the outcome always requires human review and is
-    routed to Hrz7 rather than acted on. The subject's tenant is stamped from the VERIFIED
+    routed to human-review-console rather than acted on. The subject's tenant is stamped from the
+    VERIFIED
     principal, so a resolution can never be routed under another tenant's ACL: a caller
     with no case entitlement gets 403.
     """
@@ -1254,7 +1257,8 @@ def get_sow_case(
 # THROUGH a proxy on Google's serverless platform: a request to `<service>/healthz` is answered by
 # the frontend with its own 404 and never arrives, while `/healthzz` and `/v1/healthz` arrive
 # normally. The embedding host therefore could not ask this service whether it was ready, and the
-# console sat on "Connecting to Doc1..." against a service that was healthy the whole time.
+# console sat on "Connecting to cdd-sow-research..." against a service that was healthy the whole
+# time.
 #
 # `/v1/healthz` is the same response under a name nothing intercepts, and it sits with the rest of
 # the versioned surface the console already calls.
@@ -1379,7 +1383,7 @@ def _capability_manifest(settings: Settings) -> CapabilityManifestModel:
                 if demo_only
                 else (assurance("evaluation-gate") if managed else "unavailable")
             ),
-            provider="local deterministic scorer" if demo_only else "Hrz4",
+            provider="local deterministic scorer" if demo_only else "model-quality-gate",
             reason=(
                 "smoke evaluation only; not the promotion authority"
                 if demo_only
@@ -1410,17 +1414,17 @@ def _capability_manifest(settings: Settings) -> CapabilityManifestModel:
             for name, provider, configured in (
                 (
                     "immutable-audit",
-                    "Hrz5 / Cloud Logging WORM",
+                    "agent-observability / Cloud Logging WORM",
                     optional_setting("OBSERVABILITY_URL") is not None,
                 ),
                 (
                     "observability",
-                    "Hrz5 / OpenTelemetry",
+                    "agent-observability / OpenTelemetry",
                     optional_setting("OTEL_EXPORTER_OTLP_ENDPOINT") is not None,
                 ),
                 (
                     "model-armor",
-                    "Hrz1 / Model Armor",
+                    "agent-guardrail-gateway / Model Armor",
                     bool(settings.model_armor.template_id.strip()),
                 ),
             )

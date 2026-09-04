@@ -1,4 +1,5 @@
-"""The UBO-graph surfaces: server-derived tenancy, Hrz7 routing and the read/write split.
+"""The UBO-graph surfaces: server-derived tenancy, human-review-console routing and the read/write
+split.
 
 Driven against the real local ownership-graph fixture and the seeded dev personas (the
 default ``analyst`` in tenant ``demo-bank``, the cross-tenant ``other-tenant`` persona in
@@ -6,13 +7,13 @@ default ``analyst`` in tenant ``demo-bank``, the cross-tenant ``other-tenant`` p
 
 The invariants pinned here:
 
-* the resolution's tenant and ACL are stamped from the VERIFIED principal, never from the
-  request body, so two tenants can never collide in the Hrz7 console;
-* a caller holding no case-access role is refused (403), not served a structure;
-* POST is consequential: it always requires human review and is routed to Hrz7 under rule
-  R8, whereas GET returns the WALKED STRUCTURE ONLY and therefore routes nothing; and
-* the orchestrator degrades: a dead registry layer, a failed narration and a dead review
-  console each leave the deterministic resolution standing.
+* the resolution's tenant and ACL are stamped from the VERIFIED principal, never from the request
+  body, so two tenants can never collide in the human-review-console; * a caller holding no
+  case-access role is refused (403), not served a structure; * POST is consequential: it always
+  requires human review and is routed to human-review-console under rule R8, whereas GET returns the
+  WALKED STRUCTURE ONLY and therefore routes nothing; and * the orchestrator degrades: a dead
+  registry layer, a failed narration and a dead review console each leave the deterministic
+  resolution standing.
 """
 
 from __future__ import annotations
@@ -49,7 +50,7 @@ _SUBJECT = {
 
 
 class _RecordingRouter:
-    """Stands in for the Hrz7 hand-off so the test never needs a live console."""
+    """Stands in for the human-review-console hand-off so the test never needs a live console."""
 
     def __init__(self, *, fail: bool = False) -> None:
         self.routed: list[UboResolution] = []

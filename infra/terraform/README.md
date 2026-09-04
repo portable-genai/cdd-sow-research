@@ -1,6 +1,6 @@
-# Terraform: Doc1 CDD + Source-of-Wealth Agent infrastructure
+# Terraform: `cdd-sow-research` CDD + Source-of-Wealth Agent infrastructure
 
-In-region infrastructure for the Doc1 agent, built to deploy quickly and repeatedly to
+In-region infrastructure for the `cdd-sow-research` agent, built to deploy quickly and repeatedly to
 multiple separate enterprises. The deploy **region is selected at deploy time**
 (`var.region`, default `asia-southeast1`) and validated against a residency
 allowlist (`var.allowed_regions`) so an unapproved region fails fast at `terraform plan`
@@ -10,16 +10,16 @@ Residency is enforced in depth: per-resource region pin, a `gcp.resourceLocation
 Policy (`org_policy.tf`, gated by `enable_org_policies`), and the VPC-SC perimeter
 (`vpc_sc.tf`, gated by `enable_vpc_sc`).
 
-> Retrieval and storage infrastructure (the governed RAG store) lives in **Hrz2**
-> (`enterprise-knowledge-base`), not here. Doc1 ingests case documents into Hrz2 and
-> retrieves via Hrz2; this stack provisions only what Doc1 owns: document extraction, PII
+> Retrieval and storage infrastructure (the governed RAG store) lives in `enterprise-knowledge-base`
+> (`enterprise-knowledge-base`), not here. `cdd-sow-research` ingests case documents into `enterprise-knowledge-base` and
+> retrieves via `enterprise-knowledge-base`; this stack provisions only what `cdd-sow-research` owns: document extraction, PII
 > redaction, the guardrail, the WORM audit trail, CMEK, IAM and the perimeter.
 
 ## What this provisions
 
 | File | Resource | Principle |
 |------|----------|-----------|
-| `apis.tf` | Enables only the managed services Doc1 uses | P-01 |
+| `apis.tf` | Enables only the managed services `cdd-sow-research` uses | P-01 |
 | `naming.tf` | Locals deriving every resource name from `name_prefix` | n/a |
 | `document_ai.tf` | Document AI form-parser processor (KYC extraction) | P-03 |
 | `dlp.tf` | DLP inspect + deidentify templates (incl. SG NRIC/FIN, passport) | P-04, R1 |

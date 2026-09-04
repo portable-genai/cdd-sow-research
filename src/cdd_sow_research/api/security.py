@@ -157,7 +157,9 @@ class OidcSessionAuthenticationAdapter:
         cookie.load(raw_cookie_header)
         morsel = cookie.get(session_token.SESSION_COOKIE_NAME)
         if morsel is None:
-            raise IdentityError("no Doc1 session cookie present; sign in via /auth/login")
+            raise IdentityError(
+                "no cdd-sow-research session cookie present; sign in via /auth/login"
+            )
         claims = session_token.verify(
             morsel.value,
             typ="session",
@@ -269,7 +271,7 @@ class OAuthAccessTokenApiAuthenticationAdapter:
 
 
 class EmbeddedGrantApiAuthenticationAdapter:
-    """Normalize one exact Doc1 embedded token without accepting other token types."""
+    """Normalize one exact cdd-sow-research embedded token without accepting other token types."""
 
     def __init__(self, verifier: ConfiguredEmbeddedGrantAuthenticationAdapter) -> None:
         self._verifier = verifier

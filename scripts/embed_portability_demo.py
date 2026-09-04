@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Presenter-paced executable evidence for Doc1 channel portability.
+"""Presenter-paced executable evidence for cdd-sow-research channel portability.
 
 The runner starts or reuses a production Next build plus two registered host origins, then
 executes the same immutable loader and UI through each host. Presenter narration is printed only
@@ -77,7 +77,7 @@ def _agent_frame(page: Any, installation_id: str) -> Any:
 
 def _open_registered_host(page: Any, evidence: RunEvidence, origin: str, installation: str) -> None:
     page.goto(origin, wait_until="domcontentloaded")
-    page.get_by_role("status").filter(has_text="Doc1 ready").wait_for(state="visible")
+    page.get_by_role("status").filter(has_text="cdd-sow-research ready").wait_for(state="visible")
     frame = _agent_frame(page, installation)
     frame.get_by_text("Assess a subject", exact=True).wait_for(state="visible")
     visible_digest = page.locator("#artifact-digest").inner_text()
@@ -101,7 +101,7 @@ def open_host_b(page: Any, evidence: RunEvidence) -> None:
 def compare_artifact(page: Any, evidence: RunEvidence) -> None:
     values: list[str] = []
     page.goto(HOST_A, wait_until="domcontentloaded")
-    page.get_by_role("status").filter(has_text="Doc1 ready").wait_for(state="visible")
+    page.get_by_role("status").filter(has_text="cdd-sow-research ready").wait_for(state="visible")
     _agent_frame(page, "inst_host_a").get_by_text("Assess a subject", exact=True).wait_for(
         state="visible"
     )
@@ -109,7 +109,9 @@ def compare_artifact(page: Any, evidence: RunEvidence) -> None:
     other = page.context.new_page()
     try:
         other.goto(HOST_B, wait_until="domcontentloaded")
-        other.get_by_role("status").filter(has_text="Doc1 ready").wait_for(state="visible")
+        other.get_by_role("status").filter(has_text="cdd-sow-research ready").wait_for(
+            state="visible"
+        )
         _agent_frame(other, "inst_host_b").get_by_text("Assess a subject", exact=True).wait_for(
             state="visible"
         )
@@ -170,10 +172,11 @@ def deny_unregistered_parent(page: Any, evidence: RunEvidence) -> None:
 STEPS: tuple[Step, ...] = (
     Step(
         id="host-a",
-        title="Open Doc1 in the relationship-manager portal",
+        title="Open cdd-sow-research in the relationship-manager portal",
         presenter_notes=(
             "The relationship manager opens due-diligence work inside the institution portal, "
-            "keeping the customer journey in one familiar channel. Doc1 responds inside the "
+            "keeping the customer journey in one familiar channel. cdd-sow-research responds "
+            "inside the "
             "registered host while its governed evidence workflow remains on the dedicated agent "
             "origin."
         ),
@@ -206,7 +209,8 @@ STEPS: tuple[Step, ...] = (
         title="Reject credentials outside the negotiated channel",
         presenter_notes=(
             "The security reviewer tests whether a host can place a credential in the public "
-            "browser message used to start the integration. Doc1 rejects that message and leaves "
+            "browser message used to start the integration. cdd-sow-research rejects that message "
+            "and leaves "
             "the protected channel unopened, preserving the boundary required before verified "
             "institutional identity can be accepted."
         ),
@@ -216,7 +220,8 @@ STEPS: tuple[Step, ...] = (
         id="fallback",
         title="Deny an unregistered host and offer the reviewed fallback",
         presenter_notes=(
-            "The security reviewer opens Doc1 from a portal that is not registered for this "
+            "The security reviewer opens cdd-sow-research from a portal that is not registered for "
+            "this "
             "installation. Framing is denied, and the host presents the reviewed standalone "
             "destination instead; the visible result proves parent-origin policy and safe channel "
             "fallback, while institutional sign-in remains a separate identity proof."
@@ -498,7 +503,7 @@ class AgentEdgeService:
             ) from error
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
-        _wait_for(f"{self.public_origin}{LOADER_PATH}", "Doc1 embed loader v1")
+        _wait_for(f"{self.public_origin}{LOADER_PATH}", "cdd-sow-research embed loader v1")
 
     def close(self) -> None:
         if self.server is not None:
@@ -597,14 +602,17 @@ class DemoServices:
                 expected_csp,
             ):
                 raise RuntimeError(
-                    "Doc1 UI did not load the synthetic multi-host installation manifest"
+                    "cdd-sow-research UI did not load the synthetic multi-host installation "
+                    "manifest"
                 )
             if self.mode5_edge is not None and not _header_contains(
                 f"{MODE5_AGENT_ORIGIN}/agent/embed/inst_mode5",
                 "content-security-policy",
                 "frame-ancestors http://127.0.0.1:4101",
             ):
-                raise RuntimeError("Doc1 Mode 5 UI did not load its reviewed installation")
+                raise RuntimeError(
+                    "cdd-sow-research Mode 5 UI did not load its reviewed installation"
+                )
             return self
         except Exception:
             self.__exit__(*sys.exc_info())
@@ -627,7 +635,7 @@ class DemoServices:
             stderr=subprocess.STDOUT,
             text=True,
         )
-        _wait_for(f"{UI_ORIGIN}{LOADER_PATH}", "Doc1 embed loader v1")
+        _wait_for(f"{UI_ORIGIN}{LOADER_PATH}", "cdd-sow-research embed loader v1")
 
     def _start_mode5_ui(self) -> None:
         environment = {
@@ -643,7 +651,7 @@ class DemoServices:
             stderr=subprocess.STDOUT,
             text=True,
         )
-        _wait_for(f"{MODE5_UI_ORIGIN}{LOADER_PATH}", "Doc1 embed loader v1")
+        _wait_for(f"{MODE5_UI_ORIGIN}{LOADER_PATH}", "cdd-sow-research embed loader v1")
 
     def __exit__(self, *_error: object) -> None:
         for service in reversed(self.static):
@@ -1309,7 +1317,7 @@ def prove_mode4(page: Any, evidence: RunEvidence, harness: Any, browser_name: st
     page.on("console", lambda message: console_messages.append(message.text))
     _install_host_boundary_probe(page)
     page.goto(HOST_A, wait_until="domcontentloaded")
-    page.get_by_role("status").filter(has_text="Doc1 ready").wait_for(state="visible")
+    page.get_by_role("status").filter(has_text="cdd-sow-research ready").wait_for(state="visible")
     frame = _agent_frame(page, "inst_host_a")
     frame.get_by_text("Assess a subject", exact=True).wait_for(state="visible")
 
@@ -1372,7 +1380,9 @@ def prove_mode4(page: Any, evidence: RunEvidence, harness: Any, browser_name: st
     other_boundary: dict[str, Any]
     try:
         other.goto(HOST_B, wait_until="domcontentloaded")
-        other.get_by_role("status").filter(has_text="Doc1 ready").wait_for(state="visible")
+        other.get_by_role("status").filter(has_text="cdd-sow-research ready").wait_for(
+            state="visible"
+        )
         other_frame = _agent_frame(other, "inst_host_b")
         other.evaluate(
             "(token) => document.querySelector('cdd-agent').setAccessToken(token)",
@@ -1776,7 +1786,8 @@ def prove_mode5(page: Any, evidence: RunEvidence, harness: Any, browser_name: st
             "The iframe registered PKCE before the host authorized access.",
             "The BFF verified session, CSRF, intent, origin, fetch metadata, and subject binding.",
             "Wrong verifier, replay, sibling origin, mismatch, and duplicate paths failed closed.",
-            "Subject credential, PKCE verifier, and Doc1 token never entered host custody.",
+            "Subject credential, PKCE verifier, and cdd-sow-research token never entered host "
+            "custody.",
         ),
     )
     evidence.observations["identity.mode5"] = {
