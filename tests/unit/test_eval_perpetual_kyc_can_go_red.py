@@ -28,7 +28,10 @@ run_eval = importlib.util.module_from_spec(_spec)
 sys.modules["run_eval"] = run_eval
 _spec.loader.exec_module(run_eval)  # type: ignore[union-attr]
 
-_THRESHOLD = run_eval.THRESHOLDS["pkyc_priority"]
+#: The reviewed bar, read from `eval/rubrics/*.yaml` exactly as the gate reads it. The
+#: module-level dict this used to read is gone: a threshold written as a Python literal
+#: carries no argument, and having both was two homes for one number.
+_THRESHOLD = run_eval.load_thresholds_from_rubrics()["pkyc_priority"]
 
 #: An engine that cannot escalate: nothing raises the score and every queue priority
 #: collapses to the same floor, so it disagrees with any golden case expecting movement.

@@ -1,0 +1,29 @@
+# Labelled adverse-media relevance cases. Scored by eval/run_eval.py::score_adverse_media_relevance
+# through the SHIPPED `finding_names_subject` predicate.
+#
+# Why this file exists. On 2026-08-26 a paired demonstration asked for adverse media on a
+# fictional company. The deployment's grounded web search returned a REAL money-laundering
+# prosecution naming real banks, marked it critical, and the risk policy turned that severity
+# into a PROHIBITED band for a company the article never mentions. Two things were wrong and only
+# one of them is about search quality: a returned article carried its severity straight into the
+# most consequential field in the dossier, with nothing deterministic in between.
+#
+# The fix is `finding_names_subject`, and it was unit-tested and never SCORED. A property this
+# consequential belongs in the gate, because a promotion that regressed it should not be
+# certifiable, and because a unit test can be deleted in the same commit as the thing it guards.
+#
+# `keep` is a reviewer's answer to "is this article about this subject", written by reading it.
+# The gate is deliberately conservative: dropping an unverifiable hit costs a finding, keeping
+# one costs a subject the most severe band the system can assign, on evidence about somebody
+# else. Subjects are fictional; the two real-world headlines are kept verbatim as the regression
+# they are, and neither names any fictional subject.
+{"id": "rel-real-scandal", "subject": "Meridian Harbour Holdings Pte Ltd", "headline": "Singapore's banking giants entangled in US$740 million money-laundering scandal", "snippet": "Some of the biggest local and international banks in Singapore are becoming embroiled in one of the city state's largest money laundering cases.", "keep": false}
+{"id": "rel-named-in-full", "subject": "Meridian Harbour Holdings Pte Ltd", "headline": "Meridian Harbour Holdings Pte Ltd charged with fraud", "snippet": "", "keep": true}
+{"id": "rel-named-without-legal-form", "subject": "Meridian Harbour Holdings Pte Ltd", "headline": "Regulator opens probe into Meridian Harbour", "snippet": "", "keep": true}
+{"id": "rel-named-in-snippet-only", "subject": "Meridian Harbour Holdings Pte Ltd", "headline": "Regulator opens probe into a shipping group", "snippet": "The probe concerns Meridian Harbour Holdings Pte Ltd and two of its subsidiaries.", "keep": true}
+{"id": "rel-same-jurisdiction-only", "subject": "Meridian Harbour Holdings Pte Ltd", "headline": "Singapore tightens beneficial ownership rules for holding companies", "snippet": "The change affects every holding company incorporated in the jurisdiction.", "keep": false}
+{"id": "rel-same-sector-only", "subject": "Kestrel Freight Logistics Pte Ltd", "headline": "Freight logistics operators face scrutiny over sanctions exposure", "snippet": "Several unnamed operators are under review.", "keep": false}
+{"id": "rel-different-company", "subject": "Kestrel Freight Logistics Pte Ltd", "headline": "Harrier Freight Logistics Pte Ltd fined for false declarations", "snippet": "The penalty follows a two-year investigation.", "keep": false}
+{"id": "rel-subject-named-with-suffix-variation", "subject": "Kestrel Freight Logistics Pte Ltd", "headline": "Kestrel Freight Logistics fined for false declarations", "snippet": "", "keep": true}
+{"id": "rel-partial-word-not-enough", "subject": "Kestrel Freight Logistics Pte Ltd", "headline": "Kestrel Capital Partners under investigation", "snippet": "The firm is unrelated to other Kestrel-named entities.", "keep": false}
+{"id": "rel-subject-in-a-list", "subject": "Meridian Harbour Holdings Pte Ltd", "headline": "Three groups named in the customs review", "snippet": "The review names Aurora Shipping, Meridian Harbour Holdings Pte Ltd and Delta Freight.", "keep": true}

@@ -34,7 +34,10 @@ run_eval = importlib.util.module_from_spec(_spec)
 sys.modules["run_eval"] = run_eval
 _spec.loader.exec_module(run_eval)  # type: ignore[union-attr]
 
-_THRESHOLD = run_eval.THRESHOLDS["ubo_accuracy"]
+#: The reviewed bar, read from `eval/rubrics/*.yaml` exactly as the gate reads it. The
+#: module-level dict this used to read is gone: a threshold written as a Python literal
+#: carries no argument, and having both was two homes for one number.
+_THRESHOLD = run_eval.load_thresholds_from_rubrics()["ubo_accuracy"]
 
 #: The flat one-hop reader: it walks a single layer and stops, which is the exact failure
 #: mode a cross-jurisdiction UBO graph exists to fix.

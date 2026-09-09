@@ -1,0 +1,49 @@
+# Scored by: eval/run_eval.py::score_adverse_media_relevance through the SHIPPED
+# `finding_names_subject` predicate, against eval/datasets/adverse_media_relevance.jsonl, whose
+# `keep` field is a reviewer's answer to "is this article about this subject".
+#
+# Why this metric exists, and why it is in the GATE rather than only in a unit test. On
+# 2026-08-26 a paired demonstration asked for adverse media on a fictional company. The
+# deployment's grounded web search returned a REAL money-laundering prosecution naming real
+# banks, marked it critical, and the risk policy turned that severity into a PROHIBITED band for
+# a company the article never mentions. Two things were wrong and only one of them is about
+# search quality: a returned article carried its severity straight into the most consequential
+# field in the dossier, with nothing deterministic in between.
+#
+# `finding_names_subject` is the fix. It was unit-tested and never scored, and a unit test can be
+# deleted in the same commit as the thing it guards. A promotion that regressed this should not
+# be certifiable, which is what putting it in the gate means.
+metric: adverse_media_relevance
+description: >
+  Share of labelled adverse-media hits the shipped relevance predicate classifies the way a
+  reviewer did: kept when the article names the subject, dropped when it does not.
+threshold: 1.0
+direction: maximize
+applies_to:
+  - adverse_media_service.finding_names_subject
+criteria:
+  - id: keeps_what_names_the_subject
+    description: >
+      An article naming the subject, in full or without its legal form, in the headline or in the
+      snippet, is kept.
+    weight: 0.5
+  - id: drops_what_does_not
+    description: >
+      An article sharing only a jurisdiction, a sector, a partial word or a similar name is
+      dropped.
+    weight: 0.5
+scoring:
+  scale: [0.0, 1.0]
+  pass_if: "score >= threshold"
+denominator:
+  # 1.0 rather than a rate with headroom, and the asymmetry is the argument. One wrong KEEP is a
+  # subject given the most severe band the system can assign, on evidence about somebody else.
+  # One wrong DROP is a finding silently missing from a dossier a supervisor reads. Neither has
+  # an acceptable rate over ten labelled cases, and the predicate is deterministic, so there is
+  # no sampling here for a rate to describe.
+  kind: all-or-nothing
+  over: ten reviewer-labelled adverse-media hits
+falsified_by: >
+  eval/run_eval.py::prove_adverse_media_relevance_can_go_red, run before any score is trusted,
+  in BOTH directions: a predicate that keeps everything is the original defect, and one that
+  drops everything is the over-correction. A one-sided proof would certify the second.

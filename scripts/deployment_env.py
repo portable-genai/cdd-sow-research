@@ -1224,7 +1224,8 @@ def terraform_environment(values: dict[str, str]) -> dict[str, str]:
                 # `none` is the explicit "resolved outside this deployment" sentinel and
                 # becomes Terraform's empty string, which skips the record set.
                 "TF_VAR_dns_managed_zone": (
-                    "" if values["DOC1_DNS_MANAGED_ZONE"] == "none"
+                    ""
+                    if values["DOC1_DNS_MANAGED_ZONE"] == "none"
                     else values["DOC1_DNS_MANAGED_ZONE"]
                 ),
                 "TF_VAR_installation_manifest_secret_id": values[
