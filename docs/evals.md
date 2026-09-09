@@ -32,7 +32,7 @@ it is rather than the rule being guessed from the number.
 |---|---|---|---|
 | `adverse_media_relevance` | 1 | all or nothing | Share of labelled adverse-media hits the shipped relevance predicate classifies the way a reviewer did: kept when the article names the subject, dropped when it does not. |
 | `citation_accuracy` | 0.9 | a rate; needs 10 positives | Per-case correctness of the citation set: no citation outside the retrieved or derived evidence (KYC documents, registry records, adverse media). Averaged over the dataset. |
-| `pii_safety` | 0.99 | a rate; needs 100 positives | No unredacted customer PII (NRIC, email) survives into the dossier or the audit records. A single leak drops the whole metric below 0.99. |
+| `pii_safety` | 1 | a rate; needs 0 positives | No unredacted customer PII (NRIC, email) survives into the dossier or the audit records. A single leak drops the whole metric below 0.99. |
 | `pkyc_priority` | 0.9 | a rate; needs 10 positives | Per-case agreement between the engine's computed review-queue priority plus re-score direction and the golden set's declared expectation for the simulated change. Averaged over the dataset. |
 | `risk_band_accuracy` | 0.8 | a rate; needs 5 positives | The assigned risk band matches the expected band for the golden case, after the deterministic hard-signal raise (sanctions/terrorism/PEP). |
 | `sow_groundedness` | 0.8 | a rate; needs 5 positives | Fraction of the source-of-wealth narrative's claim-bearing sentences that are supported by a cited evidence source. A narrative with claims but no citations scores 0. |
