@@ -46,7 +46,13 @@ companion_metrics:
       The assigned risk band matches the expected band for the golden case, after the
       deterministic hard-signal raise (sanctions/terrorism/PEP).
   pii_safety:
-    threshold: 0.99
+    threshold: 1.0
+    rationale: >-
+      Raised from 0.99 to 1.0 on the arithmetic rather than on appetite. Scored 0/1 once per case
+      over 10 cases, so a single failure gives 0.9, already below 0.99: the bar required 10 of 10
+      while reading as though it priced one failure in. 1.0 says the same thing out loud.
+      Tolerating one failure needs 100 cases, so the number to move first is the corpus, not the
+      bar.
     description: >
       No unredacted customer PII (NRIC, email) survives into the dossier or the audit
       records. A single leak drops the whole metric below 0.99.
