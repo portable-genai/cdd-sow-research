@@ -40,7 +40,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from datetime import date
@@ -49,7 +49,15 @@ from typing import Any
 
 # The --mode smoke|gate scaffold + the aligned report rendering come from the shared agent-eval-kit
 # commons; this script keeps only its own offline evaluator and gate runner.
-from agent_eval_kit import eval_main
+from agent_eval_kit import (
+    assert_can_go_red,
+    assert_denominator_supports,
+    dataset_digest,
+    eval_main,
+    load_jsonl,
+    load_rubrics,
+    prove_before_scoring,
+)
 
 # Domain models are pure-stdlib (no GCP / framework imports), so importing them here keeps
 # this script runnable in the on-prem/test profile with no Google Cloud SDK installed.
@@ -95,24 +103,17 @@ from cdd_sow_research.domain.perpetual_kyc import PerpetualKycEngine
 from cdd_sow_research.domain.policy import CountryRiskPolicy, PerpetualKycPolicy, UboGraphPolicy
 from cdd_sow_research.domain.ubo_graph import UboGraphEngine, ownership_node_id
 
-THRESHOLDS: dict[str, float] = {
-    "sow_groundedness": 0.80,
-    "risk_band_accuracy": 0.80,
-    "citation_accuracy": 0.90,
-    "pii_safety": 0.99,
-    # Perpetual KYC: does the engine put a changed relationship in the queue place the
-    # golden set INDEPENDENTLY says it belongs in? The oracle is the dataset's own
-    # ``perpetual_kyc.expected_priority``, never a re-read of what the engine produced,
-    # so a broken engine scores red instead of agreeing with itself.
-    "pkyc_priority": 0.90,
-    # UBO graph: replay the registry layers the golden case DECLARES through the real
-    # engine, and compare the beneficial owners, their effective percentages, the control
-    # basis and the indicators against what the same case declares they must be. Same
-    # discipline: the oracle is the dataset, never the pipeline's own output.
-    "ubo_accuracy": 0.90,
-}
+#: Where every bar lives. Not a dict here: a threshold written as a Python literal carries no
+#: argument, so a reviewer can read that UBO accuracy must clear 0.90 and cannot read why, who
+#: agreed it, or what moving it would mean. The rubric files carry the reasoning beside the
+#: number, and `agent_eval_kit.load_rubrics` reads them.
+#:
+#: What was here before was BOTH: a `THRESHOLDS` dict and a loader that overlaid four rubric
+#: files on top of it, falling back to the dict when PyYAML was missing. Two homes for one
+#: number, with a silent path that used the one nobody reviews.
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
+RUBRICS = _REPO_ROOT / "eval" / "rubrics"
 DEFAULT_DATASET = _REPO_ROOT / "eval" / "datasets" / "golden_cases.jsonl"
 
 # PII patterns are jurisdiction-driven (compliance packs): a non-SG fork sets
@@ -218,30 +219,97 @@ def load_golden(path: Path) -> list[GoldenExample]:
 
 
 def load_thresholds_from_rubrics() -> dict[str, float]:
-    """Read thresholds from ``eval/rubrics/*.yaml`` when PyYAML is available."""
-    thresholds = dict(THRESHOLDS)
-    try:
-        import yaml  # type: ignore[import-untyped]
-    except ImportError:
-        return thresholds
-    rubric_dir = _REPO_ROOT / "eval" / "rubrics"
-    for name in (
-        "sow_groundedness.yaml",
-        "citation_accuracy.yaml",
-        "pkyc_priority.yaml",
-        "ubo_accuracy.yaml",
-    ):
-        rubric_path = rubric_dir / name
-        if not rubric_path.exists():
-            continue
-        doc = yaml.safe_load(rubric_path.read_text(encoding="utf-8")) or {}
-        metric = doc.get("metric")
-        if isinstance(metric, str) and "threshold" in doc:
-            thresholds[metric] = float(doc["threshold"])
-        for companion, spec in (doc.get("companion_metrics") or {}).items():
-            if isinstance(spec, dict) and "threshold" in spec:
-                thresholds[str(companion)] = float(spec["threshold"])
-    return thresholds
+    """Read every metric's reviewed bar out of ``eval/rubrics/*.yaml``. No fallback, by design.
+
+    Fails closed on a missing directory, a non-numeric bar, or the same metric given two
+    different bars in two files. There is deliberately no fallback to a module dict: a fallback
+    is a second home for a number that must have one, and it is reached exactly when the
+    reviewed file could not be read, which is the worst moment to stop using it.
+    """
+    return load_rubrics(RUBRICS).thresholds()
+
+
+#: The metrics this runner scores, in report order. Named so `assert_covers` can compare them
+#: with the rubric set in BOTH directions.
+SCORED: tuple[str, ...] = (
+    "sow_groundedness",
+    "risk_band_accuracy",
+    "citation_accuracy",
+    "pii_safety",
+    "pkyc_priority",
+    "ubo_accuracy",
+    "adverse_media_relevance",
+)
+
+RELEVANCE_DATASET = _REPO_ROOT / "eval" / "datasets" / "adverse_media_relevance.jsonl"
+
+
+def score_adverse_media_relevance(
+    predicate: Callable[[str, Any], bool] | None = None,
+) -> tuple[float, int]:
+    """Is an adverse-media hit ABOUT the subject, scored through the SHIPPED predicate.
+
+    Found on 2026-08-26 by a paired demonstration. Asked for adverse media on a fictional
+    company, the deployment's grounded web search returned a REAL money-laundering prosecution
+    naming real banks, marked it critical, and the risk policy turned that severity into a
+    PROHIBITED band for a company the article never mentions. A returned article carried its
+    severity straight into the most consequential field in the dossier, with nothing
+    deterministic in between.
+
+    ``finding_names_subject`` is the fix, and until now it was unit-tested and never SCORED. A
+    property this consequential belongs in the gate: a promotion that regressed it should not be
+    certifiable, and a unit test can be deleted in the same commit as the thing it guards.
+
+    Returns the score and its denominator, so the caller can apply the denominator rule to a
+    count of labelled cases rather than to the golden-case count, which is a different corpus.
+    """
+    from cdd_sow_research.domain.adverse_media_service import finding_names_subject
+    from cdd_sow_research.domain.models import (
+        AdverseMediaCategory,
+        AdverseMediaFinding,
+        Severity,
+    )
+
+    decide = predicate or finding_names_subject
+    rows = load_jsonl(RELEVANCE_DATASET, required=("id", "subject", "headline"))
+    correct = 0
+    for row in rows:
+        finding = AdverseMediaFinding(
+            headline=str(row["headline"]),
+            publisher="Example Wire",
+            url="https://news.example/story",
+            category=AdverseMediaCategory.MONEY_LAUNDERING,
+            # CRITICAL on every row deliberately: severity is exactly what used to reach the
+            # band unchecked, so scoring at any lower severity would understate the defect.
+            severity=Severity.CRITICAL,
+            snippet=str(row.get("snippet", "")),
+        )
+        if bool(decide(str(row["subject"]), finding)) is bool(row["keep"]):
+            correct += 1
+    return round(correct / len(rows), 4), len(rows)
+
+
+def prove_adverse_media_relevance_can_go_red(thresholds: dict[str, float]) -> None:
+    """Both directions of the predicate, because they fail differently and cost differently.
+
+    A predicate that keeps everything is the ORIGINAL defect: a subject given the most severe
+    band the system can assign on evidence about somebody else. A predicate that keeps nothing
+    is the over-correction: a dossier a supervisor reads with the adverse media silently gone.
+    """
+    assert_can_go_red(
+        lambda decide: score_adverse_media_relevance(decide)[0],
+        green=None,
+        red=lambda _subject, _finding: True,  # keeps every hit, including the real scandal
+        threshold=thresholds["adverse_media_relevance"],
+        metric="adverse_media_relevance[keeps everything]",
+    )
+    assert_can_go_red(
+        lambda decide: score_adverse_media_relevance(decide)[0],
+        green=None,
+        red=lambda _subject, _finding: False,  # drops every hit, including ones that name it
+        threshold=thresholds["adverse_media_relevance"],
+        metric="adverse_media_relevance[drops everything]",
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -275,8 +343,22 @@ class FakeKnowledgeBase:
     def __init__(self, by_subject: dict[str, GoldenExample]) -> None:
         self._by_subject = by_subject
 
-    def ingest(self, document, content, acl_tags) -> IngestResult:  # type: ignore[no-untyped-def]
-        return IngestResult(document_id=document.id, chunks=1, status="indexed", ok=True)
+    def ingest(  # type: ignore[no-untyped-def]
+        self, document, content, acl_tags, page_texts: tuple[str, ...] = ()
+    ) -> IngestResult:
+        """Match `KnowledgeBaseClientPort.ingest` exactly, `page_texts` included.
+
+        It did not, and the cost was invisible: the service passes `page_texts` so a retrieved
+        claim can cite the page it came from, this fake did not accept it, and every document
+        ingestion in the gate raised. The service catches that and continues with "this document
+        will not ground any citation", by design, so the run stayed green while no case document
+        grounded anything at all and the grounding metrics scored the adverse-media and ownership
+        citations alone. A fake that has drifted from its port is a gate measuring a pipeline the
+        product does not have; `tests/unit/test_eval_fakes_match_their_ports.py` is what stops it
+        drifting again.
+        """
+        chunks = len(page_texts) or 1
+        return IngestResult(document_id=document.id, chunks=chunks, status="indexed", ok=True)
 
     def search(self, query: RetrievalQuery) -> list[RetrievedPassage]:
         example = self._lookup(query)
@@ -856,11 +938,17 @@ class _PerMetric:
 
 
 def run_offline(dataset: Path, thresholds: dict[str, float]) -> EvalReport:
+    # The rubrics and the scored set must agree in BOTH directions before anything is scored.
+    load_rubrics(RUBRICS).assert_covers(SCORED)
+    # And the adverse-media predicate must be shown able to go red in both directions, here,
+    # with these thresholds.
+    prove_before_scoring(lambda: prove_adverse_media_relevance_can_go_red(thresholds))
     examples = load_golden(dataset)
     adapters = _build_adapters(examples)
     service = _make_service(adapters)
 
-    agg: dict[str, _PerMetric] = {m: _PerMetric() for m in THRESHOLDS}
+    agg: dict[str, _PerMetric] = {metric: _PerMetric() for metric in SCORED}
+    produced: dict[str, int] = {"citations": 0}
     print(f"Running offline eval gate over {len(examples)} golden cases (CddService).\n")
     for example in examples:
         case_input = _case_input(example)
@@ -880,6 +968,9 @@ def run_offline(dataset: Path, thresholds: dict[str, float]) -> EvalReport:
             score_risk_band_accuracy(case, example.expected_risk_band)
         )
         agg["pii_safety"].scores.append(score_pii_safety(case, adapters.audit.events))
+        # The denominator citation_accuracy is actually measured over. It cannot be read off
+        # the dataset: what a dossier cites is what the run produces.
+        produced["citations"] += len(case.sow.citations) + len(case.rating.citations)
 
     # Perpetual KYC is scored over the whole set at once (one engine, replayed per case).
     engine = PerpetualKycEngine.from_policy(PerpetualKycPolicy())
@@ -890,23 +981,40 @@ def run_offline(dataset: Path, thresholds: dict[str, float]) -> EvalReport:
     ubo_engine = UboGraphEngine.from_policy(UboGraphPolicy(), CountryRiskPolicy())
     agg["ubo_accuracy"].scores.append(score_ubo_graph(ubo_engine, examples))
 
+    # Adverse-media relevance, over its OWN labelled corpus rather than the golden cases: the
+    # question "is this article about this subject" needs articles that are not, and a golden
+    # case carries only articles that are.
+    relevance, n_relevance = score_adverse_media_relevance()
+    agg["adverse_media_relevance"].scores.append(relevance)
+    assert_denominator_supports(
+        thresholds["adverse_media_relevance"], n_relevance, metric="adverse_media_relevance"
+    )
+    # The per-case rates, against the corpus that actually divides each of them. The case
+    # count is the right denominator for two of these and the wrong one for the third:
+    # citation_accuracy is a fraction over the CITATIONS a dossier carries, and six cases
+    # produce many more than six.
+    for metric in ("sow_groundedness", "risk_band_accuracy"):
+        assert_denominator_supports(thresholds[metric], len(examples), metric=metric)
+    assert_denominator_supports(
+        thresholds["citation_accuracy"], produced["citations"], metric="citation_accuracy"
+    )
+
     results = tuple(
         EvalMetricResult(
             metric=metric,
             score=round(agg[metric].mean, 4),
-            threshold=thresholds.get(metric, THRESHOLDS[metric]),
-            passed=round(agg[metric].mean, 4) >= thresholds.get(metric, THRESHOLDS[metric]),
+            threshold=thresholds[metric],
+            passed=round(agg[metric].mean, 4) >= thresholds[metric],
         )
-        for metric in (
-            "sow_groundedness",
-            "risk_band_accuracy",
-            "citation_accuracy",
-            "pii_safety",
-            "pkyc_priority",
-            "ubo_accuracy",
-        )
+        for metric in SCORED
     )
-    return EvalReport(dataset=str(dataset), results=results, n_examples=len(examples))
+    return EvalReport(
+        dataset=str(dataset),
+        results=results,
+        n_examples=len(examples),
+        dataset_digest=dataset_digest(dataset),
+        evaluator="offline heuristic (no cloud creds)",
+    )
 
 
 def run_gate(dataset: Path) -> tuple[EvalReport, bool]:

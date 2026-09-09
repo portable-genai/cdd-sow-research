@@ -42,7 +42,7 @@ mypy src                         # clean (best-effort)
 python eval/run_eval.py          # pass (exit 0)
 ```
 
-CI runs the same on the `local` profile (the hosted GitHub Actions check and `eval-gate.yaml`).
+CI runs the same `make check` on the `local` profile, via the hosted GitHub Actions check.
 
 ## Adding an adapter
 

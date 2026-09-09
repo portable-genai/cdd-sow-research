@@ -45,11 +45,10 @@ cdd-sow assess "Acme Holdings Pte Ltd (FICTIONAL)" --type entity --jurisdiction 
 cdd-sow source-of-wealth ... | cdd-sow adverse-media ... | cdd-sow serve | cdd-sow eval
 ```
 
-**The PR gate** (must be green; CI runs the same on `local` via the hosted GitHub Actions check
-and `eval-gate.yaml`):
+**The PR gate** (must be green; the hosted GitHub Actions check runs the same `make check` on
+the `local` profile):
 ```bash
-ruff check src tests && ruff format --check src tests && mypy src && \
-  pytest -m 'not integration' -q && python eval/run_eval.py
+make check
 ```
 
 Notes:
