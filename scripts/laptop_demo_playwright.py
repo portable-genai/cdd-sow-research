@@ -49,7 +49,7 @@ def _open(page: Any, base_url: str) -> None:
 def _ensure_dossier(page: Any, base_url: str) -> None:
     if not page.url.startswith(base_url.rstrip("/")):
         _open(page, base_url)
-    subject_heading = page.get_by_role("heading", name="Subject — Acme Holdings Pte Ltd")
+    subject_heading = page.get_by_role("heading", name="Subject: Acme Holdings Pte Ltd")
     if subject_heading.count() and subject_heading.is_visible():
         return
     page.get_by_placeholder("Legal name of the company or person").fill("Acme Holdings Pte Ltd")
@@ -75,7 +75,7 @@ def _export_reload(page: Any, base_url: str) -> None:
 
     page.get_by_placeholder("Legal name of the company or person").fill("Awaiting portable reload")
     page.locator('input[type="file"][accept*="json"]').set_input_files(str(destination))
-    page.get_by_role("heading", name="Subject — Acme Holdings Pte Ltd").wait_for()
+    page.get_by_role("heading", name="Subject: Acme Holdings Pte Ltd").wait_for()
     page.get_by_text("cdd-dossier/v1", exact=False).wait_for()
 
 

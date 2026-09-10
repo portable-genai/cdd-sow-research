@@ -6,13 +6,13 @@ import type { ReactNode } from "react";
  *
  * Derived from the panel title rather than hand-written per call site, so a panel cannot ship
  * without one and a renamed panel renames its hook in step. Titles carry live values (a subject
- * name, a gap count), so everything from the first em-dash or bracket is dropped: the hook has to
+ * name, a gap count), so everything from the first colon or bracket is dropped: the hook has to
  * stay the same string across runs or the demo script asserts on a selector that only existed for
  * one dossier.
  */
 export function demoSlug(title: string): string {
   return title
-    .split(/[—(]/)[0]
+    .split(/[:(]/)[0]
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");

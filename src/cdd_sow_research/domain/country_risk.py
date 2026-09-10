@@ -33,7 +33,7 @@ def country_risk(code: str | None, policy: CountryRiskPolicy = _DEFAULT_POLICY) 
     """Return the deterministic risk level for an ISO-3166 alpha-2 country ``code``."""
     c = (code or "").strip().upper()
     if not c:
-        return CountryRisk("", "medium", 0.5, "Country unknown — treated as medium risk.")
+        return CountryRisk("", "medium", 0.5, "Country unknown; treated as medium risk.")
     if c in policy.call_for_action:
         return CountryRisk(c, "prohibited", 1.0, "FATF call-for-action jurisdiction.")
     if c in policy.increased_monitoring:

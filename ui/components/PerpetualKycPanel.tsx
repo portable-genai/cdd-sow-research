@@ -107,7 +107,7 @@ export function PerpetualKycPanel({
       </Panel>
 
       {assessment ? (
-        <Panel title={`Re-score — ${assessment.subject_name || assessment.subject_id}`}>
+        <Panel title={`Re-score: ${assessment.subject_name || assessment.subject_id}`}>
           <ReviewBanner requiresReview={assessment.requires_human_review} />
           <dl className="mb-3 grid min-w-0 grid-cols-1 gap-2 text-sm text-ink-700 sm:grid-cols-3">
             <div>

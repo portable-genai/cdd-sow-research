@@ -239,7 +239,7 @@ class DemoSession:
     def render(self) -> str:
         if self.idx == 0:
             body = self._declaration_body()
-            html = r.page("SoW demo — case opened", body)
+            html = r.page("SoW demo: case opened", body)
         elif self.data["iterations"]:
             it = self.data["iterations"][-1]
             html = r.render_iteration(self.data, it, self.evidence_by_id)
@@ -255,7 +255,7 @@ class DemoSession:
             for s in decl.sources
         )
         return (
-            f"<h1>Source of Wealth — {r.esc(self.subject.name)}</h1>"
+            f"<h1>Source of Wealth: {r.esc(self.subject.name)}</h1>"
             f"<p class='sub'>Long-running case <b class='mono'>{r.esc(demo.CASE_ID)}</b> · SG · "
             "a new case, opened with the client's self-declaration. No evidence yet.</p>"
             + r.steps_bar(0, "")
@@ -263,7 +263,7 @@ class DemoSession:
             f"<span class='statuspill' style='background:#e6ebf2;color:#546b8b'>DRAFT</span></h2>"
             f"<div class='body'><ul class='sources' style='list-style:none;padding:0;margin:0'>{rows}</ul>"
             f"<p class='muted' style='margin-top:10px'>Declared net worth: "
-            f"<b>{r.esc(decl.declared_net_worth_band)}</b> — the figure the evidence must reconcile to."
+            f"<b>{r.esc(decl.declared_net_worth_band)}</b>, the figure the evidence must reconcile to."
             "</p></div></section>"
             "<p class='foot'>Audit-first SoW view · synthetic fictional data · "
             "deterministic reconciliation/gap engine</p>"
@@ -286,7 +286,8 @@ class DemoSession:
         )
         bar = (
             "<div class='democtl'>"
-            f"<span class='lbl'>Step {self.idx + 1}/{len(STEPS)} — <b>{r.esc(step['label'])}</b></span>"
+            f"<span class='lbl'>Step {self.idx + 1}/{len(STEPS)}</span>"
+            f"<span class='lbl'><b>{r.esc(step['label'])}</b></span>"
             f"{cov}<span class='spacer'></span>{next_btn}"
             "<form method='post' action='/restart'><button class='restart' type='submit'>Restart</button></form>"
             "</div>"

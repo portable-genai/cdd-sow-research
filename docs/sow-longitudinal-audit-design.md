@@ -663,7 +663,7 @@ related-party layer on top of the case (`domain/related_party.py`, `domain/model
   `RelatedPartyPolicy.requires_enhanced_review`.
 - **Surfaced** — the review attaches to the case via `SowCaseService.attach_related_parties`
   and rides on `SowCase.related_parties` / `SowAuditView.related_parties`; the audit view
-  renders a **"Key individuals — CDD + SoW"** panel (each person with scope, screening flags,
+  renders a **"Key individuals: CDD + SoW"** panel (each person with scope, screening flags,
   and their SoW sub-case status). Run it: `scripts/related_party_demo.py`.
 
 All of this is **deterministic and pure** (no LLM in the roll-up), so the company decision and

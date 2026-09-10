@@ -12,7 +12,7 @@ export function CddCaseView({ caseData }: { caseData: CddCase }) {
     <div className="space-y-4">
       <ReviewBanner requiresReview={caseData.requires_human_review} />
 
-      <Panel title={`Subject — ${subject.name}`}>
+      <Panel title={`Subject: ${subject.name}`}>
         <dl className="grid min-w-0 grid-cols-1 gap-2 text-sm text-ink-700 sm:grid-cols-2">
           <div>
             <dt className="text-ink-400">Type</dt>
