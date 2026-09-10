@@ -261,7 +261,7 @@ def main() -> int:
             page = browser.new_context(viewport={"width": 1200, "height": 900}).new_page()
 
             print()
-            print(_c("1;36", "  Source-of-Wealth live demo — presenter-controlled walkthrough"))
+            print(_c("1;36", "  Source-of-Wealth live demo: presenter-controlled walkthrough"))
             print(
                 _c("2", "  Narration prints here (read it aloud); the browser shows only the UI.\n")
             )
