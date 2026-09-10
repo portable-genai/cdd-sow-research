@@ -176,7 +176,7 @@ export function SowAuditViewPanel({
       <Panel title={`Gaps the system found (${view.gaps.length})`}>
         {view.gaps.length === 0 ? (
           <Empty>
-            ✓ No outstanding gaps — declared net worth reconciles within tolerance and every
+            ✓ No outstanding gaps: declared net worth reconciles within tolerance and every
             declared source is corroborated. Ready for maker-checker review.
           </Empty>
         ) : (

@@ -172,7 +172,7 @@ export function UboGraphPanel({
       </Panel>
 
       {resolution ? (
-        <Panel title={`Ownership — ${resolution.subject_name || resolution.subject_id}`}>
+        <Panel title={`Ownership: ${resolution.subject_name || resolution.subject_id}`}>
           <ReviewBanner requiresReview={resolution.requires_human_review} />
           <dl className="mb-3 grid min-w-0 grid-cols-1 gap-2 text-sm text-ink-700 sm:grid-cols-3">
             <div>

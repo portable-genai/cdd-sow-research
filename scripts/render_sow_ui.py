@@ -321,7 +321,7 @@ def render_related_parties(rp: dict | None) -> str:
               </div></div>"""
         )
     return (
-        f'<section class="panel" data-panel="related_parties"><h2>Key individuals — CDD + SoW ({len(in_scope)} in scope) {badge}</h2>'
+        f'<section class="panel" data-panel="related_parties"><h2>Key individuals: CDD + SoW ({len(in_scope)} in scope) {badge}</h2>'
         f"<div class='body'><p class='muted' style='margin:0 0 8px'>{esc(rp.get('summary', ''))}</p>"
         f"{''.join(rows)}</div></section>"
     )
