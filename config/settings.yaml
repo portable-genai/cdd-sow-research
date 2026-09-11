@@ -457,10 +457,12 @@ adapters:
     live: cdd_sow_research.adapters.gcp.ownership_graph:GroundedOwnershipGraphAdapter
     onprem: cdd_sow_research.adapters.onprem.ownership_graph:OnPremOwnershipGraphAdapter
   compliance:
-    gcp: cdd_sow_research.adapters.local.compliance:LocalComplianceClientAdapter
+    # Every networked profile asks compliance-advisory's /ask, named by RSK_COMPLIANCE_URL (required,
+    # no default). Only the offline gate answers in-process.
+    gcp: cdd_sow_research.adapters.platform.remote_compliance:RemoteComplianceAdapter
     platform: cdd_sow_research.adapters.platform.remote_compliance:RemoteComplianceAdapter
     local: cdd_sow_research.adapters.local.compliance:LocalComplianceClientAdapter
-    live: cdd_sow_research.adapters.local.compliance:LocalComplianceClientAdapter
+    live: cdd_sow_research.adapters.platform.remote_compliance:RemoteComplianceAdapter
     onprem: cdd_sow_research.adapters.onprem.compliance:OnPremComplianceAdapter
   llm:
     gcp: cdd_sow_research.adapters.gcp.gemini_llm:GeminiLLMAdapter

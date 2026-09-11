@@ -68,6 +68,8 @@ BASE_REQUIRED = (
     "DOC1_DEPLOYMENT_TENANT",
     "DOC1_AGENT_DOMAIN",
     "DOC1_STANDALONE_DOMAIN",
+    # The gcp profile asks compliance-advisory on every dossier and refuses to start unnamed.
+    "DOC1_COMPLIANCE_ADVISORY_URL",
     "DOC1_DNS_MANAGED_ZONE",
     "DOC1_DNS_OWNER",
     "DOC1_CERTIFICATE_OWNER",
@@ -97,6 +99,7 @@ EDGE_ONLY_REQUIRED = frozenset(
     {
         "DOC1_AGENT_DOMAIN",
         "DOC1_STANDALONE_DOMAIN",
+        "DOC1_COMPLIANCE_ADVISORY_URL",
         "DOC1_DNS_MANAGED_ZONE",
         "DOC1_DNS_OWNER",
         "DOC1_CERTIFICATE_OWNER",
@@ -1006,6 +1009,7 @@ def validate_environment(values: dict[str, str], *, require_ready: bool = False)
     }:
         errors.append("DOC1_MODE5_SUBJECT_TOKEN_TYPE must be a reviewed RFC 8693 token type")
     https_keys = [
+        "DOC1_COMPLIANCE_ADVISORY_URL",
         "DOC1_MODE5_SUBJECT_ISSUER",
         "DOC1_MODE5_SUBJECT_JWKS_URI",
         "DOC1_MODE5_BFF_JWKS_URI",
@@ -1221,6 +1225,7 @@ def terraform_environment(values: dict[str, str]) -> dict[str, str]:
                 "TF_VAR_api_image": values["DOC1_API_IMAGE"],
                 "TF_VAR_ui_image": values["DOC1_UI_IMAGE"],
                 "TF_VAR_agent_domain": values["DOC1_AGENT_DOMAIN"],
+                "TF_VAR_compliance_advisory_url": values["DOC1_COMPLIANCE_ADVISORY_URL"],
                 # `none` is the explicit "resolved outside this deployment" sentinel and
                 # becomes Terraform's empty string, which skips the record set.
                 "TF_VAR_dns_managed_zone": (

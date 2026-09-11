@@ -47,7 +47,14 @@ def _run_probe(argument: str) -> subprocess.CompletedProcess[str]:
         capture_output=True,
         text=True,
         cwd=REPO_ROOT,
-        env={**os.environ, "PYTHONPATH": "src"},
+        env={
+            **os.environ,
+            "PYTHONPATH": "src",
+            # A construction input, not a relaxation: the networked profiles' compliance client
+            # refuses to build without naming the service it asks, and a fictional loopback
+            # address is enough to prove it builds with no cloud SDK importable.
+            "RSK_COMPLIANCE_URL": "http://127.0.0.1:65534",
+        },
         check=False,
         timeout=300,
     )

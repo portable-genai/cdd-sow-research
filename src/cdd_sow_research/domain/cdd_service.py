@@ -18,7 +18,7 @@ Pipeline (each step in ``tracer.span``; audited at the end):
       -> screening (deterministic watchlist match; open alert -> enhanced review)
       -> SourceOfWealthService.build (LLM)
       -> RiskRatingService.rate
-      -> compliance.check (C1, regulatory CDD/AML expectations)
+      -> compliance.check (compliance-advisory; the answer is kept on the dossier)
       -> assemble CDDCase
       -> guardrail.screen(OUTPUT)             [blocked -> audit BLOCKED + raise]
       -> review policy (always requires_human_review=True; escalation flag)
@@ -46,6 +46,7 @@ from .models import (
     CaseInput,
     CDDCase,
     Citation,
+    ComplianceAnswer,
     Decision,
     Direction,
     GuardrailVerdict,
@@ -254,9 +255,10 @@ class CddService:
                 subject, sow, media_findings, ownership, passages, actor, screening=screening
             )
 
-        # 8) Check against regulatory CDD/AML expectations via C1 (best-effort).
+        # 8) Ask compliance-advisory which regulatory CDD/AML expectations apply. Advisory: an
+        #    unanswered check leaves the dossier's compliance field null, never a failure.
         with self._segment("cdd.compliance_check", actor):
-            self._compliance_check(subject, rating, actor)
+            compliance = self._compliance_check(subject, rating, actor)
 
         # 9) Assemble the dossier.
         case = CDDCase(
@@ -267,11 +269,16 @@ class CddService:
             adverse_media=adverse_media,
             ownership=ownership,
             screening=screening,
+            compliance=compliance,
             requires_human_review=self._review.requires_review(),
         )
 
         # 10) Guardrail screen (OUTPUT) on the assembled narrative + rationale.
         out_text = f"{sow.narrative}\n{rating.rationale}"
+        if compliance is not None:
+            # Text another service generated leaves inside this dossier, so it is screened
+            # where it crosses the boundary rather than trusted as already screened.
+            out_text = f"{out_text}\n{compliance.answer}"
         out_verdict: GuardrailVerdict = self._guardrail.screen(out_text, Direction.OUTPUT)
         if not out_verdict.allowed:
             self._write_audit(actor, redacted_summary, "", Decision.BLOCKED, direction="output")
@@ -421,16 +428,30 @@ class CddService:
                 )
                 return None
 
-    def _compliance_check(self, subject: Any, rating: RiskRating, actor: str) -> None:
-        """Ask C1 whether the rating meets regulatory CDD/AML expectations (best-effort)."""
+    def _compliance_check(
+        self, subject: Any, rating: RiskRating, actor: str
+    ) -> ComplianceAnswer | None:
+        """Ask compliance-advisory which regulatory CDD/AML expectations apply to this rating.
+
+        Best-effort and advisory. A failure leaves the dossier's ``compliance`` null and says
+        why in the log: a check that fails in silence is how the deployment answered every
+        dossier from a stand-in without anyone seeing it.
+        """
         question = (
             f"For a {subject.type.value} customer in {subject.jurisdiction or 'an unknown'} "
             f"jurisdiction rated {rating.band.value} risk, what CDD/AML expectations apply?"
         )
         try:
-            self._compliance.check(question, actor)
-        except Exception:  # noqa: BLE001 - the C1 check is advisory, never fatal here
-            return
+            return self._compliance.check(question, actor)
+        except Exception as exc:  # noqa: BLE001 - the check is advisory, never fatal here
+            _LOG.error(
+                "compliance check FAILED for subject %s and the dossier will report "
+                "NOT CHECKED: %s: %s",
+                getattr(subject, "id", "?"),
+                type(exc).__name__,
+                exc,
+            )
+            return None
 
     # ------------------------------------------------------------------ #
     # Helpers

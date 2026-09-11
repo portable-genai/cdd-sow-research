@@ -473,6 +473,17 @@ variable "agent_domain" {
   }
 }
 
+variable "compliance_advisory_url" {
+  description = "HTTPS base URL of the compliance-advisory API the production edge's dossiers ask. The gcp profile refuses to start without it."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = !var.production_edge_enabled || can(regex("^https://[^/?#]+", var.compliance_advisory_url))
+    error_message = "production_edge_enabled requires compliance_advisory_url, an absolute https URL."
+  }
+}
+
 variable "dns_managed_zone" {
   description = "Optional existing Cloud DNS managed zone in which to create agent_domain."
   type        = string

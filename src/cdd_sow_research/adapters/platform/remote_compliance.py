@@ -1,12 +1,15 @@
-"""Remote-platform compliance adapter — thin HTTP client to C1.
+"""Compliance client that asks `compliance-advisory` over HTTP.
 
-B1 checks its source-of-wealth / risk reasoning against regulatory CDD/AML expectations
-(MAS / HKMA / APRA / FSA) by asking **C1**, the grounded compliance assistant
-(``compliance-advisory``). This adapter implements :class:`ComplianceClientPort` by
-POSTing to C1's ``/ask`` endpoint and projecting the AnswerResponse onto a domain
-:class:`ComplianceAnswer` (SPEC §6, C1 contract).
+`cdd-sow-research` checks each dossier's rating against regulatory CDD/AML expectations by
+asking `compliance-advisory`, the grounded compliance assistant. This adapter implements
+:class:`ComplianceClientPort` by POSTing to its ``/ask`` endpoint and projecting the answer onto
+a domain :class:`ComplianceAnswer`, citations included.
 
-The base URL is read from ``RSK_COMPLIANCE_URL`` with a localhost default.
+It is bound under ``gcp``, ``live`` and ``platform``: every profile other than the offline gate
+asks the real service. ``RSK_COMPLIANCE_URL`` names that service and is read in three states
+with no default. Unset and emptied both refuse at construction: a networked profile names the
+service it asks rather than inheriting a localhost guess. On a managed profile each request
+carries a Google-signed ID token minted for the service's origin (see :mod:`._s2s`).
 """
 
 from __future__ import annotations
@@ -15,33 +18,38 @@ import httpx
 
 from ...config import Settings
 from ...domain.errors import CddError
-from ...domain.models import Citation, SourceType
-from ...envread import setting_or_default
-from ...ports.compliance import ComplianceAnswer
+from ...domain.models import Citation, ComplianceAnswer, SourceType
+from ...envread import required_setting
 from . import _s2s
 
-_DEFAULT_URL = "http://localhost:8080"
+#: The one environment variable that names the compliance-advisory base URL.
+URL_ENV = "RSK_COMPLIANCE_URL"
 _TIMEOUT = httpx.Timeout(30.0, connect=5.0)
 
 
 class RemoteComplianceError(CddError):
-    """Raised when the C1 compliance service returns a non-2xx response."""
+    """Raised when compliance-advisory cannot be reached or answers with a non-2xx status."""
 
 
 class RemoteComplianceAdapter:
-    """HTTP client for the C1 ``compliance-advisory`` /ask endpoint."""
+    """HTTP client for the `compliance-advisory` ``/ask`` endpoint."""
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._base_url = _s2s.validate_base_url(
-            setting_or_default("RSK_COMPLIANCE_URL", _DEFAULT_URL),
+            required_setting(URL_ENV),
             service=type(self).__name__,
         )
 
     def check(self, question: str, actor: str) -> ComplianceAnswer:
-        """Ask C1 a regulatory CDD/AML question and return its cited answer."""
+        """Ask compliance-advisory a regulatory CDD/AML question and return its cited answer.
+
+        ``actor`` is not sent. compliance-advisory resolves its principal from the verified
+        caller and ignores any actor in the body, so putting one on the wire would only suggest
+        that the receiver trusts it.
+        """
         url = f"{self._base_url}/ask"
-        payload = {"question": question, "actor": actor, "filters": None}
+        payload = {"question": question, "filters": None}
         try:
             response = httpx.post(
                 url,

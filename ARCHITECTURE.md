@@ -116,7 +116,7 @@ to siblings.
 | 3 | `DocumentStorePort` | Uploaded evidence custody, plus `restore` for bundle reload (P-12) | `gcp.document_store` (regional CMEK GCS) | `local.document_store` (SQLite blobs) | `gcp.document_store` (explicit reuse) | `onprem.document_store` |
 | 4 | `AdverseMediaPort` | Adverse media | `gcp.gemini_adverse_media` | `local.adverse_media` (egress off) | n/a | `onprem.adverse_media` |
 | 5 | `CorporateRegistryPort` | UBO / ownership | `gcp.registry_lookup` | `local.registry` (deterministic UBO) | n/a | `onprem.registry` |
-| 6 | `ComplianceClientPort` | Regulatory check (`compliance-advisory`) | n/a | `local.compliance` (in-process) | `platform.remote_compliance` | `onprem.compliance` |
+| 6 | `ComplianceClientPort` | Regulatory check (`compliance-advisory`) | `platform.remote_compliance` (explicit reuse, as is `live`) | `local.compliance` (in-process) | `platform.remote_compliance` | `onprem.compliance` |
 | 7 | `LLMPort` | Reasoning / triage | `gcp.gemini_llm` | `local.llm` (deterministic schema-driven) | n/a | `onprem.llm` |
 | 8 | `GuardrailPort` | Screening (`agent-guardrail-gateway`, R1) | `gcp.model_armor_guardrail` | `local.guardrail` (heuristic) | `platform.remote_guardrail` | `onprem.guardrail` |
 | 9 | `PIIRedactionPort` | PII redaction (`agent-guardrail-gateway`, R1) | `gcp.dlp_redaction` | `local.redaction` (regex) | `platform.remote_redaction` | `onprem.redaction` |

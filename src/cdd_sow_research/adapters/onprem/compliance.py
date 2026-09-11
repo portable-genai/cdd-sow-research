@@ -1,7 +1,7 @@
 """On-prem placeholder for ``ComplianceClientPort`` — the sovereign target.
 
 One of the reversibility (P-02, P-12) migration placeholders: in the platform profile
-this port binds to the C1 Compliance Assistant HTTP client; switching ``profile`` to
+this port binds to the `compliance-advisory` HTTP client; switching ``profile`` to
 ``onprem`` rebinds it here. The adapter constructs cleanly with **no external
 dependencies** and structurally satisfies the same Protocol as the managed adapter, so
 the contract tests prove interface parity. ``check`` deliberately raises rather than
@@ -12,7 +12,7 @@ silently wave a dossier through. Filling this body in is the only change require
 from __future__ import annotations
 
 from ...config import Settings
-from ...ports.compliance import ComplianceAnswer
+from ...domain.models import ComplianceAnswer
 
 _MESSAGE = (
     "On-prem ComplianceClientPort adapter is a migration placeholder; implement against "

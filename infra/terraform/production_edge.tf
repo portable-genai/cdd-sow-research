@@ -124,6 +124,10 @@ resource "google_cloud_run_v2_service" "api" {
         value = "gcp"
       }
       env {
+        name  = "RSK_COMPLIANCE_URL"
+        value = var.compliance_advisory_url
+      }
+      env {
         name  = "GOOGLE_CLOUD_PROJECT"
         value = var.project_id
       }
