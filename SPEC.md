@@ -32,8 +32,8 @@ adverse-media findings, and a beneficial-ownership / UBO summary, with a full au
 | `platform` | Sibling-service HTTP clients where contracts exist, plus explicit managed adapters for vertical-owned capabilities | The full deployed platform |
 | `onprem` | Fail-fast placeholders: consequential operations raise `NotImplementedError`; explicitly reviewed optional ports may return safe defaults | The Google Distributed Cloud / sovereign migration target |
 
-Under `local`, the platform-client ports (`enterprise-knowledge-base` knowledge base, `agent-guardrail-gateway`/DLP, `agent-registry`,
-`agent-observability`, `model-quality-gate` eval, `compliance-advisory` compliance) use **in-process** local implementations, not HTTP to
+Under `local`, the platform-client ports (`enterprise-knowledge-base`, `agent-guardrail-gateway` and DLP, `agent-registry`,
+`agent-observability`, `model-quality-gate`, `compliance-advisory`) use **in-process** local implementations, not HTTP to
 siblings: a laptop runs one app, not the whole platform. The default `local` path imports
 no google-cloud package. Optional higher-fidelity local runs route the in-process stores to
 Google's official emulators when `FIRESTORE_EMULATOR_HOST` (or `PUBSUB_EMULATOR_HOST` /
@@ -212,7 +212,7 @@ required. The normative route, token, state-machine, and completion contracts li
   `POST /v1/search {query, top_k, acl_principals[], filters}` -> `{passages:[...]}`.
 - **`agent-registry`** (`AGENT_REGISTRY_URL`): `POST/GET /v1/agents`,
   `GET /.well-known/agent-card.json`.
-- **`model-quality-gate` AI quality** (`QUALITY_GATE_URL`):
+- **`model-quality-gate`** (`QUALITY_GATE_URL`):
   `POST /v1/evaluations {target: {model, prompt_version, dataset_id, system}, dataset_id, bundle: "doc1-cdd-sow"}`
   (the top-level `dataset_id` equals `target.dataset_id`; a divergence is a 422) -> report
   parsed from `results[]` (each row carrying its own server-owned threshold), and
@@ -220,8 +220,8 @@ required. The normative route, token, state-machine, and completion contracts li
   selection is by the registered bundle name `doc1-cdd-sow` (`model-quality-gate` owns the metric set and
   per-bundle thresholds); no bare metric names go on the wire, so `model-quality-gate`'s fail-closed
   unknown-metric rejection is never triggered by this client.
-- **`agent-observability`/audit** (`OBSERVABILITY_URL`): `POST /v1/audit` (202).
-- **`compliance-advisory` compliance** (`RSK_COMPLIANCE_URL`): `POST /ask {question, actor, filters}` ->
+- **`agent-observability`** (`OBSERVABILITY_URL`): `POST /v1/audit` (202).
+- **`compliance-advisory`** (`RSK_COMPLIANCE_URL`): `POST /ask {question, actor, filters}` ->
   AnswerResponse `{question, answer, citations, requires_human_review, confidence}`.
 
 ---

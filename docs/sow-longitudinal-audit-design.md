@@ -190,7 +190,7 @@ flowchart TB
         ITERS["SowIteration[] (append-only)<br/>iter 0, 1, 2, … each with evidence + analysis"]
         LEDGER["EvidenceLedger (append-only)<br/>every EvidenceItem ever submitted"]
     end
-    subgraph worm["WORM audit (`agent-observability`)"]
+    subgraph worm["WORM audit (agent-observability)"]
         EV["AuditEvent[] (redacted, immutable)"]
     end
     ITERS --> AGG
@@ -528,9 +528,9 @@ flowchart LR
     SVC --> RFI["RfiDraftingService<br/>(LLM: wording only)"]
     SVC --> POL["CaseTransitionPolicy"]
     SVC --> STORE[("CaseStorePort<br/>new")]
-    SVC --> KB[("KnowledgeBaseClientPort<br/>`enterprise-knowledge-base`, existing")]
-    SVC --> AUD[("AuditSinkPort<br/>`agent-observability` WORM, existing")]
-    SVC --> SAFE[("Guardrail + Redaction<br/>`agent-guardrail-gateway`, existing")]
+    SVC --> KB[("KnowledgeBaseClientPort<br/>enterprise-knowledge-base, existing")]
+    SVC --> AUD[("AuditSinkPort<br/>agent-observability WORM, existing")]
+    SVC --> SAFE[("Guardrail + Redaction<br/>agent-guardrail-gateway, existing")]
 ```
 
 ---

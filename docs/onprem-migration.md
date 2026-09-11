@@ -35,7 +35,7 @@ configuration, infrastructure and operations, and credentialed integration tests
 | `AdverseMediaPort` | `onprem/adverse_media.py` | An internal news/sanctions index (or keep air-gapped) |
 | `CorporateRegistryPort` | `onprem/registry.py` | An on-prem corporate-registry / UBO source |
 | `OwnershipGraphPort` | `onprem/ownership_graph.py` | An on-prem source for ONE cited registry hop (the engine owns the traversal) |
-| `ComplianceClientPort` | `onprem/compliance.py` | The `compliance-advisory` compliance service on-prem |
+| `ComplianceClientPort` | `onprem/compliance.py` | `compliance-advisory`, on-prem |
 | `LLMPort` | `onprem/llm.py` | An on-prem model-serving endpoint |
 | `GuardrailPort` | `onprem/guardrail.py` | An on-prem prompt/response screening backend (R1) |
 | `PIIRedactionPort` | `onprem/redaction.py` | An on-prem PII de-identifier (R1, P-04) |

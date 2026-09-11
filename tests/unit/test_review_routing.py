@@ -1,7 +1,7 @@
 """R8 routing: an escalated CDD dossier is routed to human-review-console via the shared review-kit.
 
 Every CDD dossier requires human review (P-06), so rule R8 says it MUST be handed to the
-human-review-console maker-checker console rather than left as a boolean. These tests prove the
+human-review-console maker-checker queue rather than left as a boolean. These tests prove the
 producer half of that loop end-to-end against the offline local router (an in-memory outbox), and
 prove the redact- before-wire boundary so no raw customer identifier reaches the console.
 """
@@ -106,7 +106,7 @@ def test_assess_routes_escalated_dossier_to_outbox(
     assert review.case_ref == case.id
     assert review.maker == ACTOR
     assert review.tenant == "demo-bank"
-    assert review.source_key == f"cdd-sow-research:{case.subject.tenant}:{case.id}:cdd_dossier"
+    assert review.source_key == f"doc1:{case.subject.tenant}:{case.id}:cdd_dossier"
 
 
 def _high_risk_case_with_pii() -> CDDCase:

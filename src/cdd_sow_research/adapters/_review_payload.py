@@ -27,9 +27,11 @@ from ..domain.models import (
 from ..domain.pii_patterns import all_patterns
 from ..domain.policy import UboGraphPolicy
 
-#: The repository name prefixes every source_key: it is the dedup key the
-#: human-review-console stores, so it names the producer.
-_REPOSITORY = "cdd-sow-research"
+#: The prefix of every source_key. It is the dedup key human-review-console stores and queries,
+#: and the reviews already in the deployed store are keyed on this stem, so it keeps the retired
+#: short id: a new prefix re-enqueues every reviewed item unless the stored rows are backfilled
+#: first. It changes only together with that backfill.
+_SOURCE_KEY_PREFIX = "doc1"
 
 # Cap the citations carried on the wire: enough to let a reviewer trace the dossier without
 # copying the entire evidence set into the review console.
@@ -74,9 +76,8 @@ def _case_citations(case: CDDCase) -> list[Citation]:
     return out
 
 
-#: human-review-console severity for a queued perpetual-KYC item. Priority is the pKYC vocabulary;
-#: the
-#: console speaks the shared severity scale, so the mapping is declared once here.
+#: human-review-console severity for a queued perpetual-KYC item. Priority is the pKYC
+#: vocabulary; the console speaks the shared severity scale, so the mapping is declared once here.
 _SEVERITY_BY_PRIORITY: dict[QueuePriority, str] = {
     QueuePriority.URGENT: "critical",
     QueuePriority.HIGH: "high",
@@ -127,7 +128,7 @@ def assessment_to_review(assessment: PerpetualKycAssessment, *, maker: str) -> R
         required_approvals=_APPROVALS_BY_PRIORITY.get(priority, 1),
         sod_group="cdd-maker-checker",
         case_ref=item.id if item is not None else assessment.subject_id,
-        source_key=f"{_REPOSITORY}:{assessment.tenant}:{assessment.subject_id}:pkyc:{assessment.as_of}",
+        source_key=f"{_SOURCE_KEY_PREFIX}:{assessment.tenant}:{assessment.subject_id}:pkyc:{assessment.as_of}",
         citations=citations,
     )
 
@@ -178,7 +179,7 @@ def resolution_to_review(
         ),
         sod_group="cdd-maker-checker",
         case_ref=f"ubo-{resolution.subject_id}-{resolution.as_of}",
-        source_key=f"{_REPOSITORY}:{resolution.tenant}:{resolution.subject_id}:ubo:{resolution.as_of}",
+        source_key=f"{_SOURCE_KEY_PREFIX}:{resolution.tenant}:{resolution.subject_id}:ubo:{resolution.as_of}",
         citations=_limited_citations(resolution.citations),
     )
 
@@ -232,6 +233,6 @@ def case_to_review(case: CDDCase, *, maker: str) -> Review:
         required_approvals=_APPROVALS_BY_BAND.get(case.rating.band, 1),
         sod_group="cdd-maker-checker",
         case_ref=case.id,
-        source_key=f"{_REPOSITORY}:{subject.tenant}:{case.id}:cdd_dossier",
+        source_key=f"{_SOURCE_KEY_PREFIX}:{subject.tenant}:{case.id}:cdd_dossier",
         citations=_kit_citations(case),
     )

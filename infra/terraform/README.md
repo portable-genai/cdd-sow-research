@@ -10,8 +10,8 @@ Residency is enforced in depth: per-resource region pin, a `gcp.resourceLocation
 Policy (`org_policy.tf`, gated by `enable_org_policies`), and the VPC-SC perimeter
 (`vpc_sc.tf`, gated by `enable_vpc_sc`).
 
-> Retrieval and storage infrastructure (the governed RAG store) lives in `enterprise-knowledge-base`
-> (`enterprise-knowledge-base`), not here. `cdd-sow-research` ingests case documents into `enterprise-knowledge-base` and
+> Retrieval and storage infrastructure (the governed RAG store) lives in `enterprise-knowledge-base`,
+> not here. `cdd-sow-research` ingests case documents into `enterprise-knowledge-base` and
 > retrieves via `enterprise-knowledge-base`; this stack provisions only what `cdd-sow-research` owns: document extraction, PII
 > redaction, the guardrail, the WORM audit trail, CMEK, IAM and the perimeter.
 

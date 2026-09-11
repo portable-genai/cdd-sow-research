@@ -81,7 +81,7 @@ flowchart TB
     subgraph ports["Ports (21 Protocols): the hexagon boundary"]
         P1["DocumentExtraction · KnowledgeBaseClient · DocumentStore"]
         P2["AdverseMedia · CorporateRegistry · OwnershipGraph"]
-        P3["Compliance (`compliance-advisory`) · LLM"]
+        P3["Compliance (compliance-advisory) · LLM"]
         P4["Guardrail · PIIRedaction"]
         P5["AuditSink · ReviewRouter · Tracer · EvaluationGate"]
         P6["AgentRegistry · ToolCatalog"]
@@ -94,8 +94,8 @@ flowchart TB
     subgraph loc["adapters/local/*: WORKING offline (SDK-free)"]
         LO["SQLite FTS5 KB · deterministic LLM ·<br/>heuristic guardrail · regex DLP ·<br/>hash-chained SQLite audit · no-op tracer"]
     end
-    subgraph plat["adapters/platform/*: horizontal-platform and `compliance-advisory` HTTP clients"]
-        PL["Remote KB (`enterprise-knowledge-base`) · Remote Guardrail (`agent-guardrail-gateway`) ·<br/>Remote Audit (`agent-observability`) · Remote Compliance (`compliance-advisory`)"]
+    subgraph plat["adapters/platform/*: horizontal-platform and compliance-advisory HTTP clients"]
+        PL["Remote KB (enterprise-knowledge-base) · Remote Guardrail (agent-guardrail-gateway) ·<br/>Remote Audit (agent-observability) · Remote Compliance (compliance-advisory)"]
     end
     subgraph liv["live profile: reviewed hybrid"]
         LI["Local custody + Gemini API<br/>generation and grounded research"]
@@ -326,9 +326,9 @@ sequenceDiagram
     participant Svc as CddService
     participant Red as PIIRedactionPort (DLP)
     participant Grd as GuardrailPort (Model Armor)
-    participant KB as KnowledgeBaseClientPort (`enterprise-knowledge-base`)
+    participant KB as KnowledgeBaseClientPort (enterprise-knowledge-base)
     participant LLM as LLMPort (Gemini 3.5 Flash)
-    participant `compliance-advisory` as ComplianceClientPort (`compliance-advisory`)
+    participant CMP as ComplianceClientPort (compliance-advisory)
     participant Aud as AuditSinkPort (WORM)
 
     Analyst->>Svc: assess(case_input, actor)
@@ -344,8 +344,8 @@ sequenceDiagram
         KB-->>Svc: case evidence passages
         Svc->>LLM: synthesise SoW narrative, rate risk
         LLM-->>Svc: structured artifacts
-        Svc->>`compliance-advisory`: check regulatory CDD/AML expectations
-        `compliance-advisory`-->>Svc: cited compliance answer
+        Svc->>CMP: check regulatory CDD/AML expectations
+        CMP-->>Svc: cited compliance answer
         Svc->>Grd: screen(dossier, OUTPUT)
         Grd-->>Svc: verdict(allowed=true)
         Svc->>Aud: record(AuditEvent decision=ESCALATED, redacted)
@@ -443,7 +443,7 @@ flowchart LR
     cli["cli/<br/>Typer CLI (entry point: cdd-sow)"]
     srcconfig["config.py<br/>Settings + Container (DI for the hexagon)"]
     config["config/settings.yaml<br/>port -> adapter bindings, region, models"]
-    eval["eval/<br/>run_eval.py + golden dataset (the `model-quality-gate`)"]
+    eval["eval/<br/>run_eval.py + golden dataset (offline smoke gate)"]
     terraform["infra/terraform/<br/>asia-southeast1 infra (Document AI, DLP, WORM)"]
     ui["ui/<br/>React / Next.js app"]
     tests["tests/<br/>contract + unit tests (driven by the local adapters)"]

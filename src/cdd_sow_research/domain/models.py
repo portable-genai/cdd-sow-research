@@ -1,4 +1,4 @@
-"""Vertical domain models for the CDD + Source-of-Wealth Agent (catalog id cdd-sow-research).
+"""Vertical domain models for the CDD + Source-of-Wealth Agent.
 
 The domain models are split in two (see ARCHITECTURE.md, "Kernel vs vertical"):
 

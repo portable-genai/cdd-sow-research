@@ -740,7 +740,7 @@ sequenceDiagram
   participant H as Host browser
   participant B as Registered host BFF
   participant F as Agent iframe
-  participant A as `cdd-sow-research` API
+  participant A as cdd-sow-research API
   participant I as Institution identity service
 
   H->>F: Create dedicated-origin frame
@@ -757,7 +757,7 @@ sequenceDiagram
   B-->>H: Launch code only
   H->>F: host:grant with launch code
   F->>A: Redeem code with private verifier
-  A-->>F: Short-lived `cdd-sow-research` access token
+  A-->>F: Short-lived cdd-sow-research access token
   F->>A: Protected calls with access token
 ```
 
