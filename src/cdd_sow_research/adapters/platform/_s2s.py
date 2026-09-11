@@ -22,6 +22,8 @@ N-repo edit.
 
 from __future__ import annotations
 
+from urllib.parse import urlsplit
+
 from hex_service_kit.s2s import client_headers, validate_base_url
 
 #: Env var holding the bearer credential for S2S calls. Three states, not two: ABSENT means
@@ -55,8 +57,14 @@ def headers(*, settings: object, base_url: str, actor: str = "") -> dict[str, st
     )
     managed = getattr(settings, "profile", "") in {"gcp", "platform"}
     if managed and base_url.startswith("https://") and "Authorization" not in result:
-        result["Authorization"] = f"Bearer {_fetch_id_token(base_url)}"
+        result["Authorization"] = f"Bearer {_fetch_id_token(_audience(base_url))}"
     return result
+
+
+def _audience(base_url: str) -> str:
+    """The audience Cloud Run accepts for an ID token: the service origin, never a path under it."""
+    parsed = urlsplit(base_url)
+    return f"{parsed.scheme}://{parsed.netloc}"
 
 
 def _fetch_id_token(audience: str) -> str:

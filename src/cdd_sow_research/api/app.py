@@ -240,6 +240,13 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     container = (
         build_container(settings) if configured_settings is not None else deps.get_container()
     )
+    # Bound at boot rather than on the first dossier: a networked profile that never named
+    # RSK_COMPLIANCE_URL refuses to start and says so, instead of answering every assessment
+    # with a 500.
+    try:
+        _ = container.compliance
+    except ConfiguredEmptyError as exc:
+        raise RuntimeError(f"invalid deployment configuration: {exc}") from exc
     previous_active_container = getattr(_app.state, "active_container", None)
     _app.state.active_container = container
     first_dynamic_route = len(_app.router.routes)
@@ -774,8 +781,12 @@ def assess_cdd(
 
 
 def _dossier_digest(dossier: CddCaseResponse) -> str:
+    # ``compliance`` joined the wire after dossiers had already been exported. An absent answer
+    # stays out of the digest so every earlier export still verifies; a present one is inside
+    # it, so the answer cannot be rewritten in transit.
+    exclude = {"compliance"} if dossier.compliance is None else None
     encoded = json.dumps(
-        dossier.model_dump(mode="json"),
+        dossier.model_dump(mode="json", exclude=exclude),
         sort_keys=True,
         separators=(",", ":"),
         ensure_ascii=False,

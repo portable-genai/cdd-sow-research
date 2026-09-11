@@ -474,6 +474,30 @@ class AdverseMediaScreeningModel(BaseModel):
         )
 
 
+class ComplianceAnswerModel(BaseModel):
+    """What compliance-advisory answered (mirror of ComplianceAnswer). Never an outcome."""
+
+    question: str
+    answer: str
+    citations: list[CitationModel] = Field(default_factory=list)
+    requires_human_review: bool = True
+    confidence: float = 0.0
+
+    @classmethod
+    def from_domain(
+        cls,
+        answer: m.ComplianceAnswer,
+        continuation_ids: frozenset[str] = frozenset(),
+    ) -> ComplianceAnswerModel:
+        return cls(
+            question=answer.question,
+            answer=answer.answer,
+            citations=[CitationModel.from_domain(c, continuation_ids) for c in answer.citations],
+            requires_human_review=answer.requires_human_review,
+            confidence=answer.confidence,
+        )
+
+
 class CddCaseResponse(BaseModel):
     """The full CDD dossier (mirror of CDDCase)."""
 
@@ -486,6 +510,8 @@ class CddCaseResponse(BaseModel):
     ownership: OwnershipSummaryModel | None = None
     # None = the case was not screened; [] alerts = screened and clear.
     screening: ScreeningResultModel | None = None
+    # None = no compliance answer came back; an object = what compliance-advisory answered.
+    compliance: ComplianceAnswerModel | None = None
     requires_human_review: bool = True
     generated_at: str = ""
 
@@ -519,6 +545,11 @@ class CddCaseResponse(BaseModel):
             screening=(
                 ScreeningResultModel.from_domain(case.screening)
                 if case.screening is not None
+                else None
+            ),
+            compliance=(
+                ComplianceAnswerModel.from_domain(case.compliance, continuation_ids)
+                if case.compliance is not None
                 else None
             ),
             requires_human_review=case.requires_human_review,

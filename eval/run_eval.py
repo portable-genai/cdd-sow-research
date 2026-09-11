@@ -431,7 +431,7 @@ class FakeRegistry:
 
 class FakeCompliance:
     def check(self, question: str, actor: str):  # type: ignore[no-untyped-def]
-        from cdd_sow_research.ports.compliance import ComplianceAnswer
+        from cdd_sow_research.domain.models import ComplianceAnswer
 
         return ComplianceAnswer(question=question, answer="CDD/AML expectations apply.")
 

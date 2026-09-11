@@ -12,6 +12,7 @@ run "named_edge_contract" {
     worm_locked                          = false
     deployment_stage                     = "production-edge"
     production_edge_enabled              = true
+    compliance_advisory_url              = "https://compliance-advisory.fictional-bank.example"
     api_image                            = "asia-southeast1-docker.pkg.dev/fictional/doc1/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     ui_image                             = "asia-southeast1-docker.pkg.dev/fictional/doc1/ui@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     agent_domain                         = "doc1.fictional-bank.example"
@@ -63,6 +64,11 @@ run "named_edge_contract" {
   assert {
     condition     = endswith(google_cloud_run_v2_service.api[0].template[0].containers[0].image, "@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     error_message = "API image must remain the reviewed digest."
+  }
+
+  assert {
+    condition     = one([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "RSK_COMPLIANCE_URL"]) == "https://compliance-advisory.fictional-bank.example"
+    error_message = "The API must be told which compliance-advisory to ask; the gcp profile refuses to start without it."
   }
 
   assert {
@@ -180,6 +186,7 @@ run "reject_bootstrap_with_edge_enabled" {
     worm_locked                          = false
     deployment_stage                     = "mode5-key-bootstrap"
     production_edge_enabled              = true
+    compliance_advisory_url              = "https://compliance-advisory.fictional-bank.example"
     api_image                            = "asia-southeast1-docker.pkg.dev/fictional/doc1/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     ui_image                             = "asia-southeast1-docker.pkg.dev/fictional/doc1/ui@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     agent_domain                         = "doc1.fictional-bank.example"
@@ -317,6 +324,7 @@ run "reject_mutable_api_image" {
     worm_locked                          = false
     deployment_stage                     = "production-edge"
     production_edge_enabled              = true
+    compliance_advisory_url              = "https://compliance-advisory.fictional-bank.example"
     api_image                            = "asia-southeast1-docker.pkg.dev/fictional/doc1/api:latest"
     ui_image                             = "asia-southeast1-docker.pkg.dev/fictional/doc1/ui@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     agent_domain                         = "doc1.fictional-bank.example"
@@ -513,4 +521,38 @@ run "a_served_region_needs_no_widening" {
     condition     = google_document_ai_processor.kyc.location == "asia-southeast1"
     error_message = "The deploy region must be used as-is, never widened to a multi-region."
   }
+}
+
+# The gcp profile refuses to start without naming the compliance service its dossiers ask, so an
+# edge that omits it is refused at plan rather than deployed into a revision that cannot boot.
+run "reject_an_edge_without_a_compliance_service" {
+  command = plan
+
+  variables {
+    project_id                           = "fictional-doc1-production"
+    docai_location                       = "us"
+    enable_org_policies                  = false
+    enable_vpc_sc                        = false
+    worm_locked                          = false
+    deployment_stage                     = "production-edge"
+    production_edge_enabled              = true
+    api_image                            = "asia-southeast1-docker.pkg.dev/fictional/doc1/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ui_image                             = "asia-southeast1-docker.pkg.dev/fictional/doc1/ui@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    agent_domain                         = "doc1.fictional-bank.example"
+    installation_manifest_secret_id      = "doc1-installations"
+    installation_manifest_secret_version = "7"
+    runtime_settings_secret_id           = "doc1-runtime-settings"
+    runtime_settings_secret_version      = "4"
+    production_manifest_version          = "test-v1"
+    production_manifest_sha256           = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    production_settings_sha256           = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    alert_notification_channels          = ["projects/fictional-doc1-production/notificationChannels/123"]
+    production_identity_mode             = "embedded-grant"
+    enable_embed_signing_key             = true
+    embed_signing_key_version            = "projects/fictional-doc1-production/locations/asia-southeast1/keyRings/cdd-sow-agent-ring/cryptoKeys/cdd-sow-agent-cmek-embed-signing/cryptoKeyVersions/1"
+    edge_min_instances                   = 2
+    edge_max_instances                   = 4
+  }
+
+  expect_failures = [var.compliance_advisory_url]
 }

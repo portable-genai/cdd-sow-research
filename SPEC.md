@@ -133,9 +133,11 @@ checker) applies: the dossier always requires human review.
 5. `adverse_media.scan` and `registry.resolve` (UBO).
 6. `SourceOfWealthService.build` (LLM synthesis + self-critique groundedness pass).
 7. `RiskRatingService.rate` (LLM, then deterministic band raise on hard signals).
-8. `compliance.check` against `compliance-advisory` (regulatory CDD/AML expectations), best-effort.
+8. `compliance.check` against `compliance-advisory` (regulatory CDD/AML expectations). Advisory:
+   the answer is kept on the dossier as `compliance`; a check that fails leaves it `null` and
+   logs NOT CHECKED, and never fails the dossier.
 9. Assemble `CDDCase`.
-10. `guardrail.screen(OUTPUT)` on the narrative + rationale. Blocked: audit BLOCKED + raise.
+10. `guardrail.screen(OUTPUT)` on the narrative, the rationale and the compliance answer. Blocked: audit BLOCKED + raise.
 11. Review policy: always `requires_human_review=True`; escalate on hard signals.
 12. `audit.record` (already-redacted prompt + a redacted response summary), decision
     ESCALATED.
@@ -221,8 +223,10 @@ required. The normative route, token, state-machine, and completion contracts li
   per-bundle thresholds); no bare metric names go on the wire, so `model-quality-gate`'s fail-closed
   unknown-metric rejection is never triggered by this client.
 - **`agent-observability`** (`OBSERVABILITY_URL`): `POST /v1/audit` (202).
-- **`compliance-advisory`** (`RSK_COMPLIANCE_URL`): `POST /ask {question, actor, filters}` ->
-  AnswerResponse `{question, answer, citations, requires_human_review, confidence}`.
+- **`compliance-advisory`** (`RSK_COMPLIANCE_URL`, required with no default): `POST /ask {question, filters}` ->
+  AnswerResponse `{question, answer, citations, requires_human_review, confidence}`. No actor is sent:
+  the receiver resolves its own principal. Bound under `gcp`, `live` and `platform`; only `local`
+  answers in-process.
 
 ---
 

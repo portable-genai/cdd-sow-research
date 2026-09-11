@@ -649,6 +649,21 @@ class CaseInput:
 
 
 @dataclass(frozen=True, slots=True)
+class ComplianceAnswer:
+    """What `compliance-advisory` answered when the dossier asked it a regulatory question.
+
+    Advisory and never an outcome: the rating is settled before the question is asked, and the
+    answer travels with the dossier to the human checker beside the figures it does not move.
+    """
+
+    question: str
+    answer: str
+    citations: tuple[Citation, ...] = field(default_factory=tuple)
+    requires_human_review: bool = True
+    confidence: float = 0.0
+
+
+@dataclass(frozen=True, slots=True)
 class CDDCase:
     """A single CDD dossier bundling all four cited, audited artifacts.
 
@@ -673,6 +688,10 @@ class CDDCase:
     # annotations here are eager (no future import), so unquoting would NameError at
     # import time on py312; the UP037 suppression below keeps ruff from "fixing" that.
     screening: "ScreeningResult | None" = None  # noqa: UP037
+    # What compliance-advisory answered. None means no answer came back (unreachable, refused
+    # or ungrounded), which is distinct from an answer: the console must not render the first
+    # as the second.
+    compliance: ComplianceAnswer | None = None
     requires_human_review: bool = True
     generated_at: datetime = field(default_factory=utcnow)
 

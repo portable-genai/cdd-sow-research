@@ -71,6 +71,7 @@ def _ready_values(
             ),
             "DOC1_AGENT_DOMAIN": "doc1.fictionalbank.sg",
             "DOC1_STANDALONE_DOMAIN": "doc1-login.fictionalbank.sg",
+            "DOC1_COMPLIANCE_ADVISORY_URL": "https://compliance-advisory.fictionalbank.sg",
             "DOC1_TERRAFORM_STATE_BUCKET": "approved-doc1-tfstate",
             "DOC1_TERRAFORM_STATE_PREFIX": "doc1/production",
             "DOC1_APPROVED_PARENT_ORIGINS": "https://portal.fictionalbank.sg",
@@ -1161,3 +1162,16 @@ def test_a_non_boolean_worm_approval_is_not_read_as_approval() -> None:
         values["DOC1_WORM_LOCK_APPROVED"] = value
         mapped = deployment_env.terraform_environment(values)
         assert mapped["TF_VAR_worm_locked"] == "false", f"{value!r} was read as approval"
+
+
+def test_an_edge_that_asks_compliance_advisory_over_plaintext_is_refused() -> None:
+    """The gcp profile refuses to start without a compliance service, so the edge must name one,
+    and over HTTPS: the dossier's regulatory question and its cited answer cross that hop."""
+    values = _ready_values()
+    values["DOC1_COMPLIANCE_ADVISORY_URL"] = "http://compliance-advisory.fictionalbank.sg"
+
+    errors = deployment_env.validate_environment(values, require_ready=True)
+
+    assert any(
+        "DOC1_COMPLIANCE_ADVISORY_URL must be an absolute HTTPS URL" in error for error in errors
+    ), errors
