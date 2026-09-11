@@ -151,13 +151,13 @@ directions). As a flowchart:
 flowchart TD
     redact["redact(case inputs)"] --> screenIn["guardrail.screen(INPUT)"]
     screenIn -->|blocked| blockedAudit["audit BLOCKED, raise"]
-    screenIn -->|allowed| ingest["per KYC doc: extract then ingest to `enterprise-knowledge-base` (case ACL)"]
+    screenIn -->|allowed| ingest["per KYC doc: extract then ingest to enterprise-knowledge-base (case ACL)"]
     ingest --> search["knowledge_base.search"]
     search -->|empty| emptyErr["RetrievalEmptyError"]
     search --> research["adverse_media.scan, registry.resolve"]
     research --> sow["SoW narrative (LLM + self-critique)"]
     sow --> risk["risk rating (LLM, then hard-signal raise)"]
-    risk --> comp["compliance.check (`compliance-advisory`)"]
+    risk --> comp["compliance.check (compliance-advisory)"]
     comp --> assemble["assemble CDDCase"]
     assemble --> screenOut["guardrail.screen(OUTPUT)"]
     screenOut --> audit["audit.record(redacted), ESCALATED"]
@@ -175,9 +175,9 @@ sequenceDiagram
     participant Red as PIIRedactionPort (DLP)
     participant Grd as GuardrailPort (Model Armor)
     participant Doc as DocumentExtractionPort
-    participant KB as KnowledgeBaseClientPort (`enterprise-knowledge-base`)
+    participant KB as KnowledgeBaseClientPort (enterprise-knowledge-base)
     participant LLM as LLMPort (Gemini 3.5 Flash)
-    participant `compliance-advisory` as ComplianceClientPort (`compliance-advisory`)
+    participant CMP as ComplianceClientPort (compliance-advisory)
     participant Aud as AuditSinkPort (WORM)
 
     Analyst->>Svc: assess(case_input, actor)
@@ -195,8 +195,8 @@ sequenceDiagram
         KB-->>Svc: case evidence passages
         Svc->>LLM: synthesise SoW, rate risk
         LLM-->>Svc: structured artifacts plus citations
-        Svc->>`compliance-advisory`: check regulatory CDD and AML expectations
-        `compliance-advisory`-->>Svc: cited compliance answer
+        Svc->>CMP: check regulatory CDD and AML expectations
+        CMP-->>Svc: cited compliance answer
         Svc->>Grd: screen(dossier, OUTPUT)
         Grd-->>Svc: verdict(allowed=true)
         Svc->>Aud: record(AuditEvent decision=ESCALATED, redacted)
@@ -231,24 +231,24 @@ flowchart TB
             ROOT --- GSUB
         end
         DOC["Document AI<br/>(KYC extraction)"]
-        `enterprise-knowledge-base`["`enterprise-knowledge-base`<br/>(governed RAG, case ACL)"]
+        EKB["enterprise-knowledge-base<br/>(governed RAG, case ACL)"]
         MA["Model Armor<br/>(regional endpoint)"]
         DLP["Sensitive Data Protection / DLP"]
         LOG["Cloud Logging<br/>locked WORM bucket"]
         TR["Cloud Trace<br/>(OTel, content OFF)"]
-        EVAL["Gen AI evaluation service + `model-quality-gate`"]
-        `compliance-advisory`["`compliance-advisory`"]
+        EVAL["Gen AI evaluation service + model-quality-gate"]
+        CMPSVC["compliance-advisory"]
         KMS["Cloud KMS<br/>regional CMEK"]
     end
 
     APP["FastAPI / CLI / UI / A2A"] --> ROOT
     ROOT --> DOC
-    ROOT --> `enterprise-knowledge-base`
+    ROOT --> EKB
     ROOT --> MA
     ROOT --> DLP
     ROOT --> LOG
     ROOT --> TR
-    ROOT --> `compliance-advisory`
+    ROOT --> CMPSVC
     EVAL -. promotion gate .-> ROOT
     KMS -. encrypts .-> DOC
     KMS -. encrypts .-> LOG
@@ -271,7 +271,7 @@ call managed services directly (standalone), and the `platform` adapters delegat
 
 ```mermaid
 flowchart LR
-    subgraph b1["`cdd-sow-research` (this repo)"]
+    subgraph b1["cdd-sow-research (this repo)"]
         DOMAIN[Domain core]
         SAFE[Guardrail / Redaction]
         KBP[KnowledgeBaseClient]
@@ -281,16 +281,16 @@ flowchart LR
     end
 
     subgraph platform["profile = platform (inside the platform)"]
-        `agent-guardrail-gateway`[agent-guardrail-gateway]
-        `enterprise-knowledge-base`[enterprise-knowledge-base]
-        `agent-observability`[agent-observability]
-        `compliance-advisory`[compliance-advisory]
+        GATEWAY[agent-guardrail-gateway]
+        EKB[enterprise-knowledge-base]
+        OBS[agent-observability]
+        CMPSVC[compliance-advisory]
     end
 
-    SAFE -- platform --> `agent-guardrail-gateway`
-    KBP -- platform --> `enterprise-knowledge-base`
-    AUD -- platform --> `agent-observability`
-    CMP -- platform --> `compliance-advisory`
+    SAFE -- platform --> GATEWAY
+    KBP -- platform --> EKB
+    AUD -- platform --> OBS
+    CMP -- platform --> CMPSVC
 ```
 
 | Dependency | Repo | Backs `cdd-sow-research` ports | HTTP contract (SPEC §6) |

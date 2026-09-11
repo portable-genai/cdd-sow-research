@@ -7,7 +7,7 @@ Two named layers (--mode):
   fails if the agent's dossiers fall below the model-risk thresholds agreed for a
   regulated financial-crime agent (see ``eval/rubrics/*.yaml``). It is a smoke check, NOT
   the promotion authority.
-* **gate** — the promotion verdict from the shared model-quality-gate AI-quality service via the
+* **gate** — the promotion verdict from the shared ``model-quality-gate`` service via the
   ``EvaluationGatePort`` (requires ``CDD_PROFILE=platform|gcp``); it fails closed on the
   reconciled evaluate + gate result.
 
@@ -31,8 +31,7 @@ Usage::
 
     python eval/run_eval.py                      # offline smoke check (CI, default)
     python eval/run_eval.py --dataset path.jsonl # custom golden set
-    python eval/run_eval.py --mode gate          # promotion verdict via model-quality-gate
-    (platform/gcp)
+    python eval/run_eval.py --mode gate          # promotion verdict (platform/gcp)
 
 Exit code is ``0`` iff ``EvalReport.passed`` (every metric meets its threshold).
 """
@@ -1046,9 +1045,8 @@ def main(argv: list[str] | None = None) -> int:
     """Dispatch --mode via the shared eval_main scaffold (fail-closed exit codes).
 
     The offline smoke evaluator and the model-quality-gate runner below are this repo's own;
-    eval_main
-    provides the CLI, the aligned report rendering, and the fail-closed exit codes (gate mode
-    exits 0 only when both the scored report and the authority's verdict pass).
+    eval_main provides the CLI, the aligned report rendering, and the fail-closed exit codes
+    (gate mode exits 0 only when both the scored report and the authority's verdict pass).
     """
     return eval_main(
         smoke=lambda dataset: run_offline(dataset, load_thresholds_from_rubrics()),

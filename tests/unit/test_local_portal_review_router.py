@@ -55,10 +55,7 @@ def test_local_router_persists_then_submits_to_service_intake(
     submitted_review = submit.call_args.args[0]
     assert submitted_review.maker == "analyst@bank.test"
     assert submitted_review.tenant == "demo-bank"
-    assert (
-        submitted_review.source_key
-        == "cdd-sow-research:demo-bank:cdd-subj-acme-holdings:cdd_dossier"
-    )
+    assert submitted_review.source_key == "doc1:demo-bank:cdd-subj-acme-holdings:cdd_dossier"
     assert router.outbox.pending() == ()
 
 

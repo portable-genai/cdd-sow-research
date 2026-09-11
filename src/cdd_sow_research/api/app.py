@@ -1003,10 +1003,9 @@ def run_perpetual_kyc(
     """Run one perpetual-KYC cycle: detect change, re-score, queue for human review.
 
     The re-score is deterministic pure code and the outcome always requires human review;
-    the assessment is routed to human-review-console and never acted on here. The subject's tenant
-    is
-    stamped from the VERIFIED principal, so a monitoring record cannot be planted in (or
-    read from) another tenant's ACL: a cross-tenant caller gets 403, not 404.
+    the assessment is routed to human-review-console and never acted on here. The subject's
+    tenant is stamped from the VERIFIED principal, so a monitoring record cannot be planted in
+    (or read from) another tenant's ACL: a cross-tenant caller gets 403, not 404.
     """
     from dataclasses import replace
 
@@ -1062,10 +1061,9 @@ def perpetual_kyc_queue(
 #
 # Two verbs with deliberately different consequences. POST resolves: it produces the
 # findings, the control basis and the indicators, which is a consequential claim, so it
-# always requires human review and is routed to human-review-console under rule R8. GET returns the
-# WALKED
-# STRUCTURE ONLY (layers, edges, citations) with no finding, no basis and no flag, so it
-# is evidence rather than a decision and stays a side-effect-free read. See
+# always requires human review and is routed to human-review-console under rule R8. GET returns
+# the WALKED STRUCTURE ONLY (layers, edges, citations) with no finding, no basis and no flag, so
+# it is evidence rather than a decision and stays a side-effect-free read. See
 # docs/ubo-graph-contract.md for why the read was drawn there and not elsewhere.
 # --------------------------------------------------------------------------- #
 @api_router.post("/v1/ubo-graph", response_model=UboGraphResponse, tags=["ownership"])
@@ -1078,10 +1076,9 @@ def resolve_ubo_graph(
 
     Every percentage is the deterministic product of the cited registry hops, computed by
     pure code an auditor can recompute; the outcome always requires human review and is
-    routed to human-review-console rather than acted on. The subject's tenant is stamped from the
-    VERIFIED
-    principal, so a resolution can never be routed under another tenant's ACL: a caller
-    with no case entitlement gets 403.
+    routed to human-review-console rather than acted on. The subject's tenant is stamped from
+    the VERIFIED principal, so a resolution can never be routed under another tenant's ACL: a
+    caller with no case entitlement gets 403.
     """
     from dataclasses import replace
 

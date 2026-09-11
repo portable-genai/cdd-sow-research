@@ -156,8 +156,8 @@ def run_perpetual_kyc(
     Compares the current sanctions, adverse-media and corporate-registry picture against
     the stored baseline, re-scores the relationship with deterministic code (the model
     never produces the number), and places an explainable item on the human review queue.
-    The outcome always requires human review and is routed to human-review-console; nothing is acted
-    on.
+    The outcome always requires human review and is routed to human-review-console; nothing
+    is acted on.
 
     Args:
       subject_name: The customer/entity name to monitor.

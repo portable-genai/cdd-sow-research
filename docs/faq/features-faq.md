@@ -37,7 +37,7 @@ logic and its outputs. It **integrates** (via the `platform` profile's HTTP adap
 several cross-cutting concerns that are owned by sibling platform systems, do not rebuild
 these in a fork:
 
-| Concern | Owned by (catalog id / repo) | `cdd-sow-research`'s role |
+| Concern | Owned by | `cdd-sow-research`'s role |
 |---|---|---|
 | Runtime guardrail: PII redaction, prompt-injection / jailbreak defense | `agent-guardrail-gateway` | consumes it on every assessment (input + output screen) |
 | Governed RAG / ACL-aware knowledge base with citations | `enterprise-knowledge-base` | ingests case docs into it, retrieves grounded passages from it |

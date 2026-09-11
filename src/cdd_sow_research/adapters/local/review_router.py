@@ -36,9 +36,8 @@ _ACTOR = "doc1-cdd-sow-research"
 class SqliteReviewOutbox:
     """cdd-sow-research-owned durable outbox with retry-safe, producer-keyed entries.
 
-    The console owns its own review database.  This table is only cdd-sow-research's delivery log
-    and
-    intentionally stores the complete, already-redacted shared-kit payload needed to retry.
+    The console owns its own review database.  This table is only cdd-sow-research's delivery
+    log and intentionally stores the complete, already-redacted shared-kit payload needed to retry.
     """
 
     def __init__(self, path: str) -> None:

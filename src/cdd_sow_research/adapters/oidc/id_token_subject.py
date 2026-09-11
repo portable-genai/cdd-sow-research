@@ -86,10 +86,9 @@ class GoogleIdTokenBrokerSubjectVerifier:
             tenant=policy.tenant,
             # No scope claim exists; installation policy establishes the grant scope.
             scopes=(),
-            # Google cannot sign a cdd-sow-research installation claim. The installation binding
-            # comes
-            # from the reviewed request installation plus the unique BFF/subject client
-            # mapping enforced by ``StaticBrokerInstallationResolver``.
+            # Google cannot sign a cdd-sow-research installation claim. The installation
+            # binding comes from the reviewed request installation plus the unique BFF/subject
+            # client mapping enforced by ``StaticBrokerInstallationResolver``.
             signed_installation="",
             correlation=hashlib.sha256(jti.encode()).hexdigest() if jti else "",
             issued_at=issued,

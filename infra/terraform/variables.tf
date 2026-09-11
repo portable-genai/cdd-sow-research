@@ -322,7 +322,7 @@ variable "sanctions_sync_image" {
 
 variable "standalone" {
   type        = bool
-  description = "Standalone deploy (default): provision this repo's own guardrail (Model Armor), DLP templates and WORM audit bucket+sink. Set false for a platform deploy where agent-guardrail-gateway, agent-observability front those. Immutable per deployment (a locked WORM bucket blocks a true->false toggle). validate ignores variable-driven count, so a second `validate -var standalone=false` is a wiring smoke, not proof the count=0 path is destroy-safe."
+  description = "Standalone deploy (default): provision this repo's own guardrail (Model Armor), DLP templates and WORM audit bucket+sink. Set false for a platform deploy where agent-guardrail-gateway and agent-observability front those. Immutable per deployment (a locked WORM bucket blocks a true->false toggle). validate ignores variable-driven count, so a second `validate -var standalone=false` is a wiring smoke, not proof the count=0 path is destroy-safe."
   default     = true
 }
 

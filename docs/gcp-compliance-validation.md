@@ -7,7 +7,7 @@ in-region KYC workload (MAS by default, plus HKMA/APRA/FSA/FCA-style residency e
 
 Scope: the managed `gcp` profile only. The `local`, `platform`, and `onprem` profiles are
 out of scope here. Some controls are intentionally delegated to sibling platform services
-(`enterprise-knowledge-base` store, `agent-observability`, `compliance-advisory` compliance) and are noted as boundary items.
+(`enterprise-knowledge-base` store, `agent-observability`, `compliance-advisory`) and are noted as boundary items.
 
 Status legend: **Met** (control present and correct), **Accepted** (a hardening was
 considered and a deliberate choice was made to leave it), **Boundary** (delegated to a
@@ -69,7 +69,7 @@ One hardening was considered and **deliberately not taken**: HSM-backed CMEK. Th
 - **`enterprise-knowledge-base` store (R3 case-scoped ACL) (Boundary).** Retrieval storage, its CMEK, and
   the `case:<subject_id>` ACL enforcement live in `enterprise-knowledge-base`, not this repo. Verify residency and CMEK
   in `enterprise-knowledge-base`'s own setup.
-- **`agent-observability` / `compliance-advisory` compliance / `agent-registry` (Boundary).** Consumed via `platform` adapters;
+- **`agent-observability` / `compliance-advisory` / `agent-registry` (Boundary).** Consumed via `platform` adapters;
   their residency and retention are those services' responsibility.
 - **Agent Runtime (reasoningEngine) (Boundary).** Created by the Agent Platform SDK at deploy
   time; `agent_runtime.tf` reserves only the CMEK staging bucket and the runtime SA. Confirm
