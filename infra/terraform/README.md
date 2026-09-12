@@ -47,7 +47,7 @@ Policy (`org_policy.tf`, gated by `enable_org_policies`), and the VPC-SC perimet
 | `scheduler_time_zone` | string | `"Asia/Singapore"` | Pair with `region` (e.g. `europe-west2` + `Europe/London`). |
 | `retention_days` | number | `180` (six months) | Longer retention obligations (>= 180 enforced). |
 | `existing_locked_retention_days` | number | `0` | Set to the current locked value before planning an existing stack; requested retention cannot be lower. |
-| `worm_locked` | bool | `true` | Set `false` ONLY for evaluation/demo stacks that must stay deletable. Locking is IRREVERSIBLE; `true` is required for compliant production. |
+| `worm_locked` | bool | **none: every deployment states it** | Locking is IRREVERSIBLE, so a plan refuses until this is named rather than taking a default. `true` is required for compliant production; `false` is for evaluation or reference stacks that must stay deletable, and is what the reference deployment states. |
 | `enable_org_policies` | bool | `true` | Set `false` for a quick project-scoped evaluation without `roles/orgpolicy.policyAdmin`. |
 | `enable_vpc_sc` | bool | `true` | Set `false` for a quick project-scoped evaluation without an Access Context Manager policy. |
 | `access_policy_id` | string | `""` | Required when `enable_vpc_sc = true` (cross-validated at plan time). `gcloud access-context-manager policies create --organization=ORG_ID --title="sg-residency"` |
@@ -167,7 +167,7 @@ terraform plan                                  # review
 ```
 
 Do NOT run `terraform apply` against a shared project without review. The WORM bucket lock
-(`worm_locked = true`, the default) is **irreversible**: confirm `retention_days` before
+(`worm_locked = true`) is **irreversible**: the variable has no default, so name it deliberately and confirm `retention_days` before
 applying.
 
 ## Deploy order with VPC-SC

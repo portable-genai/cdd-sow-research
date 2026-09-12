@@ -12,7 +12,8 @@
 #
 # ############################################################################ #
 # # WARNING: LOCKING IS IRREVERSIBLE.                                         # #
-# # The lock is variable-controlled (var.worm_locked, DEFAULT TRUE). Locking  # #
+# # The lock is variable-controlled (var.worm_locked, and it has NO DEFAULT,   # #
+# # so a plan refuses until the deployment names it). Locking                  # #
 # # permanently prevents reducing retention or deleting this bucket for the   # #
 # # full retention window. You CANNOT undo it, not even with project-owner    # #
 # # rights. Confirm retention_days before apply. worm_locked = true is        # #
@@ -28,7 +29,8 @@ resource "google_logging_project_bucket_config" "worm_audit" {
   description    = "WORM audit bucket for the cdd-sow-research CDD + Source-of-Wealth Agent (six-month default retention)."
   retention_days = var.retention_days # 180 days by default
 
-  # IRREVERSIBLE when true (the default): see WARNING banner above.
+  # IRREVERSIBLE when true: see the WARNING banner above. No default, so this value is
+  # whatever the deployment stated and never what it failed to state.
   locked = var.worm_locked
 
   # CMEK on the log bucket (P-09) — explicit, does not cascade.

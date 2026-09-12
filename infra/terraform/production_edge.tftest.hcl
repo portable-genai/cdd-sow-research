@@ -202,12 +202,18 @@ run "reject_bootstrap_with_edge_enabled" {
   expect_failures = [terraform_data.production_stage_contract]
 }
 
-# This run block deliberately sets NEITHER retention_days NOR worm_locked: it exists to observe
-# the shipped defaults in variables.tf, so pinning either one would make its own assertions
-# tautological. That makes it the one guard here sensitive to an auto-loaded terraform.tfvars —
-# `terraform test` loads that filename silently, so real deployment inputs must NOT use it.
-# Keep operator inputs in an explicitly-passed file (e.g. `-var-file=doc1-prod.tfvars`).
-run "default_retention_keeps_worm_lock_enabled" {
+# This run block deliberately leaves retention_days unset: it exists to observe the shipped
+# default in variables.tf, so pinning it would make its own assertion tautological. That makes it
+# the one guard here sensitive to an auto-loaded terraform.tfvars — `terraform test` loads that
+# filename silently, so real deployment inputs must NOT use it. Keep operator inputs in an
+# explicitly-passed file (e.g. `-var-file=doc1-prod.tfvars`).
+#
+# worm_locked, by contrast, MUST be stated: it has no default as of 2026-09-12, because an
+# irreversible control may never be taken by a deployment that said nothing. A run block that
+# omitted it used to pass by reading `default = true`, which is exactly the silence this fleet
+# removed; now the plan refuses, and every caller names the lock. This one states the locked
+# posture, because what it asserts is that the six-month floor belongs to a LOCKED bucket.
+run "the_retention_floor_belongs_to_a_locked_bucket" {
   command = plan
 
   variables {
@@ -216,6 +222,7 @@ run "default_retention_keeps_worm_lock_enabled" {
     enable_org_policies = false
     enable_vpc_sc       = false
     standalone          = false
+    worm_locked         = true
   }
 
   assert {
@@ -225,7 +232,7 @@ run "default_retention_keeps_worm_lock_enabled" {
 
   assert {
     condition     = var.worm_locked
-    error_message = "Changing the retention default must not disable the irreversible WORM lock."
+    error_message = "This run states the locked posture; the floor it checks only applies when locked."
   }
 }
 
@@ -280,6 +287,8 @@ run "unlocked_stack_still_requires_a_positive_retention" {
   expect_failures = [var.retention_days]
 }
 
+# A bucket already locked at seven years may never be planned down to six months. The lock is
+# stated here because it has no default, and because the rule under test is about a LOCKED bucket.
 run "reject_reducing_existing_locked_retention" {
   command = plan
 
@@ -289,6 +298,7 @@ run "reject_reducing_existing_locked_retention" {
     enable_org_policies            = false
     enable_vpc_sc                  = false
     standalone                     = false
+    worm_locked                    = true
     retention_days                 = 180
     existing_locked_retention_days = 2557
   }
