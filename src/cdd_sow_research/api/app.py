@@ -241,11 +241,12 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
         build_container(settings) if configured_settings is not None else deps.get_container()
     )
     # Bound at boot rather than on the first dossier: a networked profile that never named
-    # RSK_COMPLIANCE_URL refuses to start and says so, instead of answering every assessment
-    # with a 500.
+    # RSK_COMPLIANCE_URL, or named the wrong IAP audience in RSK_COMPLIANCE_IAP_AUDIENCE,
+    # refuses to start and says which variable, instead of answering every assessment with a
+    # 500 or collecting 401s from an edge that cannot explain itself.
     try:
         _ = container.compliance
-    except ConfiguredEmptyError as exc:
+    except (ConfiguredEmptyError, ValueError) as exc:
         raise RuntimeError(f"invalid deployment configuration: {exc}") from exc
     previous_active_container = getattr(_app.state, "active_container", None)
     _app.state.active_container = container

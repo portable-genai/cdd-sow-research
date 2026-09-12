@@ -71,7 +71,12 @@ def _ready_values(
             ),
             "DOC1_AGENT_DOMAIN": "doc1.fictionalbank.sg",
             "DOC1_STANDALONE_DOMAIN": "doc1-login.fictionalbank.sg",
-            "DOC1_COMPLIANCE_ADVISORY_URL": "https://compliance-advisory.fictionalbank.sg",
+            "DOC1_COMPLIANCE_ADVISORY_URL": (
+                "https://rm.fictionalbank.sg/apps/compliance-advisory/api"
+            ),
+            "DOC1_COMPLIANCE_ADVISORY_IAP_AUDIENCE": (
+                "1234567890-fictionaledgeclient.apps.googleusercontent.com"
+            ),
             "DOC1_TERRAFORM_STATE_BUCKET": "approved-doc1-tfstate",
             "DOC1_TERRAFORM_STATE_PREFIX": "doc1/production",
             "DOC1_APPROVED_PARENT_ORIGINS": "https://portal.fictionalbank.sg",
@@ -1168,10 +1173,52 @@ def test_an_edge_that_asks_compliance_advisory_over_plaintext_is_refused() -> No
     """The gcp profile refuses to start without a compliance service, so the edge must name one,
     and over HTTPS: the dossier's regulatory question and its cited answer cross that hop."""
     values = _ready_values()
-    values["DOC1_COMPLIANCE_ADVISORY_URL"] = "http://compliance-advisory.fictionalbank.sg"
+    values["DOC1_COMPLIANCE_ADVISORY_URL"] = (
+        "http://rm.fictionalbank.sg/apps/compliance-advisory/api"
+    )
 
     errors = deployment_env.validate_environment(values, require_ready=True)
 
     assert any(
         "DOC1_COMPLIANCE_ADVISORY_URL must be an absolute HTTPS URL" in error for error in errors
     ), errors
+
+
+def test_a_compliance_url_with_no_edge_mount_path_is_refused() -> None:
+    """compliance-advisory is only reachable through journey-portal's edge, so the URL carries
+    that app's mount path. A bare origin reaches the portal shell, which would answer a
+    regulatory question with a sign-in page and no error anybody sees."""
+    values = _ready_values()
+    values["DOC1_COMPLIANCE_ADVISORY_URL"] = "https://compliance-advisory-api.fictionalbank.sg"
+
+    errors = deployment_env.validate_environment(values, require_ready=True)
+
+    assert any("must carry the app's edge mount path" in error for error in errors), errors
+
+
+def test_the_backend_service_path_is_refused_as_the_compliance_bearer_audience() -> None:
+    """Both audiences sit in the same deployment record and only the OAuth client id is a bearer
+    audience; IAP compares the backend-service path against its own inbound assertion."""
+    values = _ready_values()
+    values["DOC1_COMPLIANCE_ADVISORY_IAP_AUDIENCE"] = (
+        "/projects/000000000000/global/backendServices/1111111111111111111"
+    )
+
+    errors = deployment_env.validate_environment(values, require_ready=True)
+
+    assert any(
+        "DOC1_COMPLIANCE_ADVISORY_IAP_AUDIENCE must be the IAP OAuth client id" in error
+        for error in errors
+    ), errors
+
+
+def test_the_compliance_edge_leg_reaches_terraform_as_two_inputs() -> None:
+    """A validated pair that never reaches Terraform is a pair the revision never receives."""
+    mapped = deployment_env.terraform_environment(_ready_values())
+
+    assert mapped["TF_VAR_compliance_advisory_url"] == (
+        "https://rm.fictionalbank.sg/apps/compliance-advisory/api"
+    )
+    assert mapped["TF_VAR_compliance_advisory_iap_audience"] == (
+        "1234567890-fictionaledgeclient.apps.googleusercontent.com"
+    )

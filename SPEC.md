@@ -227,6 +227,19 @@ required. The normative route, token, state-machine, and completion contracts li
   AnswerResponse `{question, answer, citations, requires_human_review, confidence}`. No actor is sent:
   the receiver resolves its own principal. Bound under `gcp`, `live` and `platform`; only `local`
   answers in-process.
+  - **The deployed call goes through `journey-portal`'s IAP edge, not to the sibling service.**
+    A deployed `compliance-advisory` is an embedded app: its API accepts internal traffic only,
+    only the portal's service account may invoke it, `cdd-sow-research` has no VPC egress, and
+    its managed identity accepts an IAP assertion and nothing else. Under `gcp`,
+    `RSK_COMPLIANCE_URL` is therefore that app's edge mount path,
+    `https://<rm-domain>/apps/compliance-advisory/api`, and `/ask` is appended inside the mount.
+  - **`RSK_COMPLIANCE_IAP_AUDIENCE`** names the one bearer audience that edge accepts: the
+    deployment's **IAP OAuth client id**. Required under `gcp` and refused when emptied, never
+    the backend-service path IAP compares its own inbound assertion against. Absent under
+    `local` and `live`. Under `platform` it is optional and the audience falls back to the
+    receiver's own origin, which is what a sibling Cloud Run service called directly accepts.
+  - Under `live` the launcher runs `compliance-advisory` on loopback with no IAP in front of it,
+    so the call is direct and carries no token.
 
 ---
 
