@@ -473,14 +473,32 @@ variable "agent_domain" {
   }
 }
 
+# compliance-advisory is an embedded app behind journey-portal's IAP edge: its own API accepts
+# internal traffic only, only the portal's service account may invoke it, this service has no VPC
+# egress, and its managed identity accepts an IAP assertion and nothing else. So the dossier's
+# compliance question is asked THROUGH the edge, at the app's mount path, and the bearer it
+# carries is an ID token minted for the IAP OAuth client id. Both halves are inputs here: a URL
+# with no mount path would reach the portal shell instead of the app, and a missing or wrong
+# audience is refused at the edge with nothing in the revision able to say why.
 variable "compliance_advisory_url" {
-  description = "HTTPS base URL of the compliance-advisory API the production edge's dossiers ask. The gcp profile refuses to start without it."
+  description = "The journey-portal edge path for the embedded compliance-advisory API, https://<rm-domain>/apps/compliance-advisory/api. Not the sibling Cloud Run URL: that service takes internal traffic only. The gcp profile refuses to start without it."
   type        = string
   default     = ""
 
   validation {
-    condition     = !var.production_edge_enabled || can(regex("^https://[^/?#]+", var.compliance_advisory_url))
-    error_message = "production_edge_enabled requires compliance_advisory_url, an absolute https URL."
+    condition     = !var.production_edge_enabled || can(regex("^https://[^/?#]+/[^?#]*[^/?#]$", var.compliance_advisory_url))
+    error_message = "production_edge_enabled requires compliance_advisory_url, an absolute https URL carrying the app's edge mount path (for example https://rm.example/apps/compliance-advisory/api) and no query, fragment or trailing slash."
+  }
+}
+
+variable "compliance_advisory_iap_audience" {
+  description = "The IAP OAuth client id the portal edge accepts as a bearer audience, <number>-<id>.apps.googleusercontent.com. NOT the backend-service path IAP compares its own inbound assertion against, which is refused as a bearer audience."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = !var.production_edge_enabled || can(regex("^[0-9]+-[0-9a-z]+\\.apps\\.googleusercontent\\.com$", var.compliance_advisory_iap_audience))
+    error_message = "production_edge_enabled requires compliance_advisory_iap_audience, the IAP OAuth client id (<number>-<id>.apps.googleusercontent.com), not a backend-service path and not a URL."
   }
 }
 

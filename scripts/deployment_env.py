@@ -69,7 +69,10 @@ BASE_REQUIRED = (
     "DOC1_AGENT_DOMAIN",
     "DOC1_STANDALONE_DOMAIN",
     # The gcp profile asks compliance-advisory on every dossier and refuses to start unnamed.
+    # Two inputs, because the call goes through journey-portal's IAP edge: the app's mount path
+    # on that edge, and the one bearer audience the edge accepts.
     "DOC1_COMPLIANCE_ADVISORY_URL",
+    "DOC1_COMPLIANCE_ADVISORY_IAP_AUDIENCE",
     "DOC1_DNS_MANAGED_ZONE",
     "DOC1_DNS_OWNER",
     "DOC1_CERTIFICATE_OWNER",
@@ -100,6 +103,7 @@ EDGE_ONLY_REQUIRED = frozenset(
         "DOC1_AGENT_DOMAIN",
         "DOC1_STANDALONE_DOMAIN",
         "DOC1_COMPLIANCE_ADVISORY_URL",
+        "DOC1_COMPLIANCE_ADVISORY_IAP_AUDIENCE",
         "DOC1_DNS_MANAGED_ZONE",
         "DOC1_DNS_OWNER",
         "DOC1_CERTIFICATE_OWNER",
@@ -440,6 +444,35 @@ def _require_https(value: str, key: str, errors: list[str]) -> None:
     parsed = urlparse(value)
     if parsed.scheme != "https" or not parsed.netloc or parsed.fragment:
         errors.append(f"{key} must be an absolute HTTPS URL without a fragment")
+
+
+#: The IAP OAuth client id shape. Only an OAuth client id is a bearer audience IAP accepts.
+OAUTH_CLIENT_ID_RE = re.compile(r"^[0-9]+-[0-9a-z]+\.apps\.googleusercontent\.com$")
+
+
+def _require_compliance_edge_leg(values: dict[str, str], errors: list[str]) -> None:
+    """Hold the two halves of the compliance leg to the shape the edge actually accepts.
+
+    compliance-advisory is an embedded app behind journey-portal's IAP edge, so the dossier's
+    question is asked at the app's MOUNT PATH on that edge and carries a bearer minted for the
+    IAP OAuth client id. Both halves fail invisibly when they are wrong: a bare origin reaches
+    the portal shell, which answers a compliance question with a login page, and the
+    backend-service path IAP compares its own inbound assertion against is refused as a bearer
+    audience with nothing in the revision able to report the reason.
+    """
+    url = values.get("DOC1_COMPLIANCE_ADVISORY_URL", "")
+    if url and not urlparse(url).path.strip("/"):
+        errors.append(
+            "DOC1_COMPLIANCE_ADVISORY_URL must carry the app's edge mount path "
+            "(https://<rm-domain>/apps/compliance-advisory/api), not a bare origin: the "
+            "compliance API is reachable only through the portal edge"
+        )
+    audience = values.get("DOC1_COMPLIANCE_ADVISORY_IAP_AUDIENCE", "")
+    if audience and not OAUTH_CLIENT_ID_RE.fullmatch(audience):
+        errors.append(
+            "DOC1_COMPLIANCE_ADVISORY_IAP_AUDIENCE must be the IAP OAuth client id "
+            "(<number>-<id>.apps.googleusercontent.com), never the backend-service path or a URL"
+        )
 
 
 def _csv_set(value: str) -> set[str]:
@@ -1029,6 +1062,8 @@ def validate_environment(values: dict[str, str], *, require_ready: bool = False)
         value = values.get(key, "")
         if value:
             _require_https(value, key, errors)
+    if edge_stage:
+        _require_compliance_edge_leg(values, errors)
     if (
         edge_stage
         and mode == "oauth-access-token"
@@ -1226,6 +1261,9 @@ def terraform_environment(values: dict[str, str]) -> dict[str, str]:
                 "TF_VAR_ui_image": values["DOC1_UI_IMAGE"],
                 "TF_VAR_agent_domain": values["DOC1_AGENT_DOMAIN"],
                 "TF_VAR_compliance_advisory_url": values["DOC1_COMPLIANCE_ADVISORY_URL"],
+                "TF_VAR_compliance_advisory_iap_audience": values[
+                    "DOC1_COMPLIANCE_ADVISORY_IAP_AUDIENCE"
+                ],
                 # `none` is the explicit "resolved outside this deployment" sentinel and
                 # becomes Terraform's empty string, which skips the record set.
                 "TF_VAR_dns_managed_zone": (

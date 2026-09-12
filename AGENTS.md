@@ -75,11 +75,16 @@ evidence for P-02.
   (`CDD_PROFILE=gcp` in the `Dockerfile`/runbook). An unset `CDD_PROFILE` is not a choice
   of `local`: it binds the SDK-free adapters so an offline process still starts, but every
   relaxation is withheld (no seeded personas, no localhost CORS fallback, no dev-persona
-  header, rate limit on).
+  header, rate limit on). The compliance check is the one sibling call that does NOT go to a
+  sibling origin: `compliance-advisory` is an embedded app, so `RSK_COMPLIANCE_URL` is its
+  mount path on `journey-portal`'s IAP edge and `RSK_COMPLIANCE_IAP_AUDIENCE` is the IAP OAuth
+  client id that edge accepts. Both are required and the revision refuses to start without
+  either (SPEC §6).
 - `live`: local document custody (SQLite index, blobs, audit), with every model call
   on the Gemini API: generation, page transcription, and the name-only grounded
   research. The compliance check asks a running `compliance-advisory`, as the deployment
-  does. Deliberately no local model (org decision, 2026-08-30).
+  does, but on loopback and with no IAP in front of it, so no token goes on that hop.
+  Deliberately no local model (org decision, 2026-08-30).
 - `platform`: thin HTTP delegates where sibling contracts exist, plus managed adapters
   for vertical-owned capabilities. Priority 1 makes every reuse explicit.
 - `onprem`: `NotImplementedError` placeholder stubs that still satisfy every Protocol

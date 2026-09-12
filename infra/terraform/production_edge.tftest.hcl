@@ -12,7 +12,8 @@ run "named_edge_contract" {
     worm_locked                          = false
     deployment_stage                     = "production-edge"
     production_edge_enabled              = true
-    compliance_advisory_url              = "https://compliance-advisory.fictional-bank.example"
+    compliance_advisory_url              = "https://rm.fictional-bank.example/apps/compliance-advisory/api"
+    compliance_advisory_iap_audience     = "1234567890-fictionaledgeclient.apps.googleusercontent.com"
     api_image                            = "asia-southeast1-docker.pkg.dev/fictional/doc1/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     ui_image                             = "asia-southeast1-docker.pkg.dev/fictional/doc1/ui@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     agent_domain                         = "doc1.fictional-bank.example"
@@ -67,8 +68,13 @@ run "named_edge_contract" {
   }
 
   assert {
-    condition     = one([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "RSK_COMPLIANCE_URL"]) == "https://compliance-advisory.fictional-bank.example"
-    error_message = "The API must be told which compliance-advisory to ask; the gcp profile refuses to start without it."
+    condition     = one([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "RSK_COMPLIANCE_URL"]) == "https://rm.fictional-bank.example/apps/compliance-advisory/api"
+    error_message = "The API must be told which compliance-advisory to ask, at the portal edge path for the embedded app; the gcp profile refuses to start without it."
+  }
+
+  assert {
+    condition     = one([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "RSK_COMPLIANCE_IAP_AUDIENCE"]) == "1234567890-fictionaledgeclient.apps.googleusercontent.com"
+    error_message = "The API must be told the audience the portal's IAP edge accepts, or every compliance question is refused at that edge with nothing able to say why."
   }
 
   assert {
@@ -186,7 +192,8 @@ run "reject_bootstrap_with_edge_enabled" {
     worm_locked                          = false
     deployment_stage                     = "mode5-key-bootstrap"
     production_edge_enabled              = true
-    compliance_advisory_url              = "https://compliance-advisory.fictional-bank.example"
+    compliance_advisory_url              = "https://rm.fictional-bank.example/apps/compliance-advisory/api"
+    compliance_advisory_iap_audience     = "1234567890-fictionaledgeclient.apps.googleusercontent.com"
     api_image                            = "asia-southeast1-docker.pkg.dev/fictional/doc1/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     ui_image                             = "asia-southeast1-docker.pkg.dev/fictional/doc1/ui@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     agent_domain                         = "doc1.fictional-bank.example"
@@ -324,7 +331,8 @@ run "reject_mutable_api_image" {
     worm_locked                          = false
     deployment_stage                     = "production-edge"
     production_edge_enabled              = true
-    compliance_advisory_url              = "https://compliance-advisory.fictional-bank.example"
+    compliance_advisory_url              = "https://rm.fictional-bank.example/apps/compliance-advisory/api"
+    compliance_advisory_iap_audience     = "1234567890-fictionaledgeclient.apps.googleusercontent.com"
     api_image                            = "asia-southeast1-docker.pkg.dev/fictional/doc1/api:latest"
     ui_image                             = "asia-southeast1-docker.pkg.dev/fictional/doc1/ui@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     agent_domain                         = "doc1.fictional-bank.example"
@@ -529,6 +537,9 @@ run "reject_an_edge_without_a_compliance_service" {
   command = plan
 
   variables {
+    # The audience is named so the ONE refusal under test is the unnamed service; an edge that
+    # omits both is refused twice, and a run that cannot say which rule fired proves neither.
+    compliance_advisory_iap_audience     = "1234567890-fictionaledgeclient.apps.googleusercontent.com"
     project_id                           = "fictional-doc1-production"
     docai_location                       = "us"
     enable_org_policies                  = false
@@ -555,4 +566,114 @@ run "reject_an_edge_without_a_compliance_service" {
   }
 
   expect_failures = [var.compliance_advisory_url]
+}
+
+# The sibling's own Cloud Run origin is the URL an operator reaches for first, and it is the one
+# URL that cannot work: that service accepts internal traffic only and answers an IAP assertion,
+# not a service caller. A bare origin is refused here, where the mount path is still missing,
+# rather than at runtime where the portal shell would answer the dossier's question with HTML.
+run "reject_a_compliance_url_with_no_edge_mount_path" {
+  command = plan
+
+  variables {
+    project_id                           = "fictional-doc1-production"
+    docai_location                       = "us"
+    enable_org_policies                  = false
+    enable_vpc_sc                        = false
+    worm_locked                          = false
+    deployment_stage                     = "production-edge"
+    production_edge_enabled              = true
+    api_image                            = "asia-southeast1-docker.pkg.dev/fictional/doc1/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ui_image                             = "asia-southeast1-docker.pkg.dev/fictional/doc1/ui@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    agent_domain                         = "doc1.fictional-bank.example"
+    installation_manifest_secret_id      = "doc1-installations"
+    installation_manifest_secret_version = "7"
+    runtime_settings_secret_id           = "doc1-runtime-settings"
+    runtime_settings_secret_version      = "4"
+    production_manifest_version          = "test-v1"
+    production_manifest_sha256           = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    production_settings_sha256           = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    alert_notification_channels          = ["projects/fictional-doc1-production/notificationChannels/123"]
+    production_identity_mode             = "embedded-grant"
+    enable_embed_signing_key             = true
+    embed_signing_key_version            = "projects/fictional-doc1-production/locations/asia-southeast1/keyRings/cdd-sow-agent-ring/cryptoKeys/cdd-sow-agent-cmek-embed-signing/cryptoKeyVersions/1"
+    edge_min_instances                   = 2
+    edge_max_instances                   = 4
+    compliance_advisory_url              = "https://compliance-advisory-api.fictional-bank.example"
+    compliance_advisory_iap_audience     = "1234567890-fictionaledgeclient.apps.googleusercontent.com"
+  }
+
+  expect_failures = [var.compliance_advisory_url]
+}
+
+# An edge that names the service but not the audience its own proxy accepts deploys a revision
+# that starts, asks, and is refused at the edge on every dossier. The audience is an input.
+run "reject_an_edge_without_the_iap_audience" {
+  command = plan
+
+  variables {
+    project_id                           = "fictional-doc1-production"
+    docai_location                       = "us"
+    enable_org_policies                  = false
+    enable_vpc_sc                        = false
+    worm_locked                          = false
+    deployment_stage                     = "production-edge"
+    production_edge_enabled              = true
+    api_image                            = "asia-southeast1-docker.pkg.dev/fictional/doc1/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ui_image                             = "asia-southeast1-docker.pkg.dev/fictional/doc1/ui@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    agent_domain                         = "doc1.fictional-bank.example"
+    installation_manifest_secret_id      = "doc1-installations"
+    installation_manifest_secret_version = "7"
+    runtime_settings_secret_id           = "doc1-runtime-settings"
+    runtime_settings_secret_version      = "4"
+    production_manifest_version          = "test-v1"
+    production_manifest_sha256           = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    production_settings_sha256           = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    alert_notification_channels          = ["projects/fictional-doc1-production/notificationChannels/123"]
+    production_identity_mode             = "embedded-grant"
+    enable_embed_signing_key             = true
+    embed_signing_key_version            = "projects/fictional-doc1-production/locations/asia-southeast1/keyRings/cdd-sow-agent-ring/cryptoKeys/cdd-sow-agent-cmek-embed-signing/cryptoKeyVersions/1"
+    edge_min_instances                   = 2
+    edge_max_instances                   = 4
+    compliance_advisory_url              = "https://rm.fictional-bank.example/apps/compliance-advisory/api"
+  }
+
+  expect_failures = [var.compliance_advisory_iap_audience]
+}
+
+# The two audiences live side by side in a deployment record and only one is a bearer audience.
+# IAP compares the backend-service path against its OWN assertion and refuses it as a bearer, so
+# pasting it here is refused at plan instead of producing an unexplained 401 per dossier.
+run "reject_the_backend_service_path_as_a_bearer_audience" {
+  command = plan
+
+  variables {
+    project_id                           = "fictional-doc1-production"
+    docai_location                       = "us"
+    enable_org_policies                  = false
+    enable_vpc_sc                        = false
+    worm_locked                          = false
+    deployment_stage                     = "production-edge"
+    production_edge_enabled              = true
+    api_image                            = "asia-southeast1-docker.pkg.dev/fictional/doc1/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ui_image                             = "asia-southeast1-docker.pkg.dev/fictional/doc1/ui@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    agent_domain                         = "doc1.fictional-bank.example"
+    installation_manifest_secret_id      = "doc1-installations"
+    installation_manifest_secret_version = "7"
+    runtime_settings_secret_id           = "doc1-runtime-settings"
+    runtime_settings_secret_version      = "4"
+    production_manifest_version          = "test-v1"
+    production_manifest_sha256           = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    production_settings_sha256           = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    alert_notification_channels          = ["projects/fictional-doc1-production/notificationChannels/123"]
+    production_identity_mode             = "embedded-grant"
+    enable_embed_signing_key             = true
+    embed_signing_key_version            = "projects/fictional-doc1-production/locations/asia-southeast1/keyRings/cdd-sow-agent-ring/cryptoKeys/cdd-sow-agent-cmek-embed-signing/cryptoKeyVersions/1"
+    edge_min_instances                   = 2
+    edge_max_instances                   = 4
+    compliance_advisory_url              = "https://rm.fictional-bank.example/apps/compliance-advisory/api"
+    compliance_advisory_iap_audience     = "/projects/000000000000/global/backendServices/1111111111111111111"
+  }
+
+  expect_failures = [var.compliance_advisory_iap_audience]
 }

@@ -50,10 +50,15 @@ def _run_probe(argument: str) -> subprocess.CompletedProcess[str]:
         env={
             **os.environ,
             "PYTHONPATH": "src",
-            # A construction input, not a relaxation: the networked profiles' compliance client
-            # refuses to build without naming the service it asks, and a fictional loopback
-            # address is enough to prove it builds with no cloud SDK importable.
+            # Construction inputs, not relaxations: the networked profiles' compliance client
+            # refuses to build without naming the service it asks, and under ``gcp`` without the
+            # audience the portal's IAP edge accepts. A fictional loopback address and a
+            # fictional client id are enough to prove the profiles build with no cloud SDK
+            # importable, which is the only claim this file makes.
             "RSK_COMPLIANCE_URL": "http://127.0.0.1:65534",
+            "RSK_COMPLIANCE_IAP_AUDIENCE": (
+                "1234567890-fictionalprobeclient.apps.googleusercontent.com"
+            ),
         },
         check=False,
         timeout=300,

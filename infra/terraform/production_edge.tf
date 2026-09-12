@@ -123,9 +123,16 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "CDD_PROFILE"
         value = "gcp"
       }
+      # The compliance leg: the portal edge path for the embedded app, and the one audience that
+      # edge accepts. Neither is optional under CDD_PROFILE=gcp; the revision refuses to start
+      # without them rather than answering dossiers with an unexplained NOT CHECKED.
       env {
         name  = "RSK_COMPLIANCE_URL"
         value = var.compliance_advisory_url
+      }
+      env {
+        name  = "RSK_COMPLIANCE_IAP_AUDIENCE"
+        value = var.compliance_advisory_iap_audience
       }
       env {
         name  = "GOOGLE_CLOUD_PROJECT"

@@ -417,7 +417,7 @@ in the embedding plan made every such binding explicit (contracts in
 | `agent-registry` | `agent-registry` | `AgentRegistryPort` | `RemoteRegistryAdapter` |
 | `model-quality-gate` AI Quality | `model-quality-gate` | `EvaluationGatePort` | `RemoteEvaluationAdapter` |
 | `agent-observability` | `agent-observability` | `AuditSinkPort` | `RemoteAuditAdapter` |
-| `compliance-advisory` | `compliance-advisory` | `ComplianceClientPort` | `RemoteComplianceAdapter` |
+| `compliance-advisory` | `compliance-advisory` | `ComplianceClientPort` | `RemoteComplianceAdapter` (under `gcp`, through `journey-portal`'s IAP edge) |
 
 `cdd-sow-research`'s governed RAG store **is** `enterprise-knowledge-base`: it ingests the case's KYC documents into `enterprise-knowledge-base` (with case
 ACL tags) and retrieves via `enterprise-knowledge-base`, rather than building a separate retrieval backend. See

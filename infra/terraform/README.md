@@ -60,6 +60,8 @@ Policy (`org_policy.tf`, gated by `enable_org_policies`), and the VPC-SC perimet
 | `production_edge_enabled` | bool | `false` | Enable only after the named dossier supplies immutable images, domain, manifest and settings secrets. |
 | `api_image`, `ui_image` | string | `""` | Required digest-pinned images when the production edge is enabled. |
 | `agent_domain`, `dns_managed_zone` | string | `""` | Dedicated origin and optional existing DNS zone. |
+| `compliance_advisory_url` | string | `""` | Required with the production edge. The `journey-portal` edge mount path for the embedded compliance-advisory API (`https://<rm-domain>/apps/compliance-advisory/api`), NOT the sibling Cloud Run URL: that service takes internal traffic only. A bare origin is refused. |
+| `compliance_advisory_iap_audience` | string | `""` | Required with the production edge. The IAP OAuth client id the edge accepts as a bearer audience, never the backend-service path IAP compares its own inbound assertion against. |
 | `installation_manifest_secret_id` / `_version`, `runtime_settings_secret_id` / `_version` | string | `""` | Existing reviewed secrets and immutable numeric versions mounted into the serving services. |
 | `additional_secret_env` | map(object) | `{}` | Extra API secret environment bindings, each pinned to an existing secret id and numeric version. |
 | `production_identity_mode` | string | `"oauth-access-token"` | Exact Mode 4 or Mode 5 identity selector. |

@@ -21,6 +21,7 @@ from fastapi.testclient import TestClient
 
 from cdd_sow_research.adapters.platform import _s2s
 from cdd_sow_research.adapters.platform.remote_compliance import (
+    AUDIENCE_ENV,
     RemoteComplianceAdapter,
     RemoteComplianceError,
 )
@@ -36,6 +37,15 @@ URL_ENV = "RSK_COMPLIANCE_URL"
 #: The profiles that must reach the real service. ``local`` is the offline gate and ``onprem``
 #: the fail-fast placeholder; neither may make a network call.
 NETWORKED_PROFILES = ("gcp", "live", "platform")
+
+#: The deployed shape: compliance-advisory is an embedded app behind journey-portal's IAP edge, so
+#: the base URL is that app's mount path on the edge and carries a path prefix.
+EDGE_BASE = "https://rm.fictional-bank.example/apps/compliance-advisory/api"
+#: The one bearer audience that edge accepts: the deployment's IAP OAuth client id.
+EDGE_AUDIENCE = "1234567890-fictionaledgeclient.apps.googleusercontent.com"
+#: What IAP compares its own INBOUND assertion against. It sits beside the client id in a
+#: deployment record and is refused as a bearer audience.
+BACKEND_SERVICE_AUDIENCE = "/projects/000000000000/global/backendServices/1111111111111111111"
 
 _ANSWER = {
     "question": "What CDD expectations apply?",
@@ -72,6 +82,8 @@ def _bindings() -> dict[str, str]:
 def _no_ambient_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("S2S_TOKEN", raising=False)
     monkeypatch.delenv("S2S_SIGNING_KEY", raising=False)
+    # An ambient audience would make the "refuses without one" cases pass for the wrong reason.
+    monkeypatch.delenv(AUDIENCE_ENV, raising=False)
 
 
 # --------------------------------------------------------------------------------------- #
@@ -164,12 +176,11 @@ def test_an_ungrounded_refusal_is_an_error_not_an_answer(monkeypatch: pytest.Mon
         RemoteComplianceAdapter(_settings("live")).check("q", actor="a")
 
 
-@respx.mock
-def test_the_deployment_mints_an_id_token_for_the_service_origin(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Cloud Run accepts an ID token whose audience is the service URL, never a path under it."""
-    monkeypatch.setenv(URL_ENV, "https://compliance-advisory-api.example.test/compliance/")
+# --------------------------------------------------------------------------------------- #
+# The deployed leg goes through the portal's IAP edge
+# --------------------------------------------------------------------------------------- #
+def _record_minted(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Capture the audiences a run mints for, without a cloud SDK or a credential anywhere."""
     audiences: list[str] = []
 
     def _fetch(audience: str) -> str:
@@ -177,14 +188,141 @@ def test_the_deployment_mints_an_id_token_for_the_service_origin(
         return "id-token"
 
     monkeypatch.setattr(_s2s, "_fetch_id_token", _fetch)
-    route = respx.post("https://compliance-advisory-api.example.test/compliance/ask").mock(
-        return_value=httpx.Response(200, json=_ANSWER)
-    )
+    return audiences
+
+
+@respx.mock
+def test_the_deployment_mints_a_token_for_the_configured_iap_client_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The only bearer audience the portal's IAP edge accepts is its OAuth client id.
+
+    The first attempt at this leg minted for the sibling service's own origin and assumed a
+    direct service-to-service call, which cannot work in four independent ways: the embedded
+    APIs take internal traffic only, only the portal's service account may invoke them, this
+    service has no VPC egress, and compliance-advisory's managed identity accepts an IAP
+    assertion and nothing else. The call goes through the edge, and the edge wants the client id.
+    """
+    monkeypatch.setenv(URL_ENV, EDGE_BASE)
+    monkeypatch.setenv(AUDIENCE_ENV, EDGE_AUDIENCE)
+    audiences = _record_minted(monkeypatch)
+    route = respx.post(f"{EDGE_BASE}/ask").mock(return_value=httpx.Response(200, json=_ANSWER))
 
     RemoteComplianceAdapter(_settings("gcp")).check("q", actor="a")
 
-    assert audiences == ["https://compliance-advisory-api.example.test"]
+    assert audiences == [EDGE_AUDIENCE], "a token minted for anything else is refused at the edge"
     assert route.calls.last.request.headers["authorization"] == "Bearer id-token"
+
+
+@respx.mock
+def test_the_request_path_is_ask_inside_the_app_mount(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A base URL with a path prefix keeps it, so ``/ask`` lands inside the app's mount.
+
+    Appending to the ORIGIN instead would POST to the portal's own root, where a compliance
+    question is answered by a portal route rather than by compliance-advisory.
+    """
+    monkeypatch.setenv(URL_ENV, EDGE_BASE)
+    monkeypatch.setenv(AUDIENCE_ENV, EDGE_AUDIENCE)
+    _record_minted(monkeypatch)
+    route = respx.post(f"{EDGE_BASE}/ask").mock(return_value=httpx.Response(200, json=_ANSWER))
+
+    RemoteComplianceAdapter(_settings("gcp")).check("q", actor="a")
+
+    assert str(route.calls.last.request.url) == (
+        "https://rm.fictional-bank.example/apps/compliance-advisory/api/ask"
+    )
+
+
+def test_a_base_url_with_a_path_prefix_is_accepted(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The mount path is the whole point of the edge leg, and a trailing slash is normalised."""
+    monkeypatch.setenv(AUDIENCE_ENV, EDGE_AUDIENCE)
+    monkeypatch.setenv(URL_ENV, f"{EDGE_BASE}/")
+
+    adapter = RemoteComplianceAdapter(_settings("gcp"))
+
+    assert adapter._base_url == EDGE_BASE
+
+
+def test_a_deployment_without_the_iap_audience_refuses_to_construct(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Naming the service is not enough: an unnamed audience is refused at the edge on every
+    dossier, and this process never learns why, so it refuses here and names the variable."""
+    monkeypatch.setenv(URL_ENV, EDGE_BASE)
+    monkeypatch.delenv(AUDIENCE_ENV, raising=False)
+
+    with pytest.raises(ConfiguredEmptyError, match=AUDIENCE_ENV):
+        RemoteComplianceAdapter(_settings("gcp"))
+
+
+def test_an_emptied_iap_audience_refuses_to_construct(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(URL_ENV, EDGE_BASE)
+    monkeypatch.setenv(AUDIENCE_ENV, "   ")
+
+    with pytest.raises(ConfiguredEmptyError, match=AUDIENCE_ENV):
+        RemoteComplianceAdapter(_settings("gcp"))
+
+
+@pytest.mark.parametrize("profile", ("live", "platform"))
+def test_an_emptied_audience_refuses_even_where_absence_is_legitimate(
+    profile: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Three states, not two, on the profiles where an ABSENT audience is the correct posture.
+
+    Unset means "this receiver is not behind IAP" and falls back to its origin, or to no token
+    at all on loopback. Emptied means somebody configured an audience and it names nothing: it
+    must not inherit the unset posture, because that is how a deployment intending the edge
+    quietly sends a token the edge refuses, or none.
+    """
+    monkeypatch.setenv(URL_ENV, "https://compliance-advisory-api.example.test")
+    monkeypatch.setenv(AUDIENCE_ENV, "   ")
+
+    with pytest.raises(ConfiguredEmptyError, match=AUDIENCE_ENV):
+        RemoteComplianceAdapter(_settings(profile))
+
+
+def test_the_backend_service_path_is_refused_as_a_bearer_audience(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The deployment record carries both audiences, and only one is a bearer audience."""
+    monkeypatch.setenv(URL_ENV, EDGE_BASE)
+    monkeypatch.setenv(AUDIENCE_ENV, BACKEND_SERVICE_AUDIENCE)
+
+    with pytest.raises(ValueError, match="backend-service path"):
+        RemoteComplianceAdapter(_settings("gcp"))
+
+
+def test_the_platform_profile_still_calls_a_sibling_directly(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``platform`` means a thin delegate to a sibling contract, reached directly, and this leg
+    does not redefine it: with no audience configured it mints for the receiver's own origin,
+    exactly like the five platform adapters beside it."""
+    monkeypatch.setenv(URL_ENV, "https://compliance-advisory-api.example.test")
+    audiences = _record_minted(monkeypatch)
+    with respx.mock:
+        respx.post("https://compliance-advisory-api.example.test/ask").mock(
+            return_value=httpx.Response(200, json=_ANSWER)
+        )
+        RemoteComplianceAdapter(_settings("platform")).check("q", actor="a")
+
+    assert audiences == ["https://compliance-advisory-api.example.test"]
+
+
+@respx.mock
+def test_the_laptop_call_carries_no_token_at_all(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Under ``live`` the launcher runs compliance-advisory on loopback with no IAP in front of
+    it, so there is nothing to authenticate to and no audience to name."""
+    monkeypatch.setenv(URL_ENV, "http://127.0.0.1:8080")
+    minted = _record_minted(monkeypatch)
+    route = respx.post("http://127.0.0.1:8080/ask").mock(
+        return_value=httpx.Response(200, json=_ANSWER)
+    )
+
+    RemoteComplianceAdapter(_settings("live")).check("q", actor="a")
+
+    assert minted == []
+    assert "authorization" not in route.calls.last.request.headers
 
 
 # --------------------------------------------------------------------------------------- #
@@ -203,5 +341,29 @@ def test_a_networked_process_without_the_service_refuses_to_start(
     with (
         pytest.raises(RuntimeError, match=URL_ENV),
         TestClient(create_app(_settings("live")), client=("127.0.0.1", 50000)),
+    ):
+        pass
+
+
+def test_a_deployment_without_the_audience_refuses_to_start(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The other half of the leg fails the revision at boot too, and names its own variable.
+
+    A revision that starts without it looks healthy: it serves, it asks, and the edge refuses
+    every question, so the dossier reports NOT CHECKED with no operator-visible cause.
+    """
+    monkeypatch.setenv(URL_ENV, EDGE_BASE)
+    monkeypatch.delenv(AUDIENCE_ENV, raising=False)
+    monkeypatch.setenv("CDD_IDENTITY_PROFILE", "local-persona")
+    monkeypatch.setenv("CDD_CHANNEL_PROFILE", "standalone")
+
+    # A startable managed process in every other respect, so the refusal under test is this one:
+    # the gcp profile also refuses the documented placeholder project id.
+    settings = replace(_settings("gcp"), project_id="fictional-doc1-production")
+
+    with (
+        pytest.raises(RuntimeError, match=AUDIENCE_ENV),
+        TestClient(create_app(settings), client=("127.0.0.1", 50000)),
     ):
         pass
