@@ -9,7 +9,8 @@ model-risk sign-off before any live use.
 ```bash
 # 1. From the repository root, validate the separated deployment inputs, bind the exact
 #    Secret Manager versions, and produce a remote-state plan. Review the plan; the WORM
-#    bucket lock is irreversible when worm_locked = true, the default.
+#    bucket lock is irreversible when worm_locked = true, and the variable has no default,
+#    so a plan refuses until the deployment names it.
 make deploy-preflight
 make deploy-verify-secrets
 make tf-plan
@@ -103,7 +104,8 @@ data depends on it.
 ## 4. Retention and the WORM lock
 
 The audit bucket retention is `retention_days` (default 180 days, six months) and the bucket is
-locked by default (`worm_locked = true`), which is **irreversible**. To trial without
+locked only when the deployment says so (`worm_locked = true`), which is **irreversible**; the
+variable has no default, so a plan refuses until the choice is stated. To trial without
 locking, set `worm_locked = false` in `terraform.tfvars` (not compliant for production).
 Only redacted prompts/responses are ever written to the audit log (P-04, R1).
 

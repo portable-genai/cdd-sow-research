@@ -252,7 +252,7 @@ no org-level roles: `enable_vpc_sc=false`, `enable_org_policies=false`, `worm_lo
 another `region`). Then:
 
 ```bash
-make tf-plan          # review the plan; with worm_locked=true the bucket lock is IRREVERSIBLE
+make tf-plan          # review the plan; worm_locked has no default, and true is IRREVERSIBLE
 cd infra/terraform && terraform apply && cd ../..
 # Export the outputs the app reads (see docs/runbook.md §1):
 export CDD_DOCAI_PROCESSOR="$(terraform -chdir=infra/terraform output -raw documentai_processor_id)"
