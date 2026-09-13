@@ -12,8 +12,10 @@
 #   - vpc_sc_denials   : a VPC Service Controls violation (perimeter working / probing).
 #   - cmek_changes     : a CMEK key destroy/update (P-09 key material change).
 #
-# Alert policies are always created; var.alert_notification_channels attaches channels (an
-# empty list still creates the policy, just with nowhere to notify — wire a channel in prod).
+# Alert policies exist only when var.posture_alerts_enabled is true (default false: every
+# metric-based condition is billed, and a reference deployment pages nobody). When enabled,
+# var.alert_notification_channels attaches channels (an empty list still creates the policy,
+# just with nowhere to notify — wire a channel in prod).
 #
 # verify: https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/logging_metric
 # verify: https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/monitoring_alert_policy
@@ -44,7 +46,7 @@ locals {
 }
 
 resource "google_logging_metric" "security" {
-  for_each = local.security_metrics
+  for_each = var.posture_alerts_enabled ? local.security_metrics : {}
 
   project     = var.project_id
   name        = "${local.metric_prefix}_${each.key}"
@@ -61,7 +63,7 @@ resource "google_logging_metric" "security" {
 }
 
 resource "google_monitoring_alert_policy" "security" {
-  for_each = local.security_metrics
+  for_each = var.posture_alerts_enabled ? local.security_metrics : {}
 
   project      = var.project_id
   display_name = "${var.name_prefix} security: ${each.key}"
