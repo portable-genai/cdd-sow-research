@@ -1222,3 +1222,122 @@ def test_the_compliance_edge_leg_reaches_terraform_as_two_inputs() -> None:
     assert mapped["TF_VAR_compliance_advisory_iap_audience"] == (
         "1234567890-fictionaledgeclient.apps.googleusercontent.com"
     )
+
+
+def _support_values() -> dict[str, str]:
+    """A support deployment: the project-shaping half, served by someone else's edge."""
+
+    values = _ready_values()
+    values["DOC1_DEPLOYMENT_STAGE"] = "embedded-support"
+    for key in deployment_env.EDGE_ONLY_REQUIRED:
+        values.pop(key, None)
+    for key in deployment_env.PRODUCTION_SECRET_KEYS:
+        values.pop(key, None)
+    values.update(
+        {
+            key: f"approved-{key.lower().replace('_', '-')}"
+            for key in deployment_env.SUPPORT_ONLY_REQUIRED
+        }
+    )
+    values.update(
+        {
+            "DOC1_ENABLE_ORG_POLICIES": "true",
+            "DOC1_ENABLE_VPC_SC": "false",
+            "DOC1_FIRESTORE_CMEK_ENABLED": "false",
+            "DOC1_FIRESTORE_PITR_ENABLED": "false",
+            "DOC1_FIRESTORE_DELETE_PROTECTION_ENABLED": "false",
+            "DOC1_CLOUD_RUN_DELETION_PROTECTION": "false",
+            "DOC1_MODEL_ARMOR_FULL_CAPABILITIES": "false",
+            "DOC1_POSTURE_ALERTS_ENABLED": "false",
+            "DOC1_RESOURCE_LOCATION_VALUES": "in:asia-locations,in:us-locations",
+            "DOC1_OPERATOR_MEMBERS": "user:approved-operator@reviewed-bank.internal",
+            "DOC1_ADDITIONAL_SERVING_SERVICE_ACCOUNTS": "serving@reviewed-bank.internal",
+            "DOC1_DOCUMENT_WRITER_SERVICE_ACCOUNTS": "",
+        }
+    )
+    return values
+
+
+def test_embedded_support_defers_the_edge_and_maps_the_project_shaping_half() -> None:
+    values = _support_values()
+
+    assert deployment_env.validate_environment(values, require_ready=True) == []
+    mapped = deployment_env.terraform_environment(values)
+
+    # Terraform's own name for "this stack does not serve" is `disabled`.
+    assert mapped["TF_VAR_deployment_stage"] == "disabled"
+    assert mapped["TF_VAR_production_edge_enabled"] == "false"
+    assert "TF_VAR_api_image" not in mapped
+    assert "TF_VAR_agent_domain" not in mapped
+    assert "TF_VAR_runtime_settings_secret_id" not in mapped
+
+    # The eighteen that had no key at all until this stage existed. A missing one is a
+    # Terraform default standing in for a reviewed decision.
+    assert mapped["TF_VAR_enable_org_policies"] == "true"
+    assert mapped["TF_VAR_knowledge_base_data_store_id"] == (
+        "approved-doc1-knowledge-base-data-store-id"
+    )
+    assert (
+        mapped["TF_VAR_additional_serving_service_accounts"] == '["serving@reviewed-bank.internal"]'
+    )
+    assert mapped["TF_VAR_resource_location_values"] == '["in:asia-locations", "in:us-locations"]'
+    assert mapped["TF_VAR_posture_alerts_enabled"] == "false"
+    # An empty list is a STATEMENT, not an omission.
+    assert mapped["TF_VAR_document_writer_service_accounts"] == "[]"
+
+
+def test_embedded_support_refuses_a_missing_project_shaping_input() -> None:
+    for key in deployment_env.SUPPORT_ONLY_REQUIRED:
+        values = _support_values()
+        values.pop(key)
+        errors = deployment_env.validate_environment(values, require_ready=True)
+        assert any(key in error for error in errors), f"{key} may be omitted without refusal"
+
+
+def test_the_quota_project_is_derived_from_the_reviewed_project() -> None:
+    values = _support_values()
+    mapped = deployment_env.terraform_environment(values)
+
+    # Several providers this stack uses refuse a user credential naming no quota project. The
+    # value is derived, never inherited, so it cannot name a second project.
+    assert mapped["GOOGLE_BILLING_PROJECT"] == values["GOOGLE_CLOUD_PROJECT"]
+    assert mapped["GOOGLE_CLOUD_QUOTA_PROJECT"] == values["GOOGLE_CLOUD_PROJECT"]
+    assert mapped["USER_PROJECT_OVERRIDE"] == "true"
+
+
+def test_an_existing_unlocked_audit_bucket_is_accepted_and_must_claim_no_lock(monkeypatch) -> None:
+    """The reference posture declines the lock, so the bucket exists and is mutable."""
+
+    class Result:
+        def __init__(self, returncode, stdout=b"", stderr=b""):
+            self.returncode = returncode
+            self.stdout = stdout
+            self.stderr = stderr
+
+    values = _ready_values()
+    values["DOC1_STACK_LIFECYCLE"] = "existing"
+    values["DOC1_EXISTING_LOCKED_RETENTION_DAYS"] = "0"
+    values["DOC1_AUDIT_RETENTION_DAYS"] = "3"
+    monkeypatch.setattr(
+        deployment_env.subprocess,
+        "run",
+        lambda *args, **kwargs: Result(
+            0, stdout=json.dumps({"retentionDays": 3, "locked": False}).encode()
+        ),
+    )
+    deployment_env.verify_stack_lifecycle(values)
+
+    # Claiming a locked window the bucket does not have is still refused.
+    values["DOC1_EXISTING_LOCKED_RETENTION_DAYS"] = "2557"
+    with pytest.raises(deployment_env.DeploymentEnvError, match="not locked"):
+        deployment_env.verify_stack_lifecycle(values)
+
+
+def test_an_existing_lifecycle_refuses_a_locked_window_under_the_floor() -> None:
+    values = _ready_values()
+    values["DOC1_STACK_LIFECYCLE"] = "existing"
+    values["DOC1_EXISTING_LOCKED_RETENTION_DAYS"] = "179"
+
+    errors = deployment_env.validate_environment(values, require_ready=True)
+
+    assert any("six-month floor" in error for error in errors)
