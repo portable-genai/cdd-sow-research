@@ -806,3 +806,26 @@ variable "cloud_run_deletion_protection" {
     here (firestore_delete_protection_enabled, worm_locked).
   EOT
 }
+
+variable "manage_audit_config" {
+  type        = bool
+  default     = false
+  description = <<-EOT
+    Whether THIS stack writes the project's data-access audit configuration.
+
+    False by default, and the default is the point. `google_project_iam_audit_config` is
+    AUTHORITATIVE for the service it names, so a second stack declaring `allServices` does
+    not add to that configuration, it REPLACES it, and a stack asking for DATA_READ and
+    DATA_WRITE removes an ADMIN_READ a sibling enabled. Terraform reports that as a create
+    rather than a change, because this stack holds no prior state for a resource that is
+    nonetheless already live. Nearly every stack in this fleet carries this resource and one
+    project hosts many of them, so a default of true is a race whose winner is whichever
+    stack applied last.
+
+    Data-access logs are also the highest-volume class Cloud Logging ingests, and nothing in
+    the reference deployment reads them.
+
+    Set true in exactly one stack per project, in that deployment's own tfvars, where the
+    project genuinely wants data-access logging on.
+  EOT
+}
