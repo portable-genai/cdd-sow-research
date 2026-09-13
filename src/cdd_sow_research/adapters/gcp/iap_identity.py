@@ -19,6 +19,7 @@ from hex_service_kit.federation import (
     IAP_ASSERTION_HEADER,
     IAP_ISSUER,
     IAP_KEYS_URL,
+    select_assertion,
 )
 
 from ...config import Settings
@@ -118,13 +119,21 @@ class IapIdentityAdapter:
         # "missing IAP assertion header" and went looking at the load balancer.
         if not self._audience:
             raise IapAudienceUnconfiguredError(_UNCONFIGURED_AUDIENCE)
-        # Stripped, so a header a proxy or a deployment template rendered blank is ABSENT
-        # rather than an assertion: a whitespace-only value is truthy, so it skipped this
-        # refusal and was refused further down by the algorithm pin instead, which reports a
-        # malformed token for what is actually a missing one.
-        assertion = ctx.header(_ASSERTION_HEADER).strip()
-        if not assertion:
-            raise IdentityError("missing IAP assertion header; request did not pass through IAP")
+        # Read through the commons selection function rather than naming a header here.
+        # `x-goog-*` is Google's RESERVED namespace and the serverless frontend strips it from a
+        # request ENTERING a service, so an embedded application never receives the assertion its
+        # own edge was handed: the host sets it, the frontend drops it, and this adapter refused a
+        # request that passed through IAP one hop earlier. The broker forwards the same assertion
+        # under a second, unreserved name for exactly that reason. Selecting between them is one
+        # reviewed decision in the kit, not a per-repository `or` chain that can drift.
+        try:
+            source = select_assertion({k.lower(): v for k, v in ctx.headers.items()})
+        except IdentityError as exc:
+            # The commons reason names BOTH headers it examined. An operator who reads only
+            # "missing IAP assertion header" goes to the load balancer; the one who reads which
+            # two names were looked for goes to the hop that dropped one of them.
+            raise IdentityError(f"missing IAP assertion header: {exc}") from exc
+        assertion = source.assertion
         # The algorithm is judged BEFORE the verifier is handed the token, with no cryptography
         # and no cloud SDK, so the refusal is exercised by the offline gate rather than living
         # inside a library the gate does not install. `alg: none` is an unsigned assertion and
