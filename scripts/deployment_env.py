@@ -98,6 +98,47 @@ BASE_REQUIRED = (
     "DOC1_DEPLOYMENT_PHASE",
     "DOC1_VPC_SC_ENFORCE",
 )
+# The inputs a SUPPORT deployment sets and an edge deployment does not. This stack is deployed
+# in a shared project behind journey-portal's edge, not as a standalone agent with its own
+# domain and images, and eighteen of the variables that shape it had no key here at all. While
+# that was true the reviewed runner could not describe the live deployment even in principle:
+# planning through it would have taken the Terraform default for every one of them, emptying
+# the portal's serving-identity grants and re-pointing the knowledge base. That is why the
+# deployment was planned with a raw var file, which is the path this runner exists to forbid.
+SUPPORT_ONLY_REQUIRED = (
+    "DOC1_ENABLE_ORG_POLICIES",
+    "DOC1_RESOURCE_LOCATION_VALUES",
+    "DOC1_ALLOWED_POLICY_MEMBER_DOMAINS",
+    "DOC1_OPERATOR_MEMBERS",
+    "DOC1_ENABLE_VPC_SC",
+    "DOC1_SCHEDULER_TIME_ZONE",
+    "DOC1_KNOWLEDGE_BASE_LOCATION",
+    "DOC1_KNOWLEDGE_BASE_DATA_STORE_ID",
+    "DOC1_KNOWLEDGE_BASE_SEARCH_TIER",
+    "DOC1_DOCAI_LOCATION",
+    "DOC1_DOCUMENT_WRITER_SERVICE_ACCOUNTS",
+    "DOC1_ADDITIONAL_SERVING_SERVICE_ACCOUNTS",
+    "DOC1_FIRESTORE_CMEK_ENABLED",
+    "DOC1_FIRESTORE_PITR_ENABLED",
+    "DOC1_FIRESTORE_DELETE_PROTECTION_ENABLED",
+    "DOC1_CLOUD_RUN_DELETION_PROTECTION",
+    "DOC1_MODEL_ARMOR_FULL_CAPABILITIES",
+    "DOC1_POSTURE_ALERTS_ENABLED",
+)
+
+# Support keys whose value may legitimately be EMPTY. An empty serving-identity list is not an
+# unfilled blank: it is pass 1 of the documented two-pass install, where this stack creates the
+# keys, templates and buckets BEFORE the host has minted the runtime identities that will read
+# them. Requiring a value here would make the runner unable to express the first half of the
+# only install procedure this stack has. They must still be PRESENT, so "I have not decided"
+# stays distinguishable from "I decided none".
+SUPPORT_MAY_BE_EMPTY = frozenset(
+    {
+        "DOC1_DOCUMENT_WRITER_SERVICE_ACCOUNTS",
+        "DOC1_ADDITIONAL_SERVING_SERVICE_ACCOUNTS",
+    }
+)
+
 EDGE_ONLY_REQUIRED = frozenset(
     {
         "DOC1_AGENT_DOMAIN",
@@ -967,10 +1008,17 @@ def validate_environment(values: dict[str, str], *, require_ready: bool = False)
     if mode not in {"oauth-access-token", "embedded-grant"}:
         errors.append("DOC1_PRODUCTION_IDENTITY_MODE must be oauth-access-token or embedded-grant")
     deployment_stage = values.get("DOC1_DEPLOYMENT_STAGE", "")
-    if deployment_stage not in {"mode5-key-bootstrap", "production-edge"}:
-        errors.append("DOC1_DEPLOYMENT_STAGE must be mode5-key-bootstrap or production-edge")
+    if deployment_stage not in {"mode5-key-bootstrap", "production-edge", "embedded-support"}:
+        errors.append(
+            "DOC1_DEPLOYMENT_STAGE must be mode5-key-bootstrap, production-edge or embedded-support"
+        )
     bootstrap_stage = deployment_stage == "mode5-key-bootstrap"
     edge_stage = deployment_stage == "production-edge"
+    # A support deployment serves nothing itself: journey-portal owns the edge, the images and
+    # the domain, so the edge-only keys, the identity-mode registrations and the runtime
+    # settings and installation manifest payloads are all correctly absent. What it does own is
+    # the project-shaping half nothing else declares, which SUPPORT_ONLY_REQUIRED names.
+    support_stage = deployment_stage == "embedded-support"
     if bootstrap_stage and mode != "embedded-grant":
         errors.append("mode5-key-bootstrap requires embedded-grant identity")
     lifecycle = values.get("DOC1_STACK_LIFECYCLE", "")
@@ -978,8 +1026,16 @@ def validate_environment(values: dict[str, str], *, require_ready: bool = False)
         errors.append("DOC1_STACK_LIFECYCLE must be new or existing")
     if lifecycle == "new" and existing_retention_days != 0:
         errors.append("new lifecycle requires DOC1_EXISTING_LOCKED_RETENTION_DAYS=0")
-    if lifecycle == "existing" and existing_retention_days < 180:
-        errors.append("existing lifecycle requires the current locked retention")
+    # An existing stack is not necessarily a LOCKED one. This value records the locked window
+    # already in force, so 0 is the honest reading of an existing bucket whose lock was
+    # declined, which is this reference deployment's stated posture. What stays refused is a
+    # number between the two: a locked window shorter than the six-month floor is either a
+    # miscount or a claim the bucket cannot support. The live probe decides which case applies.
+    if lifecycle == "existing" and 0 < existing_retention_days < 180:
+        errors.append(
+            "existing lifecycle requires either 0 (no lock in force) or the current locked "
+            "retention, which cannot be under the six-month floor"
+        )
 
     required_nonsecret = [
         key for key in BASE_REQUIRED if edge_stage or key not in EDGE_ONLY_REQUIRED
@@ -995,6 +1051,8 @@ def validate_environment(values: dict[str, str], *, require_ready: bool = False)
             required_nonsecret.extend(MODE4_REQUIRED)
         if mode == "embedded-grant":
             required_nonsecret.append("DOC1_EMBED_SIGNING_KEY_VERSION")
+    if support_stage:
+        required_nonsecret.extend(SUPPORT_ONLY_REQUIRED)
     for key in required_nonsecret:
         # `none` on the managed zone is an explicit statement ("this deployment runs no DNS
         # zone; the name resolves elsewhere"), not an unfilled blank. Terraform already
@@ -1004,6 +1062,11 @@ def validate_environment(values: dict[str, str], *, require_ready: bool = False)
         # the control is "somebody named is accountable for how this name resolves", not
         # "there is a Cloud DNS zone".
         if key == "DOC1_DNS_MANAGED_ZONE" and values.get(key, "") == "none":
+            continue
+        if key in SUPPORT_MAY_BE_EMPTY:
+            # Present-but-empty is a decision here; absent is not. See SUPPORT_MAY_BE_EMPTY.
+            if key not in values:
+                errors.append(f"{key} is missing")
             continue
         if _has_placeholder(values.get(key, "")):
             errors.append(f"{key} is missing or still contains a placeholder")
@@ -1207,6 +1270,17 @@ def validate_environment(values: dict[str, str], *, require_ready: bool = False)
     return errors
 
 
+def _json_list(raw: str) -> str:
+    """A comma-separated deployment value as the JSON list Terraform reads.
+
+    An empty string is an empty list, which is a STATEMENT ("this deployment names none") and
+    not a missing value: the placeholder check upstream already refuses a blank that was never
+    filled in, so by the time a value reaches here, empty means empty.
+    """
+
+    return json.dumps([item.strip() for item in raw.split(",") if item.strip()])
+
+
 def terraform_environment(values: dict[str, str]) -> dict[str, str]:
     values.setdefault("GCP_REGION", values.get("CDD_REGION", ""))
     """Map the reviewed deployment contract to Terraform's environment interface."""
@@ -1248,12 +1322,69 @@ def terraform_environment(values: dict[str, str]) -> dict[str, str]:
                 if item.strip()
             ]
         ),
-        "TF_VAR_deployment_stage": deployment_stage,
+        # Terraform's own name for the support shape is "disabled": no serving edge, no Mode 5
+        # key bootstrap, just the project-shaping half. The deployment contract calls it
+        # "embedded-support", because "disabled" reads as "this stack does nothing" when what
+        # it means is "this stack does not serve; journey-portal's edge does".
+        "TF_VAR_deployment_stage": (
+            "disabled" if deployment_stage == "embedded-support" else deployment_stage
+        ),
+        # Not Terraform variables, but part of the same interface: several of this stack's
+        # providers (DLP, Discovery Engine, Org Policy, Access Context Manager) refuse a plain
+        # user ADC credential that names no quota project, with a 403 that mentions neither
+        # Terraform nor the resource. They are DERIVED from the reviewed project rather than
+        # passed through from the caller's shell, so the billed and quota-charged project is
+        # always the one under review and cannot be pointed at a second project by an ambient
+        # variable this runner would otherwise have to trust.
+        "USER_PROJECT_OVERRIDE": "true",
+        "GOOGLE_BILLING_PROJECT": values["GOOGLE_CLOUD_PROJECT"],
+        "GOOGLE_CLOUD_QUOTA_PROJECT": values["GOOGLE_CLOUD_PROJECT"],
         "TF_VAR_production_edge_enabled": str(edge_enabled).lower(),
         "TF_VAR_production_identity_mode": values["DOC1_PRODUCTION_IDENTITY_MODE"],
         "TF_VAR_enable_embed_signing_key": str(signing_key_enabled).lower(),
         "TF_VAR_embed_signing_protection_level": values["DOC1_EMBED_SIGNING_PROTECTION_LEVEL"],
     }
+    if deployment_stage == "embedded-support":
+        # Every variable this stack's own tfvars sets and the edge shape does not. Read as a
+        # block so the runner can reproduce the applied plan exactly; a key missing here is a
+        # Terraform DEFAULT silently substituted for a reviewed decision, which is the failure
+        # this whole module exists to prevent.
+        mappings.update(
+            {
+                "TF_VAR_enable_org_policies": values["DOC1_ENABLE_ORG_POLICIES"].lower(),
+                "TF_VAR_resource_location_values": _json_list(
+                    values["DOC1_RESOURCE_LOCATION_VALUES"]
+                ),
+                "TF_VAR_allowed_policy_member_domains": _json_list(
+                    values["DOC1_ALLOWED_POLICY_MEMBER_DOMAINS"]
+                ),
+                "TF_VAR_operator_members": _json_list(values["DOC1_OPERATOR_MEMBERS"]),
+                "TF_VAR_enable_vpc_sc": values["DOC1_ENABLE_VPC_SC"].lower(),
+                "TF_VAR_scheduler_time_zone": values["DOC1_SCHEDULER_TIME_ZONE"],
+                "TF_VAR_knowledge_base_location": values["DOC1_KNOWLEDGE_BASE_LOCATION"],
+                "TF_VAR_knowledge_base_data_store_id": values["DOC1_KNOWLEDGE_BASE_DATA_STORE_ID"],
+                "TF_VAR_knowledge_base_search_tier": values["DOC1_KNOWLEDGE_BASE_SEARCH_TIER"],
+                "TF_VAR_docai_location": values["DOC1_DOCAI_LOCATION"],
+                "TF_VAR_document_writer_service_accounts": _json_list(
+                    values["DOC1_DOCUMENT_WRITER_SERVICE_ACCOUNTS"]
+                ),
+                "TF_VAR_additional_serving_service_accounts": _json_list(
+                    values["DOC1_ADDITIONAL_SERVING_SERVICE_ACCOUNTS"]
+                ),
+                "TF_VAR_firestore_cmek_enabled": values["DOC1_FIRESTORE_CMEK_ENABLED"].lower(),
+                "TF_VAR_firestore_pitr_enabled": values["DOC1_FIRESTORE_PITR_ENABLED"].lower(),
+                "TF_VAR_firestore_delete_protection_enabled": values[
+                    "DOC1_FIRESTORE_DELETE_PROTECTION_ENABLED"
+                ].lower(),
+                "TF_VAR_cloud_run_deletion_protection": values[
+                    "DOC1_CLOUD_RUN_DELETION_PROTECTION"
+                ].lower(),
+                "TF_VAR_model_armor_full_capabilities": values[
+                    "DOC1_MODEL_ARMOR_FULL_CAPABILITIES"
+                ].lower(),
+                "TF_VAR_posture_alerts_enabled": values["DOC1_POSTURE_ALERTS_ENABLED"].lower(),
+            }
+        )
     if edge_enabled:
         mappings.update(
             {
@@ -1547,10 +1678,21 @@ def verify_stack_lifecycle(values: dict[str, str]) -> None:
         raise DeploymentEnvError(
             "existing audit bucket returned invalid retention metadata"
         ) from exc
-    if bucket.get("locked") is not True:
-        raise DeploymentEnvError("existing production audit bucket must already be locked")
     reviewed_retention = int(values["DOC1_EXISTING_LOCKED_RETENTION_DAYS"])
     requested_retention = int(values["DOC1_AUDIT_RETENTION_DAYS"])
+    if bucket.get("locked") is not True:
+        # An existing bucket that was never locked. This used to be refused outright, which
+        # made the runner unusable for the one posture this deployment actually runs: the lock
+        # is declined everywhere here, so the bucket exists, is readable, and is mutable. There
+        # is no locked window to preserve, so the only thing to check is that the reviewed
+        # value does not CLAIM one. Retention may move in either direction on a bucket whose
+        # retention is not locked, which is the whole difference the lock makes.
+        if reviewed_retention != 0:
+            raise DeploymentEnvError(
+                "live audit bucket is not locked, so DOC1_EXISTING_LOCKED_RETENTION_DAYS "
+                "must be 0: there is no locked retention to preserve"
+            )
+        return
     if actual_retention != reviewed_retention:
         raise DeploymentEnvError(
             "live audit-bucket retention does not match DOC1_EXISTING_LOCKED_RETENTION_DAYS"
