@@ -34,7 +34,11 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from hex_service_kit.federation import IAP_ASSERTION_HEADER, IAP_ISSUER
+from hex_service_kit.federation import (
+    IAP_ASSERTION_HEADER,
+    IAP_ISSUER,
+    PORTAL_ASSERTION_HEADER,
+)
 
 from cdd_sow_research.adapters.gcp.iap_identity import IapIdentityAdapter
 from cdd_sow_research.domain.identity import IdentityError, RequestContext
@@ -169,3 +173,72 @@ def test_a_claim_set_from_another_issuer_cannot_become_a_principal() -> None:
 def test_a_verified_assertion_that_names_nobody_is_refused() -> None:
     with pytest.raises(IdentityError):
         _resolve(_claims(sub=None))
+
+
+# --------------------------------------------------------------------------------------- #
+# The TRANSPORT half. The claim half above hands the adapter its assertion under
+# IAP_ASSERTION_HEADER, which is the one header production never delivers to an EMBEDDED
+# application: `x-goog-*` is Google's reserved namespace and the serverless frontend strips it
+# from a request entering a service. So those tests pass, are right about what they assert, and
+# are silent about the half that was failing. This is that half.
+# --------------------------------------------------------------------------------------- #
+
+
+def test_an_assertion_forwarded_under_the_portal_header_resolves() -> None:
+    """An embedding host forwards the assertion under the unreserved name, and it must resolve.
+
+    Watched failing first against the shipped adapter, which read the reserved name alone: it
+    raised "missing IAP assertion header; request did not pass through IAP" about a request that
+    passed through IAP one hop earlier. That is a 401 to every authenticated caller on the day
+    this service is embedded, with a green gate, a healthy console and a passing claim half.
+    """
+    adapter = _adapter()
+    object.__setattr__(adapter, "_verify", lambda assertion: _claims())
+    principal = adapter.resolve(RequestContext(headers={PORTAL_ASSERTION_HEADER: _token()}))
+    # Asserting only that a principal came back. WHICH principal is the claim half's decision,
+    # tested above; the transport must not change it, which the next test holds directly.
+    assert principal.subject
+
+
+def test_the_reserved_header_still_resolves_when_the_edge_delivers_it_directly() -> None:
+    """Reached directly rather than through a host, the reserved name is what arrives.
+
+    The fix must not trade one transport for the other: a service is reachable on both paths and
+    both are verified identically.
+    """
+    adapter = _adapter()
+    object.__setattr__(adapter, "_verify", lambda assertion: _claims())
+    direct = adapter.resolve(RequestContext(headers={IAP_ASSERTION_HEADER: _token()}))
+    embedded = adapter.resolve(RequestContext(headers={PORTAL_ASSERTION_HEADER: _token()}))
+    # Compare by VALUE. The property is that the NAME the assertion arrived under changes
+    # nothing about who the caller is, which is the whole reason both names are accepted.
+    assert (embedded.subject, embedded.tenant) == (direct.subject, direct.tenant)
+
+
+def test_neither_header_refuses_and_the_reason_names_both() -> None:
+    """ "No assertion" is never a principal, and the refusal says which two names were examined.
+
+    An operator who reads only "missing IAP assertion header" goes to the load balancer. The one
+    who reads which two names were looked for goes to the hop that dropped one of them.
+    """
+    adapter = _adapter()
+    object.__setattr__(adapter, "_verify", lambda assertion: _claims())
+    with pytest.raises(IdentityError) as excinfo:
+        adapter.resolve(RequestContext(headers={}))
+    message = str(excinfo.value)
+    assert IAP_ASSERTION_HEADER in message
+    assert PORTAL_ASSERTION_HEADER in message
+
+
+def test_a_blank_forwarded_header_is_absent_rather_than_malformed() -> None:
+    """A proxy that renders the header blank must read as ABSENT, not as a broken token.
+
+    A whitespace-only value is truthy, so before it was stripped it skipped the missing-assertion
+    refusal and was refused further down by the algorithm pin, which reports a malformed token
+    for what is actually a missing one.
+    """
+    adapter = _adapter()
+    object.__setattr__(adapter, "_verify", lambda assertion: _claims())
+    with pytest.raises(IdentityError) as excinfo:
+        adapter.resolve(RequestContext(headers={PORTAL_ASSERTION_HEADER: "   "}))
+    assert "missing IAP assertion header" in str(excinfo.value)
