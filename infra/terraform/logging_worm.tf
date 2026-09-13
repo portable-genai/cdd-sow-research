@@ -56,9 +56,11 @@ resource "google_logging_project_sink" "audit_to_worm" {
   # Capture this app's audit log + all Cloud Audit Logs (admin/data access).
   # The app writes to local.audit_log_name (exported as output audit_log_name; the app
   # reads it via CDD_LOG_NAME), so the sink filter must use the same derived name.
+  # Only that log. Cloud Audit Logs used to be routed here as well, which copied every
+  # admin and data-access entry into a second CMEK bucket per stack; _Default already
+  # keeps them for 30 days, and this bucket is the application's ledger, not the project's.
   filter = <<-EOT
     logName="projects/${var.project_id}/logs/${local.audit_log_name}"
-    OR logName:"cloudaudit.googleapis.com"
   EOT
 
   unique_writer_identity = true

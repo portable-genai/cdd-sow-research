@@ -37,7 +37,9 @@ The controls behind that verdict:
 - **VPC-SC dry-run first, then enforce (`vpc_sc.tf`).** A `vpc_sc_enforce` toggle runs the
   perimeter in audit mode first; an optional access level admits named operator/CI identities.
 - **Security alerting (`monitoring.tf`).** Log-based metrics + alert policies for guardrail
-  blocks, service-account key creation, VPC-SC denials, and CMEK changes.
+  blocks, service-account key creation, VPC-SC denials, and CMEK changes, behind
+  `posture_alerts_enabled` (default false: every metric-based condition is billed, and the
+  signals land in Cloud Logging either way).
 
 One hardening was considered and **deliberately not taken**: HSM-backed CMEK. The keys remain
 `SOFTWARE` (still CMEK, still regional, still customer-managed) by decision; HSM
@@ -53,7 +55,7 @@ One hardening was considered and **deliberately not taken**: HSM-backed CMEK. Th
 | **P-09 CMEK (regional, explicit)** | One regional key, bound per service | Met | `kms.tf` regional key (90-day rotation, `prevent_destroy`) with explicit bindings for Document AI, Vertex/Agent Runtime, Logging, GCS (staging + sanctions); `document_ai.tf` now sets `kms_key_name` on the processor |
 | **P-07 / R2 WORM audit** | Immutable audit, six-month default retention | Met | `logging_worm.tf` locked bucket, `retention_days >= 180` validated, CMEK on the bucket, sink captures the app audit log plus all Cloud Audit Logs |
 | **P-08 Data-access logging** | Reads are audited | Met | `logging_worm.tf` `google_project_iam_audit_config` enables DATA_READ, DATA_WRITE, ADMIN_READ |
-| **P-08 Detection** | Security events are surfaced, not just stored | Met | `monitoring.tf` log-based metrics + alert policies (guardrail blocks, SA-key creation, VPC-SC denials, CMEK changes) |
+| **P-08 Detection** | Security events are surfaced, not just stored | Met where enabled | `monitoring.tf` log-based metrics + alert policies (guardrail blocks, SA-key creation, VPC-SC denials, CMEK changes) when `posture_alerts_enabled = true`; the reference deployment declines them |
 | **P-04 / R1 PII redaction** | Scrub PII before model, index, audit, span | Met | `dlp.tf` inspect + deidentify templates (PERSON_NAME, EMAIL, PHONE, PASSPORT, CREDIT_CARD, IBAN, custom SG NRIC/FIN), `include_quote = false` |
 | **P-04 Content-free tracing** | No prompt/response text in spans | Met | `adapters/gcp/cloud_trace_tracer.py` sets only structural attributes |
 | **R1 Guardrail** | Screen input and output | Met | `model_armor.tf` prompt-injection/jailbreak, malicious URI, RAI filters |
