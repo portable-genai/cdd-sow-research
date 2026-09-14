@@ -148,7 +148,7 @@ resource "google_cloud_run_v2_service" "api" {
       }
       env {
         name  = "CDD_KMS_KEY"
-        value = google_kms_crypto_key.cdd.id
+        value = one(google_kms_crypto_key.cdd[*].id)
       }
       env {
         name  = "CDD_DOCAI_PROCESSOR"

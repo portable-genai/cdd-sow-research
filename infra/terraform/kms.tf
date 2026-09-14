@@ -14,6 +14,9 @@
 # (naming.tf derives the ring/key names from it).
 
 resource "google_kms_key_ring" "cdd" {
+  # The ring outlives the CMEK decision: it also hosts the Mode 5 embed-signing key, so it
+  # exists whenever either key is wanted. A ring is free and cannot be deleted anyway.
+  count    = var.cmek_enabled || var.enable_embed_signing_key ? 1 : 0
   name     = local.kms_ring_name
   location = var.region # regional, in-country key material (P-03)
 
@@ -21,8 +24,9 @@ resource "google_kms_key_ring" "cdd" {
 }
 
 resource "google_kms_crypto_key" "cdd" {
+  count    = var.cmek_enabled ? 1 : 0
   name     = local.kms_key_name
-  key_ring = google_kms_key_ring.cdd.id
+  key_ring = one(google_kms_key_ring.cdd[*].id)
 
   purpose         = "ENCRYPT_DECRYPT"
   rotation_period = "7776000s" # 90 days — periodic rotation for key hygiene
@@ -44,7 +48,7 @@ resource "google_kms_crypto_key" "cdd" {
 resource "google_kms_crypto_key" "embed_signing" {
   count                         = var.enable_embed_signing_key ? 1 : 0
   name                          = "${local.kms_key_name}-embed-signing"
-  key_ring                      = google_kms_key_ring.cdd.id
+  key_ring                      = google_kms_key_ring.cdd[0].id
   purpose                       = "ASYMMETRIC_SIGN"
   skip_initial_version_creation = true
 
@@ -118,21 +122,24 @@ data "google_logging_project_cmek_settings" "this" {
 
 # Document AI service agent.
 resource "google_kms_crypto_key_iam_member" "documentai" {
-  crypto_key_id = google_kms_crypto_key.cdd.id
+  count         = var.cmek_enabled ? 1 : 0
+  crypto_key_id = one(google_kms_crypto_key.cdd[*].id)
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:${google_project_service_identity.documentai.email}"
 }
 
 # Vertex AI / Agent Runtime service agent.
 resource "google_kms_crypto_key_iam_member" "aiplatform" {
-  crypto_key_id = google_kms_crypto_key.cdd.id
+  count         = var.cmek_enabled ? 1 : 0
+  crypto_key_id = one(google_kms_crypto_key.cdd[*].id)
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:${google_project_service_identity.aiplatform.email}"
 }
 
 # Cloud Logging service agent (CMEK on the WORM bucket).
 resource "google_kms_crypto_key_iam_member" "logging" {
-  crypto_key_id = google_kms_crypto_key.cdd.id
+  count         = var.cmek_enabled ? 1 : 0
+  crypto_key_id = one(google_kms_crypto_key.cdd[*].id)
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:${data.google_logging_project_cmek_settings.this.service_account_id}"
 }

@@ -54,6 +54,7 @@ Policy (`org_policy.tf`, gated by `enable_org_policies`), and the VPC-SC perimet
 | `vpc_sc_enforce` | bool | `false` | Flip to `true` after a dry-run soak with operators added. |
 | `operator_members` | list(string) | `[]` | Identities allowed through the perimeter from outside. |
 | `allowed_policy_member_domains` | list(string) | `[]` | Domain-restricted sharing ids; empty skips that policy. |
+| `cmek_enabled` | bool | `false` | Create the key ring and key and bind every store, log bucket and revision to it. Off by default: a ring can never be deleted and a keyed log bucket can never drop its key. Set true before the first apply of a deployment that needs customer-held keys. |
 | `posture_alerts_enabled` | bool | `false` | Create the four security metrics and alert policies. Off by default: every metric-based condition is billed and a reference deployment pages nobody. |
 | `alert_notification_channels` | list(string) | `[]` | Where the security alerts notify when enabled; empty still creates the policies. |
 | `sanctions_sync_image` | string | `""` | Empty SKIPS the sync job + scheduler (bucket is still created; upload snapshots out-of-band). Set the app image to enable the daily sync. |

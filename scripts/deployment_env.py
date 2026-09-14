@@ -62,6 +62,8 @@ BASE_REQUIRED = (
     "DOC1_INCIDENT_CHANNEL",
     "DOC1_EVIDENCE_LOCATION",
     "DOC1_ACCESS_POLICY_ID",
+    # Decided before the first apply, in every stage: a keyed log bucket cannot drop its key.
+    "DOC1_CMEK_ENABLED",
     # The one deployment tenant, independent of identity mode. Every mode's manifest and
     # subject policy binds to THIS value; DOC1_MODE4_TENANT is a Mode 4 issuer input that
     # must agree with it, not the place other modes read the tenant from.
@@ -1314,6 +1316,7 @@ def terraform_environment(values: dict[str, str]) -> dict[str, str]:
         # and this never silently defaults either way. The Terraform default stays `true`, which
         # is what a fork inherits; the deployment says what it approved.
         "TF_VAR_worm_locked": str(_is_true(values["DOC1_WORM_LOCK_APPROVED"])).lower(),
+        "TF_VAR_cmek_enabled": str(_is_true(values["DOC1_CMEK_ENABLED"])).lower(),
         "TF_VAR_vpc_sc_enforce": values["DOC1_VPC_SC_ENFORCE"].lower(),
         "TF_VAR_alert_notification_channels": json.dumps(
             [

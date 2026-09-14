@@ -32,8 +32,11 @@ resource "google_storage_bucket" "sanctions" {
     enabled = true # keep prior snapshots for audit / rollback
   }
 
-  encryption {
-    default_kms_key_name = google_kms_crypto_key.cdd.id # CMEK (P-09)
+  dynamic "encryption" {
+    for_each = var.cmek_enabled ? [1] : []
+    content {
+      default_kms_key_name = one(google_kms_crypto_key.cdd[*].id) # CMEK (P-09)
+    }
   }
 
   depends_on = [
@@ -48,7 +51,8 @@ data "google_storage_project_service_account" "gcs" {
 }
 
 resource "google_kms_crypto_key_iam_member" "storage_sanctions" {
-  crypto_key_id = google_kms_crypto_key.cdd.id
+  count         = var.cmek_enabled ? 1 : 0
+  crypto_key_id = one(google_kms_crypto_key.cdd[*].id)
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:${data.google_storage_project_service_account.gcs.email_address}"
 }

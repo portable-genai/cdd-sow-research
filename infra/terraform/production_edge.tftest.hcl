@@ -5,6 +5,7 @@ run "named_edge_contract" {
   command = plan
 
   variables {
+    cmek_enabled                         = true
     project_id                           = "fictional-doc1-production"
     docai_location                       = "us"
     enable_org_policies                  = false
@@ -141,6 +142,7 @@ run "default_omits_irreversible_mode5_key" {
   command = plan
 
   variables {
+    cmek_enabled        = true
     project_id          = "fictional-doc1-production"
     docai_location      = "us"
     enable_org_policies = false
@@ -158,6 +160,7 @@ run "mode5_key_bootstrap_omits_edge" {
   command = plan
 
   variables {
+    cmek_enabled                   = true
     project_id                     = "fictional-doc1-production"
     docai_location                 = "us"
     enable_org_policies            = false
@@ -185,6 +188,7 @@ run "reject_bootstrap_with_edge_enabled" {
   command = plan
 
   variables {
+    cmek_enabled                         = true
     project_id                           = "fictional-doc1-production"
     docai_location                       = "us"
     enable_org_policies                  = false
@@ -422,6 +426,7 @@ run "reject_unbound_production_signing_key_version" {
   }
 
   variables {
+    cmek_enabled        = true
     enforced            = true
     pinned_key_version  = "projects/fictional-doc1-production/locations/asia-southeast1/keyRings/cdd-sow-agent-ring/cryptoKeys/cdd-sow-agent-cmek-embed-signing/cryptoKeyVersions/2"
     managed_key_version = "projects/fictional-doc1-production/locations/asia-southeast1/keyRings/cdd-sow-agent-ring/cryptoKeys/cdd-sow-agent-cmek-embed-signing/cryptoKeyVersions/1"
@@ -438,6 +443,7 @@ run "accept_reviewed_production_signing_key_version" {
   }
 
   variables {
+    cmek_enabled        = true
     enforced            = true
     pinned_key_version  = "projects/fictional-doc1-production/locations/asia-southeast1/keyRings/cdd-sow-agent-ring/cryptoKeys/cdd-sow-agent-cmek-embed-signing/cryptoKeyVersions/1"
     managed_key_version = "projects/fictional-doc1-production/locations/asia-southeast1/keyRings/cdd-sow-agent-ring/cryptoKeys/cdd-sow-agent-cmek-embed-signing/cryptoKeyVersions/1"
@@ -537,6 +543,7 @@ run "reject_an_edge_without_a_compliance_service" {
   command = plan
 
   variables {
+    cmek_enabled = true
     # The audience is named so the ONE refusal under test is the unnamed service; an edge that
     # omits both is refused twice, and a run that cannot say which rule fired proves neither.
     compliance_advisory_iap_audience     = "1234567890-fictionaledgeclient.apps.googleusercontent.com"
@@ -576,6 +583,7 @@ run "reject_a_compliance_url_with_no_edge_mount_path" {
   command = plan
 
   variables {
+    cmek_enabled                         = true
     project_id                           = "fictional-doc1-production"
     docai_location                       = "us"
     enable_org_policies                  = false
@@ -612,6 +620,7 @@ run "reject_an_edge_without_the_iap_audience" {
   command = plan
 
   variables {
+    cmek_enabled                         = true
     project_id                           = "fictional-doc1-production"
     docai_location                       = "us"
     enable_org_policies                  = false
@@ -648,6 +657,7 @@ run "reject_the_backend_service_path_as_a_bearer_audience" {
   command = plan
 
   variables {
+    cmek_enabled                         = true
     project_id                           = "fictional-doc1-production"
     docai_location                       = "us"
     enable_org_policies                  = false
