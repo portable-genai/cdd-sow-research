@@ -55,6 +55,7 @@ def _ready_values(
             "DOC1_AUDIT_RETENTION_DAYS": "180",
             "DOC1_EXISTING_LOCKED_RETENTION_DAYS": "0",
             "DOC1_WORM_LOCK_APPROVED": "true",
+            "DOC1_CMEK_ENABLED": "true",
             "DOC1_EDGE_MIN_INSTANCES": "2",
             "DOC1_ALERT_NOTIFICATION_CHANNELS": (
                 "projects/approved-doc1-prod/notificationChannels/123"

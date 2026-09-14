@@ -80,15 +80,16 @@ resource "google_project_iam_member" "additional_serving" {
 }
 
 resource "google_kms_crypto_key_iam_member" "additional_serving" {
-  for_each      = toset(var.additional_serving_service_accounts)
-  crypto_key_id = google_kms_crypto_key.cdd.id
+  for_each      = var.cmek_enabled ? toset(var.additional_serving_service_accounts) : toset([])
+  crypto_key_id = one(google_kms_crypto_key.cdd[*].id)
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:${each.value}"
 }
 
 # App uses the CMEK for envelope ops it performs directly.
 resource "google_kms_crypto_key_iam_member" "app" {
-  crypto_key_id = google_kms_crypto_key.cdd.id
+  count         = var.cmek_enabled ? 1 : 0
+  crypto_key_id = one(google_kms_crypto_key.cdd[*].id)
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:${google_service_account.app.email}"
 }

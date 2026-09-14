@@ -20,8 +20,11 @@ resource "google_storage_bucket" "documents" {
     enabled = true
   }
 
-  encryption {
-    default_kms_key_name = google_kms_crypto_key.cdd.id
+  dynamic "encryption" {
+    for_each = var.cmek_enabled ? [1] : []
+    content {
+      default_kms_key_name = one(google_kms_crypto_key.cdd[*].id)
+    }
   }
 
   depends_on = [
