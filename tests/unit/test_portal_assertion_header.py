@@ -29,23 +29,23 @@ from cdd_sow_research.config import (
 )
 
 
+class _ReachedTheVerifier(Exception):
+    """Raised by a stubbed verifier to say the assertion got that far, and no further."""
+
+
 def _authenticator():
-    from cdd_sow_research.api import security
+    """The IAP authenticator, named rather than discovered.
 
-    for name in dir(security):
-        obj = getattr(security, name)
-        if isinstance(obj, type) and "assertion = ctx.header" in _source_of(obj):
-            return obj
-    raise AssertionError("no authenticator class reads the assertion header")
+    This used to search the module for a class whose SOURCE contained
+    ``"assertion = ctx.header"``, which tied the suite to one spelling of the line under test:
+    replacing the hand-rolled `or` chain with the commons selection function made the helper
+    find nothing and raise, in tests that were otherwise entirely unaffected by the change. A
+    test that locates its subject by grepping for an implementation detail fails for reasons
+    that have nothing to do with what it asserts.
+    """
+    from cdd_sow_research.api.security import IapAuthenticationAdapter
 
-
-def _source_of(obj: type) -> str:
-    import inspect
-
-    try:
-        return inspect.getsource(obj)
-    except (OSError, TypeError):
-        return ""
+    return IapAuthenticationAdapter
 
 
 def test_the_two_header_names_are_distinct_and_the_portal_one_is_not_reserved() -> None:
@@ -82,13 +82,62 @@ def test_either_header_reaches_the_verifier_and_neither_bypasses_it(header: str)
     )
 
 
+@pytest.mark.parametrize("blank", ["   ", "\t", "\n"])
+def test_a_blank_reserved_header_does_not_shadow_a_real_forwarded_one(blank: str) -> None:
+    """The defect the `or` chain carried, and the reason the commons function strips.
+
+    ``ctx.header(A) or ctx.header(B)`` treats a whitespace-only A as PRESENT, because a string
+    of spaces is truthy. So a hop that rendered the reserved header empty -- which is exactly
+    what a template substitution does when its value is missing -- shadowed a perfectly good
+    forwarded assertion, and the request was then refused further down as a MALFORMED token.
+    That refusal names the wrong fault: it sends an operator looking for a broken credential
+    rather than for the hop that emptied a header.
+
+    Reaching the verifier proves the forwarded assertion was the one selected. The SDK is absent
+    in this gate, so the lazy import raising IS the assertion that it got that far.
+    """
+    authenticator = _authenticator()
+    instance = authenticator.__new__(authenticator)
+    instance._settings = object()
+    instance._audience = "test-audience"
+
+    # WHICH assertion reached the verifier is the whole question, so it is recorded rather than
+    # inferred. Asserting only that the request was not refused passes against the `or` chain
+    # too, because handing the verifier a blank token fails in its own way: a test that cannot
+    # tell the two failures apart proves nothing about the one under repair.
+    seen: list[str] = []
+
+    def _record(assertion: str) -> dict[str, object]:
+        seen.append(assertion)
+        # Stop here rather than returning claims: what is under test is WHICH assertion was
+        # selected, and going further would drag the whole reviewed claim half into a transport
+        # test. The sentinel makes the stop explicit instead of relying on empty claims to fail
+        # somewhere further down for a reason this test does not own.
+        raise _ReachedTheVerifier
+
+    instance._verify = _record  # type: ignore[method-assign]
+
+    headers = {_IAP_ASSERTION_HEADER: blank, _PORTAL_ASSERTION_HEADER: "forwarded-token"}
+    with pytest.raises(_ReachedTheVerifier):
+        instance.authenticate(RequestContext(headers=headers))
+    assert seen == ["forwarded-token"], (
+        "a whitespace-only reserved header shadowed the assertion the host actually forwarded"
+    )
+
+
 def test_neither_header_present_is_still_a_refusal() -> None:
     authenticator = _authenticator()
     instance = authenticator.__new__(authenticator)
     instance._settings = object()
     instance._audience = "test-audience"
-    with pytest.raises(IdentityError, match="missing IAP assertion header"):
+    with pytest.raises(IdentityError) as caught:
         instance.authenticate(RequestContext(headers={}))
+    message = str(caught.value)
+    assert "missing IAP assertion header" in message
+    # The refusal NAMES both headers it examined. An operator who reads only the sentence goes
+    # to the load balancer; the one who reads the two names goes to the hop that dropped one.
+    assert _IAP_ASSERTION_HEADER in message
+    assert _PORTAL_ASSERTION_HEADER in message
 
 
 # --------------------------------------------------------------------------------------- #
