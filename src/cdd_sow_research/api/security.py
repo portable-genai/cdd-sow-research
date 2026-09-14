@@ -20,6 +20,7 @@ from hex_service_kit.federation import (
     IAP_ISSUER,
     IAP_KEYS_URL,
     PORTAL_ASSERTION_HEADER,
+    select_assertion,
 )
 
 from ..adapters.oidc import session_token
@@ -211,9 +212,26 @@ class IapAuthenticationAdapter:
         return reviewed_tenant_for(claims, self._settings)
 
     def authenticate(self, ctx: RequestContext, *, correlation: str = "") -> AuthenticatedIdentity:
-        assertion = ctx.header(_IAP_ASSERTION_HEADER) or ctx.header(_PORTAL_ASSERTION_HEADER)
-        if not assertion:
-            raise IdentityError("missing IAP assertion header; request did not pass through IAP")
+        # The commons selection function, rather than this repository's own `or` chain. It reads
+        # the same two names in the same order, so nothing about which assertion is accepted
+        # changes; what changes is that the chain STRIPS. `ctx.header(A) or ctx.header(B)` treats
+        # a whitespace-only A as present, because a blank string of spaces is truthy: a proxy that
+        # rendered the reserved header empty would shadow a perfectly good forwarded assertion and
+        # then be refused further down as a MALFORMED token, which sends an operator looking for a
+        # broken credential instead of for the hop that emptied a header.
+        #
+        # It also means one edit to the reviewed set reaches here. A per-repository chain is a
+        # security decision with a local copy, and a local copy always agrees with itself.
+        try:
+            source = select_assertion({k.lower(): v for k, v in ctx.headers.items()})
+        except IdentityError as exc:
+            # This repository's own sentence, with the commons reason appended because that reason
+            # names BOTH headers it examined; an operator who reads only "missing IAP assertion
+            # header" goes to the load balancer rather than to the hop that dropped one of them.
+            raise IdentityError(
+                f"missing IAP assertion header; request did not pass through IAP: {exc}"
+            ) from exc
+        assertion = source.assertion
         if not self._audience:
             raise IdentityError("CDD_IAP_AUDIENCE is not configured; cannot verify IAP assertion")
         claims = self._verify(assertion)
