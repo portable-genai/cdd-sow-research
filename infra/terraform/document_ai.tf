@@ -30,7 +30,7 @@ locals {
 }
 
 resource "google_kms_key_ring" "docai" {
-  count    = local.docai_out_of_region ? 1 : 0
+  count    = var.cmek_enabled && (local.docai_out_of_region) ? 1 : 0
   project  = var.project_id
   name     = "${var.name_prefix}-docai-ring"
   location = var.docai_kms_location
@@ -39,7 +39,7 @@ resource "google_kms_key_ring" "docai" {
 }
 
 resource "google_kms_crypto_key" "docai" {
-  count           = local.docai_out_of_region ? 1 : 0
+  count           = var.cmek_enabled && (local.docai_out_of_region) ? 1 : 0
   name            = "${var.name_prefix}-docai-cmek"
   key_ring        = google_kms_key_ring.docai[0].id
   rotation_period = "7776000s" # 90 days, matching the stack key in kms.tf
@@ -50,7 +50,7 @@ resource "google_kms_crypto_key" "docai" {
 }
 
 resource "google_kms_crypto_key_iam_member" "documentai_colocated" {
-  count         = local.docai_out_of_region ? 1 : 0
+  count         = var.cmek_enabled && (local.docai_out_of_region) ? 1 : 0
   crypto_key_id = google_kms_crypto_key.docai[0].id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:${google_project_service_identity.documentai.email}"
@@ -67,7 +67,7 @@ resource "google_document_ai_processor" "kyc" {
 
   # Explicit CMEK on the processor (P-09 -- does not cascade), from the key that shares the
   # processor's location.
-  kms_key_name = local.docai_out_of_region ? google_kms_crypto_key.docai[0].id : google_kms_crypto_key.cdd.id
+  kms_key_name = local.docai_out_of_region ? one(google_kms_crypto_key.docai[*].id) : one(google_kms_crypto_key.cdd[*].id)
 
   depends_on = [
     google_project_service.required,

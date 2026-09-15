@@ -30,7 +30,8 @@ resource "google_project_service_identity" "firestore" {
 }
 
 resource "google_kms_crypto_key_iam_member" "firestore" {
-  crypto_key_id = google_kms_crypto_key.cdd.id
+  count         = var.cmek_enabled ? 1 : 0
+  crypto_key_id = one(google_kms_crypto_key.cdd[*].id)
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:${google_project_service_identity.firestore.email}"
 }
@@ -52,9 +53,9 @@ resource "google_firestore_database" "sow_cases" {
   # unaffected and a deploy that does not must switch it off DELIBERATELY and disclose it.
   # Every other CMEK binding (logging, storage, Document AI, Vertex) is unconditional.
   dynamic "cmek_config" {
-    for_each = var.firestore_cmek_enabled ? [1] : []
+    for_each = var.cmek_enabled && var.firestore_cmek_enabled ? [1] : []
     content {
-      kms_key_name = google_kms_crypto_key.cdd.id
+      kms_key_name = one(google_kms_crypto_key.cdd[*].id)
     }
   }
   delete_protection_state = (

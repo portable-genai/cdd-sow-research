@@ -28,7 +28,7 @@ output "docai_location" {
 # --------------------------------- KMS -------------------------------------- #
 output "kms_key" {
   description = "Regional CMEK crypto key id (settings.yaml kms_key). App env: CDD_KMS_KEY."
-  value       = google_kms_crypto_key.cdd.id
+  value       = one(google_kms_crypto_key.cdd[*].id)
 }
 
 output "embed_signing_key_version" {
