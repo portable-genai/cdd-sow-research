@@ -50,6 +50,33 @@ _RUNTIME_EXIT = 1
 _CLI_ACTOR = "cli:operator"
 
 
+@app.callback()
+def _configure_logging_once() -> None:
+    """Install the profile's formatter before any command runs.
+
+    A Typer CALLBACK rather than a call under `if __name__ == "__main__"`. The installed
+    entry point is
+    `cdd_sow_research.cli.main:app`,
+    so the module guard never executes for the console script and a call placed there would
+    configure logging for nobody in the one process that ships. Idempotent in the kit, so a
+    process that is both this CLI and the API app configures once rather than twice.
+
+    A rejected profile is NOT this callback's to report: the command path already turns it
+    into an operator-readable exit rather than a traceback, and surfacing it here would
+    replace that sentence with a stack trace. Logging is diagnosis, so it falls back to the
+    human-readable formatter and lets the command fail the way it already failed.
+    """
+    from hex_service_kit.logging import configure_logging
+
+    from ..config import resolve_profile
+
+    try:
+        profile = resolve_profile().profile
+    except Exception:  # noqa: BLE001 - see the docstring: never pre-empt the command's error
+        profile = "local"
+    configure_logging(profile, service="cdd-sow-research")
+
+
 def _container() -> Container:
     from ..config import build_container
 

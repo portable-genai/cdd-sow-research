@@ -52,6 +52,7 @@ from hex_service_kit.capabilities import (
     CapabilityManifest,
     CapabilityMode,
 )
+from hex_service_kit.logging import configure_logging
 from hex_service_kit.netdefaults import (
     ConfiguredEmptyError,
     InsecureBindError,
@@ -65,6 +66,7 @@ from ..config import (
     Settings,
     build_container,
     end_user_auth_kind,
+    resolve_profile,
 )
 from ..domain import _grounded as g
 from ..domain import case_bundle_service, entitlements
@@ -1499,6 +1501,20 @@ def agent_card() -> AgentCardModel:
     from ..agent.agent_card import build_agent_card
 
     return AgentCardModel.from_domain(build_agent_card(deps.get_settings()))
+
+
+#: Service name on every log line. The repository slug: stable, greppable, and the same
+#: string the tracer already reports as `service.name`.
+_SERVICE_NAME = "cdd-sow-research"
+
+# Configured at MODULE scope, and before the app object is built, for the reason the exposure
+# guard is bound there too: the Dockerfile CMD and `make run-api` serve the app OBJECT, so
+# anything living only inside a function never runs in a shipped process. Before this call the
+# deployed service wrote unparsed text to stdout: no `severity`, so Cloud Logging could not
+# colour an error or drive a log-based metric from one, and no trace field, so a log line
+# never joined the request it came from. The profile comes from `resolve_profile`, the one
+# reader of CDD_PROFILE that the profile drift guard permits.
+configure_logging(resolve_profile().profile, service=_SERVICE_NAME)
 
 
 app = create_app()
