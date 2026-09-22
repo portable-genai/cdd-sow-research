@@ -40,7 +40,7 @@ import httpx
 from ...config import Settings
 from ...domain.errors import CddError
 from ...domain.models import Citation, ComplianceAnswer, SourceType
-from ...envread import optional_setting, required_setting
+from ...envread import optional_setting, required_setting, setting_or_default
 from . import _s2s
 
 #: The one environment variable that names the compliance-advisory base URL. Under ``gcp`` it is
@@ -50,7 +50,18 @@ URL_ENV = "RSK_COMPLIANCE_URL"
 AUDIENCE_ENV = "RSK_COMPLIANCE_IAP_AUDIENCE"
 #: The profile whose receiver is behind IAP, and so the profile the audience is required under.
 _IAP_PROFILE = "gcp"
-_TIMEOUT = httpx.Timeout(30.0, connect=5.0)
+#: How long the answer may take, in seconds. Read in three states: unset takes the default,
+#: emptied or non-positive refuses at construction, a value wins.
+TIMEOUT_ENV = "RSK_COMPLIANCE_TIMEOUT_SECONDS"
+#: The default read budget. The first deployed call, on 2026-09-22, found compliance-advisory
+#: scaled to zero: its instance started when the question arrived, spent about ten seconds
+#: starting, then about sixty retrieving and generating, and answered 200 some seventy seconds in.
+#: The client had given up at thirty, so the dossier reported NOT CHECKED for an answer that
+#: arrived. A scale-to-zero deployment makes a cold start part of every first call, so the budget
+#: is the cold path with margin. The answer is advisory and a timeout is recorded rather than
+#: failed, so a generous budget costs a slower dossier, never a wrong one.
+_DEFAULT_READ_SECONDS = 120.0
+_CONNECT_SECONDS = 5.0
 
 
 class RemoteComplianceError(CddError):
@@ -67,6 +78,7 @@ class RemoteComplianceAdapter:
             service=type(self).__name__,
         )
         self._audience = self._resolve_audience(settings)
+        self._timeout = httpx.Timeout(_resolve_read_seconds(), connect=_CONNECT_SECONDS)
 
     @staticmethod
     def _resolve_audience(settings: Settings) -> str:
@@ -96,7 +108,7 @@ class RemoteComplianceAdapter:
             response = httpx.post(
                 url,
                 json=payload,
-                timeout=_TIMEOUT,
+                timeout=self._timeout,
                 headers=_s2s.headers(
                     settings=self._settings,
                     base_url=self._base_url,
@@ -150,3 +162,19 @@ def _audience_or_refuse(value: str) -> str:
             "bearer audience."
         )
     return value
+
+
+def _resolve_read_seconds() -> float:
+    """Resolve the read budget: unset takes the default, emptied or unusable refuses by name.
+
+    Refused at construction, which the API binds at boot, so a deployment that named a budget
+    nobody could meet fails to start and says which variable, rather than timing out every call.
+    """
+    raw = setting_or_default(TIMEOUT_ENV, str(_DEFAULT_READ_SECONDS))
+    try:
+        seconds = float(raw)
+    except ValueError as exc:
+        raise ValueError(f"{TIMEOUT_ENV} must be a number of seconds, got {raw!r}") from exc
+    if not seconds > 0 or seconds == float("inf"):
+        raise ValueError(f"{TIMEOUT_ENV} must be a positive, finite number of seconds, got {raw!r}")
+    return seconds

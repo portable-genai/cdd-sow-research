@@ -238,6 +238,10 @@ required. The normative route, token, state-machine, and completion contracts li
     the backend-service path IAP compares its own inbound assertion against. Absent under
     `local` and `live`. Under `platform` it is optional and the audience falls back to the
     receiver's own origin, which is what a sibling Cloud Run service called directly accepts.
+  - **`RSK_COMPLIANCE_TIMEOUT_SECONDS`** is the read budget, 120 when unset. The first deployed
+    call found `compliance-advisory` scaled to zero and answering about seventy seconds in, after
+    the old fixed thirty-second budget had already reported the dossier NOT CHECKED. Emptied,
+    non-positive or non-numeric refuses at boot, naming the variable.
   - Under `live` the launcher runs `compliance-advisory` on loopback with no IAP in front of it,
     so the call is direct and carries no token.
 
