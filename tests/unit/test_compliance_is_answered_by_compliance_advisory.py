@@ -22,6 +22,7 @@ from fastapi.testclient import TestClient
 from cdd_sow_research.adapters.platform import _s2s
 from cdd_sow_research.adapters.platform.remote_compliance import (
     AUDIENCE_ENV,
+    TIMEOUT_ENV,
     RemoteComplianceAdapter,
     RemoteComplianceError,
 )
@@ -84,6 +85,7 @@ def _no_ambient_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("S2S_SIGNING_KEY", raising=False)
     # An ambient audience would make the "refuses without one" cases pass for the wrong reason.
     monkeypatch.delenv(AUDIENCE_ENV, raising=False)
+    monkeypatch.delenv(TIMEOUT_ENV, raising=False)
 
 
 # --------------------------------------------------------------------------------------- #
@@ -367,3 +369,60 @@ def test_a_deployment_without_the_audience_refuses_to_start(
         TestClient(create_app(settings), client=("127.0.0.1", 50000)),
     ):
         pass
+
+
+# --------------------------------------------------------------------------------------- #
+# The read budget. The first deployed call found compliance-advisory scaled to zero and gave up
+# at thirty seconds on an answer that arrived at about seventy, so the dossier said NOT CHECKED.
+# --------------------------------------------------------------------------------------- #
+def test_the_default_budget_covers_a_cold_start_and_a_grounded_answer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(URL_ENV, "http://127.0.0.1:8091")
+
+    timeout = RemoteComplianceAdapter(_settings("live"))._timeout
+
+    assert timeout.read == 120.0
+    assert timeout.connect == 5.0
+
+
+def test_an_operator_budget_wins(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(URL_ENV, "http://127.0.0.1:8091")
+    monkeypatch.setenv(TIMEOUT_ENV, "45")
+
+    assert RemoteComplianceAdapter(_settings("live"))._timeout.read == 45.0
+
+
+def test_an_emptied_budget_refuses_to_construct(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(URL_ENV, "http://127.0.0.1:8091")
+    monkeypatch.setenv(TIMEOUT_ENV, "")
+
+    with pytest.raises(ConfiguredEmptyError, match=TIMEOUT_ENV):
+        RemoteComplianceAdapter(_settings("live"))
+
+
+@pytest.mark.parametrize("raw", ["soon", "0", "-30", "inf", "nan"])
+def test_a_budget_nobody_could_meet_refuses_to_construct_by_name(
+    monkeypatch: pytest.MonkeyPatch, raw: str
+) -> None:
+    monkeypatch.setenv(URL_ENV, "http://127.0.0.1:8091")
+    monkeypatch.setenv(TIMEOUT_ENV, raw)
+
+    with pytest.raises(ValueError, match=TIMEOUT_ENV):
+        RemoteComplianceAdapter(_settings("live"))
+
+
+@respx.mock
+def test_the_request_carries_the_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Resolved and then ignored would be the defect this replaces, in a different place."""
+    monkeypatch.setenv(URL_ENV, "http://127.0.0.1:8091")
+    monkeypatch.setenv(TIMEOUT_ENV, "95")
+    route = respx.post("http://127.0.0.1:8091/ask").mock(
+        return_value=httpx.Response(200, json=_ANSWER)
+    )
+
+    RemoteComplianceAdapter(_settings("live")).check("What CDD expectations apply?", actor="a")
+
+    sent = route.calls.last.request.extensions["timeout"]
+    assert sent["read"] == 95.0
+    assert sent["connect"] == 5.0
