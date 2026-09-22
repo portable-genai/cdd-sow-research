@@ -45,6 +45,8 @@ jobs:
       extra_lockfiles: "requirements-demo.lock"
       dev_lockfile: "requirements-dev-oidc.lock"
       extra_lockfiles_first: true
+      runtime_lockfile: "requirements-gcp.lock"
+      iap_matrix_path: "tests/unit/test_iap_crypto_matrix.py"
       npm_directory: "ui"
       npm_directory_first: true
       terraform_directory: "infra/terraform"
