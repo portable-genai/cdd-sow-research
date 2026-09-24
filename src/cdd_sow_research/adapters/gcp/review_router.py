@@ -3,7 +3,7 @@
 
 Builds the review from the escalated dossier and submits it to the human-review-console service
 intake (``POST /v1/service/reviews``), S2S-authenticated. The human-review-console base URL and S2S
-credentials come from the environment (``CDD_HRZ7_URL`` / ``CDD_S2S_TOKEN`` /
+credentials come from the environment (``HUMAN_REVIEW_URL`` / ``CDD_S2S_TOKEN`` /
 ``CDD_S2S_SIGNING_KEY``), set on the Cloud Run service. No cloud SDK is involved (the kit uses
 stdlib ``urllib`` + the wire-compatible S2S headers), so this module imports cleanly with no GCP
 SDK; it is bound under the ``gcp`` and ``platform`` profiles because it makes a real network call to
@@ -50,7 +50,7 @@ class PlatformReviewRouter:
         )
 
     def _submit(self, review: Review) -> None:
-        base_url = required_setting("CDD_HRZ7_URL")
+        base_url = required_setting("HUMAN_REVIEW_URL")
         client = ReviewClient(
             base_url,
             token_env="CDD_S2S_TOKEN",

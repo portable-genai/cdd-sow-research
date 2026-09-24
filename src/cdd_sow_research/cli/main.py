@@ -140,6 +140,34 @@ def _echo_citations(citations: tuple[Citation, ...], indent: str = "  ") -> None
         typer.echo(f"{indent}  - {_fmt_citation(c)}")
 
 
+def _recorder(container: Container) -> Any:
+    """The container's review router, wrapped so the command can say what the hand-off did."""
+    from ..adapters.controls import RecordingReviewRouter
+
+    return RecordingReviewRouter(container.review_router)
+
+
+#: What the operator is told about the hand-off, in plain words. A result that required review
+#: but is not queued must say so rather than read as reviewed.
+_REVIEW_ROUTING_TEXT = {
+    "routed": "Sent to the review console.",
+    "failed": "Could not reach the review console; this item is not queued for review.",
+    "off": "Review routing is off in this deployment; this item is not queued for review.",
+}
+
+
+def _echo_review_routing(routing: Any) -> None:
+    """Print the hand-off outcome, or nothing when nothing required review."""
+    if routing is None:
+        return
+    outcome = routing.outcome.value
+    text = _REVIEW_ROUTING_TEXT.get(outcome)
+    if text is None:
+        return
+    colour = typer.colors.GREEN if outcome == "routed" else typer.colors.RED
+    typer.secho(f"  Human review hand-off: {outcome}. {text}", fg=colour, bold=True)
+
+
 def _echo_review_banner(requires_review: bool) -> None:
     if requires_review:
         typer.secho(
@@ -217,10 +245,16 @@ def assess(
 ) -> None:
     """Build a full cited CDD dossier for a subject."""
 
+    # Rule R8 on the CLI path too, through a recorder so the operator is told what happened to
+    # the hand-off rather than assuming the dossier is queued.
+    hand_off: dict[str, Any] = {}
+
     def _do() -> CDDCase:
         from ..domain.models import CaseInput, Subject, SubjectType
 
-        svc = _deps().build_cdd_service(_container())
+        container = _container()
+        hand_off["routing"] = routing = _recorder(container)
+        svc = _deps().build_cdd_service(container, review_router=routing)
         sub_type = SubjectType(type_) if type_ in ("individual", "entity") else SubjectType.ENTITY
         subj = Subject(
             id=subject.lower().replace(" ", "-"),
@@ -232,6 +266,7 @@ def assess(
 
     case = _run("assess", _do)
     _print_case(case)
+    _echo_review_routing(hand_off.get("routing"))
 
 
 @app.command(name="source-of-wealth")
@@ -295,7 +330,7 @@ def _print_perpetual_kyc(assessment: PerpetualKycAssessment) -> None:
         typer.secho(
             f"  Queue: {item.priority.value.upper()}, disposition due {item.sla_due}, "
             f"routed to human-review-console: "
-            f"{'yes' if item.routed_to_hrz7 else 'no (retained locally)'}",
+            f"{'yes' if item.routed_to_hrz7 else 'no'}",
             bold=True,
         )
         for reason in item.reasons:
@@ -335,6 +370,8 @@ def perpetual_kyc(
     requires human review: nothing here acts on a relationship.
     """
 
+    hand_off: dict[str, Any] = {}
+
     def _do() -> PerpetualKycAssessment:
         from datetime import UTC, date, datetime
 
@@ -349,7 +386,9 @@ def perpetual_kyc(
             tenant=tenant,
         )
         when = date.fromisoformat(as_of[:10]) if as_of else datetime.now(UTC).date()
-        service = _deps().build_perpetual_kyc_service(_container())
+        container = _container()
+        hand_off["routing"] = routing = _recorder(container)
+        service = _deps().build_perpetual_kyc_service(container, review_router=routing)
         return service.run(
             subj,
             actor=_CLI_ACTOR,
@@ -360,6 +399,7 @@ def perpetual_kyc(
 
     assessment = _run("perpetual-kyc", _do)
     _print_perpetual_kyc(assessment)
+    _echo_review_routing(hand_off.get("routing"))
 
 
 def _print_ubo_graph(resolution: UboResolution) -> None:
@@ -431,6 +471,8 @@ def ubo_graph(
     human-review-console.
     """
 
+    hand_off: dict[str, Any] = {}
+
     def _do() -> UboResolution:
         from datetime import UTC, date, datetime
 
@@ -444,11 +486,14 @@ def ubo_graph(
             tenant=tenant,
         )
         when = date.fromisoformat(as_of[:10]) if as_of else datetime.now(UTC).date()
-        service = _deps().build_ubo_graph_service(_container())
+        container = _container()
+        hand_off["routing"] = routing = _recorder(container)
+        service = _deps().build_ubo_graph_service(container, review_router=routing)
         return service.resolve(subj, actor=_CLI_ACTOR, as_of=when)
 
     resolution = _run("ubo-graph", _do)
     _print_ubo_graph(resolution)
+    _echo_review_routing(hand_off.get("routing"))
 
 
 @app.command(name="perpetual-kyc-queue")

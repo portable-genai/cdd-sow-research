@@ -10,7 +10,10 @@ export function CddCaseView({ caseData }: { caseData: CddCase }) {
   const { subject, sow, rating, adverse_media, ownership, screening } = caseData;
   return (
     <div className="space-y-4">
-      <ReviewBanner requiresReview={caseData.requires_human_review} />
+      <ReviewBanner
+        requiresReview={caseData.requires_human_review}
+        routing={caseData.review_routing}
+      />
 
       <Panel title={`Subject: ${subject.name}`}>
         <dl className="grid min-w-0 grid-cols-1 gap-2 text-sm text-ink-700 sm:grid-cols-2">

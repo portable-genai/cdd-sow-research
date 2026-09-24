@@ -122,6 +122,12 @@ resource "google_cloud_run_v2_job" "sanctions_sync" {
           name  = "CDD_PROFILE"
           value = "gcp"
         }
+        # The sync publishes a watchlist snapshot and escalates nothing, so it states routing
+        # off rather than naming a review console it would never call.
+        env {
+          name  = "CDD_REVIEW_ROUTING"
+          value = "false"
+        }
       }
     }
   }

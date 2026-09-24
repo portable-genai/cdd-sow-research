@@ -18,13 +18,22 @@ from ..domain.models import CDDCase, PerpetualKycAssessment, UboResolution
 
 @runtime_checkable
 class ReviewRouterPort(Protocol):
-    def route(self, case: CDDCase, *, maker: str) -> None:
+    """Hand a consequential item to the review console.
+
+    Each verb returns ``None`` when the item was handed off. An adapter that deliberately does
+    NOT hand it off (the disabled router a deployment binds by switching routing off, or the
+    caller-side recorder that absorbed a failed hand-off) returns ``False`` instead, so a
+    service that records whether the item was routed never records a hand-off that did not
+    happen.
+    """
+
+    def route(self, case: CDDCase, *, maker: str) -> bool | None:
         """Route an escalated dossier to human-review-console for human review (idempotent per case
         is ideal).
         """
         ...
 
-    def route_monitoring(self, assessment: PerpetualKycAssessment, *, maker: str) -> None:
+    def route_monitoring(self, assessment: PerpetualKycAssessment, *, maker: str) -> bool | None:
         """Route a perpetual-KYC assessment to human-review-console for human review (rule R8).
 
         A pKYC re-score is consequential in exactly the same way a dossier is: it changes
@@ -34,7 +43,7 @@ class ReviewRouterPort(Protocol):
         """
         ...
 
-    def route_ownership(self, resolution: UboResolution, *, maker: str) -> None:
+    def route_ownership(self, resolution: UboResolution, *, maker: str) -> bool | None:
         """Route a UBO-graph resolution to human-review-console for human review (rule R8).
 
         A third verb rather than a reuse of ``route_monitoring``, because a resolution is

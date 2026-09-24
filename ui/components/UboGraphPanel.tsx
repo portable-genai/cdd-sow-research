@@ -173,7 +173,10 @@ export function UboGraphPanel({
 
       {resolution ? (
         <Panel title={`Ownership: ${resolution.subject_name || resolution.subject_id}`}>
-          <ReviewBanner requiresReview={resolution.requires_human_review} />
+          <ReviewBanner
+            requiresReview={resolution.requires_human_review}
+            routing={resolution.review_routing}
+          />
           <dl className="mb-3 grid min-w-0 grid-cols-1 gap-2 text-sm text-ink-700 sm:grid-cols-3">
             <div>
               <dt className="text-ink-400">Structure</dt>
@@ -195,7 +198,7 @@ export function UboGraphPanel({
           </dl>
           <p className="mb-3 text-xs text-ink-500">
             {resolution.control_rationale} Routed to the human-review console:{" "}
-            {resolution.routed_to_hrz7 ? "yes" : "no (retained locally for retry)"}
+            {resolution.routed_to_hrz7 ? "yes" : "no"}
           </p>
 
           <h3 className="mb-1 text-xs font-semibold uppercase text-ink-500">

@@ -238,7 +238,7 @@ class UboGraphService:
     # ------------------------------------------------------------------ #
     def _route(self, resolution: UboResolution, *, maker: str) -> bool:
         try:
-            self._review_router.route_ownership(resolution, maker=maker)
+            handed_off = self._review_router.route_ownership(resolution, maker=maker)
         except Exception:  # noqa: BLE001 - a console outage must not lose the resolution
             _LOG.error(
                 "UBO-graph review routing failed for %s; the resolution still requires "
@@ -246,7 +246,11 @@ class UboGraphService:
                 resolution.subject_id,
             )
             return False
-        return True
+        # The port returns None for "accepted". An adapter that did not hand the item off
+        # (routing switched off, or a failure the caller's recorder already reported) says so
+        # with False, so the routed flag and the audit field never claim a hand-off that did
+        # not happen.
+        return handed_off is not False
 
     def _write_audit(self, resolution: UboResolution, *, actor: str, routed: bool) -> None:
         graph = resolution.graph

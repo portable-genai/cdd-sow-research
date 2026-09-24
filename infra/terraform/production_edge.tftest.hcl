@@ -1,6 +1,12 @@
 mock_provider "google" {}
 mock_provider "google-beta" {}
 
+# Every edge below routes to a review console, as a managed deployment with routing on must:
+# the service refuses to boot without one. The run that switches routing off overrides it.
+variables {
+  human_review_url = "https://review.fictional-bank.example"
+}
+
 run "named_edge_contract" {
   command = plan
 
@@ -686,4 +692,89 @@ run "reject_the_backend_service_path_as_a_bearer_audience" {
   }
 
   expect_failures = [var.compliance_advisory_iap_audience]
+}
+
+# A deployment that switches review routing off needs no console, and must TELL the service it
+# is off rather than leave it to infer that from a missing URL.
+run "edge_with_routing_stated_off_needs_no_console" {
+  command = plan
+
+  variables {
+    cmek_enabled                         = true
+    project_id                           = "fictional-doc1-production"
+    docai_location                       = "us"
+    enable_org_policies                  = false
+    enable_vpc_sc                        = false
+    worm_locked                          = false
+    deployment_stage                     = "production-edge"
+    production_edge_enabled              = true
+    compliance_advisory_url              = "https://rm.fictional-bank.example/apps/compliance-advisory/api"
+    compliance_advisory_iap_audience     = "1234567890-fictionaledgeclient.apps.googleusercontent.com"
+    api_image                            = "asia-southeast1-docker.pkg.dev/fictional/doc1/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ui_image                             = "asia-southeast1-docker.pkg.dev/fictional/doc1/ui@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    agent_domain                         = "doc1.fictional-bank.example"
+    installation_manifest_secret_id      = "doc1-installations"
+    installation_manifest_secret_version = "7"
+    runtime_settings_secret_id           = "doc1-runtime-settings"
+    runtime_settings_secret_version      = "4"
+    production_manifest_version          = "test-v1"
+    production_manifest_sha256           = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    production_settings_sha256           = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    alert_notification_channels          = ["projects/fictional-doc1-production/notificationChannels/123"]
+    production_identity_mode             = "embedded-grant"
+    enable_embed_signing_key             = true
+    embed_signing_key_version            = "projects/fictional-doc1-production/locations/asia-southeast1/keyRings/cdd-sow-agent-ring/cryptoKeys/cdd-sow-agent-cmek-embed-signing/cryptoKeyVersions/1"
+    edge_min_instances                   = 2
+    edge_max_instances                   = 4
+    human_review_url                     = ""
+    review_routing_enabled               = false
+  }
+
+  assert {
+    condition     = one([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "CDD_REVIEW_ROUTING"]) == "false"
+    error_message = "A deployment that switches routing off must tell the service so, not leave it to infer that from a missing console."
+  }
+
+  assert {
+    condition     = one([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "CDD_GUARDRAIL"]) == "true" && one([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "CDD_PII_REDACTION"]) == "true"
+    error_message = "The guardrail and PII redaction stay on unless a deployment says otherwise."
+  }
+}
+
+# With routing on, an edge that names no console is refused at plan rather than deployed into
+# a revision that cannot boot.
+run "reject_an_edge_routing_to_no_console" {
+  command = plan
+
+  variables {
+    cmek_enabled                         = true
+    project_id                           = "fictional-doc1-production"
+    docai_location                       = "us"
+    enable_org_policies                  = false
+    enable_vpc_sc                        = false
+    worm_locked                          = false
+    deployment_stage                     = "production-edge"
+    production_edge_enabled              = true
+    compliance_advisory_url              = "https://rm.fictional-bank.example/apps/compliance-advisory/api"
+    compliance_advisory_iap_audience     = "1234567890-fictionaledgeclient.apps.googleusercontent.com"
+    api_image                            = "asia-southeast1-docker.pkg.dev/fictional/doc1/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ui_image                             = "asia-southeast1-docker.pkg.dev/fictional/doc1/ui@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    agent_domain                         = "doc1.fictional-bank.example"
+    installation_manifest_secret_id      = "doc1-installations"
+    installation_manifest_secret_version = "7"
+    runtime_settings_secret_id           = "doc1-runtime-settings"
+    runtime_settings_secret_version      = "4"
+    production_manifest_version          = "test-v1"
+    production_manifest_sha256           = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    production_settings_sha256           = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    alert_notification_channels          = ["projects/fictional-doc1-production/notificationChannels/123"]
+    production_identity_mode             = "embedded-grant"
+    enable_embed_signing_key             = true
+    embed_signing_key_version            = "projects/fictional-doc1-production/locations/asia-southeast1/keyRings/cdd-sow-agent-ring/cryptoKeys/cdd-sow-agent-cmek-embed-signing/cryptoKeyVersions/1"
+    edge_min_instances                   = 2
+    edge_max_instances                   = 4
+    human_review_url                     = ""
+  }
+
+  expect_failures = [var.human_review_url]
 }

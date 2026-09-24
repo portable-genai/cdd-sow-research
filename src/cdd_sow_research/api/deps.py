@@ -15,7 +15,11 @@ from __future__ import annotations
 
 from contextvars import ContextVar, Token
 from functools import lru_cache
+from typing import Annotated, Any
 
+from fastapi import Depends
+
+from ..adapters.controls import RecordingReviewRouter
 from ..config import Container, Settings, build_container
 from ..domain.review_policy import CddReviewPolicy
 from ..domain.services import (
@@ -67,10 +71,24 @@ def get_settings() -> Settings:
 # --------------------------------------------------------------------------- #
 
 
-def get_cdd_service() -> CddService:
+def get_request_review_router() -> RecordingReviewRouter:
+    """The review router for ONE request, wrapped so the response reports the hand-off.
+
+    FastAPI resolves a dependency once per request, so the route and the service it builds
+    receive the same wrapper and the route reads what the service's hand-off did.
+    """
+    return RecordingReviewRouter(get_container().review_router)
+
+
+#: Injected by FastAPI; ``None`` when a getter is called directly (the MCP server does), which
+#: binds the container's router unwrapped unless the caller passes its own recorder.
+RequestReviewRouter = Annotated[RecordingReviewRouter | None, Depends(get_request_review_router)]
+
+
+def get_cdd_service(review_router: RequestReviewRouter = None) -> CddService:
     """CddService(extraction, knowledge_base, adverse_media, registry, compliance, llm,
     guardrail, redaction, tracer, audit)."""
-    return build_cdd_service(get_container())
+    return build_cdd_service(get_container(), review_router=review_router)
 
 
 def build_sow_case_service(container: Container) -> SowCaseService:
@@ -89,7 +107,9 @@ def get_sow_case_service() -> SowCaseService:
     return build_sow_case_service(get_container())
 
 
-def build_perpetual_kyc_service(container: Container) -> PerpetualKycService:
+def build_perpetual_kyc_service(
+    container: Container, *, review_router: Any = None
+) -> PerpetualKycService:
     """Assemble the perpetual-KYC orchestrator from an explicit Container.
 
     Every number the module uses (signal uplifts, the score ceiling, the priority
@@ -102,7 +122,7 @@ def build_perpetual_kyc_service(container: Container) -> PerpetualKycService:
         adverse_media=container.adverse_media,
         registry=container.registry,
         store=container.monitoring_store,
-        review_router=container.review_router,
+        review_router=review_router or container.review_router,
         audit=container.audit,
         tracer=container.tracer,
         redaction=container.redaction,
@@ -110,12 +130,12 @@ def build_perpetual_kyc_service(container: Container) -> PerpetualKycService:
     )
 
 
-def get_perpetual_kyc_service() -> PerpetualKycService:
+def get_perpetual_kyc_service(review_router: RequestReviewRouter = None) -> PerpetualKycService:
     """FastAPI provider for the perpetual-KYC orchestrator (profile-bound ports)."""
-    return build_perpetual_kyc_service(get_container())
+    return build_perpetual_kyc_service(get_container(), review_router=review_router)
 
 
-def build_ubo_graph_service(container: Container) -> UboGraphService:
+def build_ubo_graph_service(container: Container, *, review_router: Any = None) -> UboGraphService:
     """Assemble the UBO-graph orchestrator from an explicit Container.
 
     Every threshold the module applies (the beneficial-ownership percentage, the
@@ -127,7 +147,7 @@ def build_ubo_graph_service(container: Container) -> UboGraphService:
     return UboGraphService.from_policy(
         container.settings.policy,
         ownership_graph=container.ownership_graph,
-        review_router=container.review_router,
+        review_router=review_router or container.review_router,
         audit=container.audit,
         tracer=container.tracer,
         redaction=container.redaction,
@@ -135,12 +155,12 @@ def build_ubo_graph_service(container: Container) -> UboGraphService:
     )
 
 
-def get_ubo_graph_service() -> UboGraphService:
+def get_ubo_graph_service(review_router: RequestReviewRouter = None) -> UboGraphService:
     """FastAPI provider for the UBO-graph orchestrator (profile-bound ports)."""
-    return build_ubo_graph_service(get_container())
+    return build_ubo_graph_service(get_container(), review_router=review_router)
 
 
-def build_cdd_service(container: Container) -> CddService:
+def build_cdd_service(container: Container, *, review_router: Any = None) -> CddService:
     """Assemble a :class:`CddService` from an explicit Container.
 
     The maker-checker escalation thresholds come from the bank-owned ``policy:``
@@ -158,7 +178,7 @@ def build_cdd_service(container: Container) -> CddService:
         tracer=container.tracer,
         audit=container.audit,
         review_policy=CddReviewPolicy.from_policy(container.settings.policy.escalation),
-        review_router=container.review_router,
+        review_router=review_router or container.review_router,
         # Custody of the uploaded documents a case names: the pipeline reads their bytes
         # back through the same fail-closed ACL that governs retrieval.
         document_store=container.document_store,

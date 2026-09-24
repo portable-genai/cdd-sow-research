@@ -22,11 +22,16 @@ from collections.abc import Iterable
 _EMAIL = ("EMAIL_ADDRESS", re.compile(r"\b[\w.%+-]+@[\w.-]+\.[A-Za-z]{2,}\b"))
 _PHONE_INTL = ("PHONE_NUMBER", re.compile(r"\+\d{1,3}[\s-]?\d(?:[\s-]?\d){6,13}\b"))
 
+# An eight-digit run after a currency marker is an amount, not a phone number: a declared
+# "net worth of SGD 90000000" used to reach the audit record as "SGD [SG_PHONE]", which
+# erases the very figure a source-of-wealth review is about. Each lookbehind is fixed-width.
+_NOT_AN_AMOUNT = r"(?<![$€£¥])(?<![$€£¥]\s)(?<!(?:SGD|USD|HKD|AUD|JPY|EUR|GBP|CNY|CHF)\s)"
+
 #: Per-jurisdiction national-identifier patterns (ISO-3166 alpha-2 -> list of rows).
 NATIONAL_ID_PATTERNS: dict[str, list[tuple[str, re.Pattern[str]]]] = {
     "SG": [
         ("SG_NRIC_FIN", re.compile(r"\b[STFGM]\d{7}[A-Z]\b")),
-        ("SG_PHONE", re.compile(r"\b(?:\+?65[\s-]?)?[689]\d{3}[\s-]?\d{4}\b")),
+        ("SG_PHONE", re.compile(_NOT_AN_AMOUNT + r"\b(?:\+?65[\s-]?)?[689]\d{3}[\s-]?\d{4}\b")),
     ],
     "IN": [
         ("IN_PAN", re.compile(r"\b[A-Z]{5}\d{4}[A-Z]\b")),

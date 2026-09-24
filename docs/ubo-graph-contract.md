@@ -93,7 +93,8 @@ The rule:
   "narrative": "",                    // LLM prose; carries no number the code did not compute
   "requires_human_review": true,      // ALWAYS true
   "routed_to_hrz7": true,
-  "generated_at": "2026-08-07T00:00:00+00:00"
+  "generated_at": "2026-08-07T00:00:00+00:00",
+  "review_routing": "routed"           // added 2026-09-24: routed | failed | off | not_required
 }
 ```
 

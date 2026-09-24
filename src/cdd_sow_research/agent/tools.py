@@ -169,16 +169,20 @@ def run_perpetual_kyc(
       actor: Authenticated identity the request is made for.
 
     Returns:
-      A JSON-safe ``PerpetualKycAssessment`` dict (signals, uplifts, queue item).
+      A JSON-safe ``PerpetualKycAssessment`` dict (signals, uplifts, queue item), plus
+      ``review_routing``: routed, failed, off or not_required.
     """
     from datetime import UTC, date, datetime
 
+    from ..adapters.controls import RecordingReviewRouter
     from ..api import deps
     from ..domain.models import Subject, SubjectType
     from ..domain.serialization import to_jsonable
 
     c = _container(settings)
-    service = deps.build_perpetual_kyc_service(c)
+    # The hand-off never fails an already-assessed cycle; the result says what happened to it.
+    routing = RecordingReviewRouter(c.review_router)
+    service = deps.build_perpetual_kyc_service(c, review_router=routing)
     subject = Subject(
         id=subject_name.lower().replace(" ", "-"),
         name=subject_name,
@@ -196,7 +200,11 @@ def run_perpetual_kyc(
         as_of=when,
         last_reviewed=last_reviewed,
     )
-    return to_jsonable(assessment)
+    payload = to_jsonable(assessment)
+    if not isinstance(payload, dict):  # pragma: no cover - dataclasses serialise to objects
+        raise TypeError("a perpetual-KYC assessment must serialise to a JSON object")
+    payload["review_routing"] = routing.outcome.value
+    return payload
 
 
 def list_perpetual_kyc_queue(
@@ -250,19 +258,22 @@ def resolve_ubo_graph(
       actor: Authenticated identity the request is made for.
 
     Returns:
-      A JSON-safe ``UboResolution`` dict (graph, findings with their paths,
+      A JSON-safe ``UboResolution`` dict plus ``review_routing`` (graph, findings with their paths,
       beneficial_owners, control basis, flags, opacity score). ``findings`` carries every
       candidate party including the intermediate holding companies; the owner list is
       ``beneficial_owners``.
     """
     from datetime import UTC, date, datetime
 
+    from ..adapters.controls import RecordingReviewRouter
     from ..api import deps
     from ..domain.models import Subject, SubjectType
     from ..domain.serialization import ubo_resolution_jsonable
 
     c = _container(settings)
-    service = deps.build_ubo_graph_service(c)
+    # The hand-off never fails an already-computed resolution; the result says what happened.
+    routing = RecordingReviewRouter(c.review_router)
+    service = deps.build_ubo_graph_service(c, review_router=routing)
     subject = Subject(
         id=entity_name.lower().replace(" ", "-"),
         name=entity_name,
@@ -273,7 +284,11 @@ def resolve_ubo_graph(
     when = date.fromisoformat(as_of[:10]) if as_of else datetime.now(UTC).date()
     # Serialized through the wrapper, not the bare walk: `beneficial_owners` is a computed
     # property and is a frozen key of this skill's contract (docs/ubo-graph-contract.md).
-    return ubo_resolution_jsonable(service.resolve(subject, actor=actor, as_of=when))
+    payload = ubo_resolution_jsonable(service.resolve(subject, actor=actor, as_of=when))
+    # Added, not renamed: the contract allows new keys, and this one says whether the
+    # resolution actually reached the review console (routed, failed, off or not_required).
+    payload["review_routing"] = routing.outcome.value
+    return payload
 
 
 TOOL_FUNCTIONS = (

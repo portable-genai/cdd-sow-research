@@ -141,6 +141,9 @@ export interface ScreeningResult {
   screened_at: string;
 }
 
+/** What happened to the human-review hand-off for one response (rule R8). */
+export type ReviewRouting = "routed" | "failed" | "off" | "not_required";
+
 export interface CddCase {
   id: string;
   subject: Subject;
@@ -153,6 +156,8 @@ export interface CddCase {
   screening?: ScreeningResult | null;
   requires_human_review: boolean;
   generated_at: string;
+  /** Absent on a dossier reloaded from an export: the hand-off belongs to the request. */
+  review_routing?: ReviewRouting;
 }
 
 export interface CddRequest {
@@ -248,6 +253,7 @@ export interface PerpetualKycAssessment {
   requires_human_review: boolean;
   queue_item: ReviewQueueItem | null;
   generated_at: string;
+  review_routing?: ReviewRouting;
 }
 
 export interface PerpetualKycRequest {
@@ -390,6 +396,7 @@ export interface UboResolution {
   requires_human_review: boolean;
   routed_to_hrz7: boolean;
   generated_at: string;
+  review_routing?: ReviewRouting;
 }
 
 export interface UboGraphRequest {

@@ -289,7 +289,7 @@ class PerpetualKycService:
     # ------------------------------------------------------------------ #
     def _route(self, assessment: PerpetualKycAssessment, *, maker: str) -> bool:
         try:
-            self._review_router.route_monitoring(assessment, maker=maker)
+            handed_off = self._review_router.route_monitoring(assessment, maker=maker)
         except Exception:  # noqa: BLE001 - a console outage must not lose the assessment
             _LOG.error(
                 "perpetual-KYC review routing failed for %s; the assessment stays queued "
@@ -297,7 +297,11 @@ class PerpetualKycService:
                 assessment.subject_id,
             )
             return False
-        return True
+        # The port returns None for "accepted". An adapter that did not hand the item off
+        # (routing switched off, or a failure the caller's recorder already reported) says so
+        # with False, so the routed flag and the audit field never claim a hand-off that did
+        # not happen.
+        return handed_off is not False
 
     def _write_audit(self, assessment: PerpetualKycAssessment, *, actor: str, routed: bool) -> None:
         item = assessment.queue_item
