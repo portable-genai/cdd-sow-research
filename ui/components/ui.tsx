@@ -2,6 +2,8 @@
 
 import type { ReactNode } from "react";
 
+import type { ReviewRouting } from "../lib/types";
+
 /** A stable, framework-free hook for the browser demo scripts.
  *
  * Derived from the panel title rather than hand-written per call site, so a panel cannot ship
@@ -40,12 +42,34 @@ export function Panel({
   );
 }
 
-export function ReviewBanner({ requiresReview }: { requiresReview: boolean }) {
+/** What the user is told about the hand-off to the review console, in plain words. */
+export const REVIEW_ROUTING_TEXT: Record<Exclude<ReviewRouting, "not_required">, string> = {
+  routed: "Sent to the review console.",
+  failed: "Could not reach the review console; this item is not queued for review.",
+  off: "Review routing is off in this deployment; this item is not queued for review.",
+};
+
+export function ReviewBanner({
+  requiresReview,
+  routing,
+}: {
+  requiresReview: boolean;
+  /** What happened to the hand-off to the review console, when the API reports it. */
+  routing?: ReviewRouting;
+}) {
   if (!requiresReview) return null;
   return (
     <div className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
       HUMAN REVIEW REQUIRED: maker-checker gate (P-06). Do not act on this dossier until a
       qualified reviewer signs off.
+      {routing && routing !== "not_required" ? (
+        <p
+          data-review-routing={routing}
+          className={`mt-1 ${routing === "routed" ? "text-emerald-800" : "text-rose-800"}`}
+        >
+          {REVIEW_ROUTING_TEXT[routing]}
+        </p>
+      ) : null}
     </div>
   );
 }

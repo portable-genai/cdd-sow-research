@@ -134,6 +134,27 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "RSK_COMPLIANCE_IAP_AUDIENCE"
         value = var.compliance_advisory_iap_audience
       }
+      # Rule R8: the console every dossier, pKYC re-score and UBO resolution is routed to.
+      # Required while routing is on (variables.tf), because the gcp profile refuses to boot
+      # with routing on and no console named. One name fleet-wide.
+      env {
+        name  = "HUMAN_REVIEW_URL"
+        value = var.human_review_url
+      }
+      # The cheap runtime controls, stated rather than inherited: each is on in the reference,
+      # and off is a deployment choice the service logs at startup.
+      env {
+        name  = "CDD_GUARDRAIL"
+        value = tostring(var.guardrail_enabled)
+      }
+      env {
+        name  = "CDD_PII_REDACTION"
+        value = tostring(var.pii_redaction_enabled)
+      }
+      env {
+        name  = "CDD_REVIEW_ROUTING"
+        value = tostring(var.review_routing_enabled)
+      }
       env {
         name  = "GOOGLE_CLOUD_PROJECT"
         value = var.project_id

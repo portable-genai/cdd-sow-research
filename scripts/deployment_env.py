@@ -75,6 +75,9 @@ BASE_REQUIRED = (
     # on that edge, and the one bearer audience the edge accepts.
     "DOC1_COMPLIANCE_ADVISORY_URL",
     "DOC1_COMPLIANCE_ADVISORY_IAP_AUDIENCE",
+    # Rule R8: the human-review-console every escalation is routed to. The gcp profile refuses
+    # to boot with review routing on and no console named.
+    "DOC1_HUMAN_REVIEW_URL",
     "DOC1_DNS_MANAGED_ZONE",
     "DOC1_DNS_OWNER",
     "DOC1_CERTIFICATE_OWNER",
@@ -147,6 +150,7 @@ EDGE_ONLY_REQUIRED = frozenset(
         "DOC1_STANDALONE_DOMAIN",
         "DOC1_COMPLIANCE_ADVISORY_URL",
         "DOC1_COMPLIANCE_ADVISORY_IAP_AUDIENCE",
+        "DOC1_HUMAN_REVIEW_URL",
         "DOC1_DNS_MANAGED_ZONE",
         "DOC1_DNS_OWNER",
         "DOC1_CERTIFICATE_OWNER",
@@ -590,6 +594,14 @@ def _validate_runtime_settings(payload: bytes, values: dict[str, str], errors: l
             "CDD_IDENTITY_PROFILE",
             "CDD_PROFILE",
             "CDD_SETTINGS",
+            # The runtime-control switches and the review console are service environment
+            # that Terraform sets (guardrail_enabled, pii_redaction_enabled,
+            # review_routing_enabled, human_review_url, each validated there), never part of
+            # the settings bytes checked here, so this operator's shell must not decide them.
+            "CDD_GUARDRAIL",
+            "CDD_PII_REDACTION",
+            "CDD_REVIEW_ROUTING",
+            "HUMAN_REVIEW_URL",
         }
         # This pre-install validator is deliberately stdlib-only. Snapshot the complete
         # environment so UNSET, SET-EMPTY and SET-VALUE are all restored exactly without
@@ -598,6 +610,9 @@ def _validate_runtime_settings(payload: bytes, values: dict[str, str], errors: l
         for key in override_keys:
             os.environ.pop(key, None)
         os.environ["CDD_EXPECTED_SETTINGS_SHA256"] = values.get("DOC1_RUNTIME_SETTINGS_SHA256", "")
+        # Stated off for THIS load only: the console the service routes to is checked where it
+        # is supplied (DOC1_HUMAN_REVIEW_URL and the Terraform variable), not in these bytes.
+        os.environ["CDD_REVIEW_ROUTING"] = "false"
         os.environ["CDD_EXPECTED_MANIFEST_SHA256"] = values.get(
             "DOC1_INSTALLATION_MANIFEST_SHA256", ""
         )
@@ -1108,6 +1123,7 @@ def validate_environment(values: dict[str, str], *, require_ready: bool = False)
         errors.append("DOC1_MODE5_SUBJECT_TOKEN_TYPE must be a reviewed RFC 8693 token type")
     https_keys = [
         "DOC1_COMPLIANCE_ADVISORY_URL",
+        "DOC1_HUMAN_REVIEW_URL",
         "DOC1_MODE5_SUBJECT_ISSUER",
         "DOC1_MODE5_SUBJECT_JWKS_URI",
         "DOC1_MODE5_BFF_JWKS_URI",
@@ -1398,6 +1414,7 @@ def terraform_environment(values: dict[str, str]) -> dict[str, str]:
                 "TF_VAR_compliance_advisory_iap_audience": values[
                     "DOC1_COMPLIANCE_ADVISORY_IAP_AUDIENCE"
                 ],
+                "TF_VAR_human_review_url": values["DOC1_HUMAN_REVIEW_URL"],
                 # `none` is the explicit "resolved outside this deployment" sentinel and
                 # becomes Terraform's empty string, which skips the record set.
                 "TF_VAR_dns_managed_zone": (

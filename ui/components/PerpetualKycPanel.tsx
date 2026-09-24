@@ -108,7 +108,10 @@ export function PerpetualKycPanel({
 
       {assessment ? (
         <Panel title={`Re-score: ${assessment.subject_name || assessment.subject_id}`}>
-          <ReviewBanner requiresReview={assessment.requires_human_review} />
+          <ReviewBanner
+            requiresReview={assessment.requires_human_review}
+            routing={assessment.review_routing}
+          />
           <dl className="mb-3 grid min-w-0 grid-cols-1 gap-2 text-sm text-ink-700 sm:grid-cols-3">
             <div>
               <dt className="text-ink-400">Score</dt>
@@ -150,7 +153,7 @@ export function PerpetualKycPanel({
               </ul>
               <p className="mb-3 text-xs text-ink-500">
                 Routed to the human-review console:{" "}
-                {assessment.queue_item.routed_to_hrz7 ? "yes" : "no (retained locally for retry)"}
+                {assessment.queue_item.routed_to_hrz7 ? "yes" : "no"}
               </p>
             </>
           ) : null}

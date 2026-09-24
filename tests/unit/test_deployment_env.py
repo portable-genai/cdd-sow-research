@@ -78,6 +78,7 @@ def _ready_values(
             "DOC1_COMPLIANCE_ADVISORY_IAP_AUDIENCE": (
                 "1234567890-fictionaledgeclient.apps.googleusercontent.com"
             ),
+            "DOC1_HUMAN_REVIEW_URL": "https://review.fictionalbank.sg",
             "DOC1_TERRAFORM_STATE_BUCKET": "approved-doc1-tfstate",
             "DOC1_TERRAFORM_STATE_PREFIX": "doc1/production",
             "DOC1_APPROVED_PARENT_ORIGINS": "https://portal.fictionalbank.sg",
@@ -1223,6 +1224,18 @@ def test_the_compliance_edge_leg_reaches_terraform_as_two_inputs() -> None:
     assert mapped["TF_VAR_compliance_advisory_iap_audience"] == (
         "1234567890-fictionaledgeclient.apps.googleusercontent.com"
     )
+
+
+def test_the_review_console_reaches_terraform_and_must_be_https() -> None:
+    """The gcp profile refuses to boot with routing on and no console, so the edge names one,
+    over HTTPS, and it reaches the Terraform variable the service's HUMAN_REVIEW_URL is set from."""
+    mapped = deployment_env.terraform_environment(_ready_values())
+    assert mapped["TF_VAR_human_review_url"] == "https://review.fictionalbank.sg"
+
+    values = _ready_values()
+    values["DOC1_HUMAN_REVIEW_URL"] = "http://review.fictionalbank.sg"
+    errors = deployment_env.validate_environment(values, require_ready=True)
+    assert any("DOC1_HUMAN_REVIEW_URL must be an absolute HTTPS URL" in e for e in errors), errors
 
 
 def _support_values() -> dict[str, str]:

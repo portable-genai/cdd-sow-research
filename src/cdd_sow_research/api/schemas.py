@@ -27,6 +27,12 @@ from .citation_ids import citation_identifier_from_url
 # --------------------------------------------------------------------------- #
 
 
+#: The four outcomes of a human-review hand-off, as the API reports them: ``routed`` (the
+#: console accepted it), ``failed`` (the hand-off failed and the item is NOT in the console),
+#: ``off`` (routing is switched off in this deployment) and ``not_required``.
+ReviewRoutingValue = Literal["routed", "failed", "off", "not_required"]
+
+
 class CitationModel(BaseModel):
     """Source-grade provenance attached to a generated claim (mirror of Citation)."""
 
@@ -514,6 +520,9 @@ class CddCaseResponse(BaseModel):
     compliance: ComplianceAnswerModel | None = None
     requires_human_review: bool = True
     generated_at: str = ""
+    #: What happened to the human-review hand-off for THIS response. A transport fact about
+    #: the request, not a claim of the dossier, so the portable-export digest leaves it out.
+    review_routing: ReviewRoutingValue = "not_required"
 
     @classmethod
     def from_domain(
@@ -734,6 +743,8 @@ class PerpetualKycResponse(BaseModel):
     requires_human_review: bool = True
     queue_item: ReviewQueueItemModel | None = None
     generated_at: str = ""
+    #: What happened to the human-review hand-off: routed, failed, off or not_required.
+    review_routing: ReviewRoutingValue = "not_required"
 
     @classmethod
     def from_domain(cls, assessment: m.PerpetualKycAssessment) -> PerpetualKycResponse:
@@ -995,6 +1006,8 @@ class UboGraphResponse(BaseModel):
     requires_human_review: bool = True
     routed_to_hrz7: bool = False
     generated_at: str = ""
+    #: What happened to the human-review hand-off: routed, failed, off or not_required.
+    review_routing: ReviewRoutingValue = "not_required"
 
     @classmethod
     def from_domain(cls, resolution: m.UboResolution) -> UboGraphResponse:

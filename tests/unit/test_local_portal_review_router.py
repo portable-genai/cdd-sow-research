@@ -41,7 +41,7 @@ def test_local_router_persists_then_submits_to_service_intake(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
     monkeypatch.setenv("CDD_LOCAL_REVIEW_OUTBOX", str(tmp_path / "outbox.db"))
-    monkeypatch.setenv("CDD_HRZ7_URL", "http://127.0.0.1:8087")
+    monkeypatch.setenv("HUMAN_REVIEW_URL", "http://127.0.0.1:8087")
     monkeypatch.setenv("CDD_S2S_TOKEN", "synthetic-local-secret")
     with patch(
         "cdd_sow_research.adapters.local.review_router.ReviewClient.submit",
@@ -63,7 +63,7 @@ def test_local_router_retries_a_record_left_by_an_unavailable_console(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:
     monkeypatch.setenv("CDD_LOCAL_REVIEW_OUTBOX", str(tmp_path / "outbox.db"))
-    monkeypatch.setenv("CDD_HRZ7_URL", "http://127.0.0.1:8087")
+    monkeypatch.setenv("HUMAN_REVIEW_URL", "http://127.0.0.1:8087")
     monkeypatch.setenv("CDD_S2S_TOKEN", "synthetic-local-secret")
     with patch(
         "cdd_sow_research.adapters.local.review_router.ReviewClient.submit",
@@ -83,7 +83,7 @@ def test_local_router_retries_a_record_left_by_an_unavailable_console(
 
 def test_local_router_rejects_non_loopback_service_url(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CDD_LOCAL_REVIEW_OUTBOX", ":memory:")
-    monkeypatch.setenv("CDD_HRZ7_URL", "http://review.example.test")
+    monkeypatch.setenv("HUMAN_REVIEW_URL", "http://review.example.test")
     monkeypatch.setenv("CDD_S2S_TOKEN", "synthetic-local-secret")
     with pytest.raises(ValueError, match="https outside loopback"):
         LocalReviewRouter(Settings())
@@ -93,7 +93,7 @@ def test_local_router_requires_s2s_secret_when_delivery_is_configured(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("CDD_LOCAL_REVIEW_OUTBOX", ":memory:")
-    monkeypatch.setenv("CDD_HRZ7_URL", "http://127.0.0.1:8087")
+    monkeypatch.setenv("HUMAN_REVIEW_URL", "http://127.0.0.1:8087")
     monkeypatch.delenv("CDD_S2S_TOKEN", raising=False)
     with pytest.raises(RuntimeError, match="CDD_S2S_TOKEN"):
         LocalReviewRouter(Settings())

@@ -21,7 +21,9 @@ from datetime import date
 from typing import Any
 
 from hex_service_kit import mcpserve
+from hex_service_kit.serialization import to_jsonable
 
+from ..adapters.controls import RecordingReviewRouter
 from ..api import deps
 from ..domain.models import CaseInput, Subject, SubjectType
 
@@ -52,12 +54,22 @@ def build_handlers(actor: str) -> dict[str, mcpserve.Handler]:
     """
     container = deps.get_container()
 
+    def _with_routing(result: object, routing: RecordingReviewRouter) -> dict[str, Any]:
+        """The tool's payload plus what happened to its hand-off to the review console."""
+        payload = to_jsonable(result)
+        if not isinstance(payload, dict):  # pragma: no cover - dataclasses serialise to objects
+            raise TypeError("a routed result must serialise to a JSON object")
+        payload["review_routing"] = routing.outcome.value
+        return payload
+
     def assess_cdd(**arguments: Any) -> Any:
         subject = _subject(
             str(arguments.get("subject_name", "")),
             kind=str(arguments.get("subject_type", "individual")),
         )
-        return deps.get_cdd_service().assess(CaseInput(subject=subject), actor=actor)
+        routing = RecordingReviewRouter(container.review_router)
+        case = deps.get_cdd_service(routing).assess(CaseInput(subject=subject), actor=actor)
+        return _with_routing(case, routing)
 
     def build_source_of_wealth(**arguments: Any) -> Any:
         """Return the dossier's source-of-wealth narrative.
@@ -68,7 +80,9 @@ def build_handlers(actor: str) -> dict[str, mcpserve.Handler]:
         assessment and is not presented as one.
         """
         subject = _subject(str(arguments.get("subject_name", "")))
-        return deps.get_cdd_service().assess(CaseInput(subject=subject), actor=actor).sow
+        routing = RecordingReviewRouter(container.review_router)
+        case = deps.get_cdd_service(routing).assess(CaseInput(subject=subject), actor=actor)
+        return _with_routing(case.sow, routing)
 
     def scan_adverse_media(**arguments: Any) -> Any:
         service = deps.build_adverse_media_service(container)
@@ -80,9 +94,11 @@ def build_handlers(actor: str) -> dict[str, mcpserve.Handler]:
             kind="entity",
             jurisdiction=str(arguments.get("jurisdiction", "")),
         )
-        return deps.build_ubo_graph_service(container).resolve(
+        routing = RecordingReviewRouter(container.review_router)
+        resolution = deps.build_ubo_graph_service(container, review_router=routing).resolve(
             subject, actor=actor, as_of=date.today()
         )
+        return _with_routing(resolution, routing)
 
     return {
         "assess_cdd": assess_cdd,

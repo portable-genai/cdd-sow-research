@@ -187,6 +187,25 @@ To stop serving without tearing down state: scale the Cloud Run / Agent Runtime 
 to zero, or remove the app service account's `roles/aiplatform.user` binding. The audit
 trail and case evidence remain intact.
 
+### Runtime controls
+
+`CDD_GUARDRAIL`, `CDD_PII_REDACTION` and `CDD_REVIEW_ROUTING` each switch one cheap runtime
+control, read in three states: unset is on, `true`/`false` (or `on`/`off`) wins, and an
+emptied or unrecognised value refuses at boot. Off binds a disabled adapter, and a process
+with any control off logs one warning at startup naming each. Terraform states them as
+`guardrail_enabled`, `pii_redaction_enabled` and `review_routing_enabled`.
+
+- **Pause escalations:** set `CDD_REVIEW_ROUTING=off`. Every dossier, pKYC re-score and UBO
+  resolution still requires human review and is still audited ESCALATED, and every response
+  reports `review_routing: "off"` so the user is told the item is not queued. Unsetting
+  `HUMAN_REVIEW_URL` does NOT pause anything: under `gcp` or `platform` with routing on, the
+  process refuses to boot without it.
+- **A failed hand-off does not fail the request.** The response carries
+  `review_routing: "failed"`, the failure is logged at WARNING with the exception type, and the
+  console says the item is not queued for review.
+- **Guardrail off** also turns the `model-armor` row of `/v1/capabilities` to `disabled`, so
+  `production_ready` reads false while it is off.
+
 ## 6. Common failures
 
 | Symptom | Likely cause | Fix |
@@ -198,4 +217,5 @@ trail and case evidence remain intact.
 | `POST /v1/perpetual-kyc` returns 403 for a valid analyst | The stored baseline belongs to another tenant, or the caller holds no case-access role | Expected and correct: monitoring history is tenant-isolated. Check the caller's tenant and entitlements, never widen the record ACL |
 | The perpetual-KYC queue is empty for everyone | The caller carries no tenant tag (the listing fails closed), or `monitoring_store` is bound to the `onprem` placeholder | Confirm the identity supplies a tenant; confirm `CDD_PROFILE` and the `monitoring_store` binding |
 | Every perpetual-KYC signal looks `new` on every run | Baselines are not persisting: the store is not durable across replicas or restarts | On `gcp`/`platform` confirm the Firestore database and the `pkyc_baselines` / `pkyc_assessments` collections; `local` is in-process by design and resets with the process |
-| A pKYC assessment shows `routed_to_hrz7: false` | `human-review-console` was unreachable when the cycle ran | The assessment is retained and still requires human review. Restore `CDD_HRZ7_URL` / `CDD_S2S_TOKEN`; the local router flushes its outbox on the next route or restart |
+| A pKYC assessment or UBO resolution shows `routed_to_hrz7: false` | The response's `review_routing` says which: `failed` means `human-review-console` was unreachable when the cycle ran (logged at WARNING with the exception type); `off` means `CDD_REVIEW_ROUTING` is switched off | The assessment is retained and still requires human review. For `failed`, restore the console or `CDD_S2S_TOKEN`; the local router flushes its outbox on the next route or restart. For `off`, route it by hand or switch routing back on |
+| The revision refuses to start naming `HUMAN_REVIEW_URL` | Review routing is on under `gcp`/`platform` and no console is named | Set `HUMAN_REVIEW_URL` to the `human-review-console` base URL, or state `CDD_REVIEW_ROUTING=off` to run without routing |

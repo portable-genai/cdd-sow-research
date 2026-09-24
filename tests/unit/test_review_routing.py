@@ -229,7 +229,7 @@ def test_perpetual_kyc_assessment_is_redacted_before_the_wire():
 def test_perpetual_kyc_routes_through_the_local_outbox(monkeypatch):
     """The local router persists the pKYC escalation exactly as it does a dossier."""
     monkeypatch.setenv("CDD_LOCAL_REVIEW_OUTBOX", ":memory:")
-    monkeypatch.delenv("CDD_HRZ7_URL", raising=False)
+    monkeypatch.delenv("HUMAN_REVIEW_URL", raising=False)
     router = LocalReviewRouter(Settings())
     router.route_monitoring(_pkyc_assessment(), maker=ACTOR)
 

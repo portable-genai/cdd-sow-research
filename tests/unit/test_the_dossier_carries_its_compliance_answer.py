@@ -164,6 +164,8 @@ def test_a_dossier_exported_before_the_field_existed_still_reloads(cdd_service) 
     )
     payload = CddCaseResponse.from_domain(case).model_dump(mode="json")
     del payload["compliance"]
+    # Nor did ``review_routing``, which joined the wire later still.
+    del payload["review_routing"]
     artifact = PortableDossierArtifact.model_validate(
         {
             "sha256": _digest_as_exported_before(payload),

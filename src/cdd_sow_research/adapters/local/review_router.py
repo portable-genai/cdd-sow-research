@@ -160,11 +160,11 @@ class LocalReviewRouter:
         self._settings = settings
         outbox_path = optional_setting("CDD_LOCAL_REVIEW_OUTBOX") or ""
         self._outbox = SqliteReviewOutbox(outbox_path or str(_DEFAULT_OUTBOX_PATH))
-        base_url = optional_setting("CDD_HRZ7_URL") or ""
+        base_url = optional_setting("HUMAN_REVIEW_URL") or ""
         self._client: ReviewClient | None = None
         if base_url:
             if optional_setting("CDD_S2S_TOKEN") is None:
-                raise RuntimeError("CDD_S2S_TOKEN must be set when CDD_HRZ7_URL is configured")
+                raise RuntimeError("CDD_S2S_TOKEN must be set when HUMAN_REVIEW_URL is configured")
             # ReviewClient enforces HTTPS except for a loopback HTTP local console.
             self._client = ReviewClient(
                 base_url,

@@ -7,7 +7,7 @@ minimised to the model (P-04). The call is regional
 (``projects/{project}/locations/{region}``) to keep inspection inside Singapore.
 
 If inspect/de-identify templates are configured, they are used as-is. Otherwise the
-adapter builds an inline configuration that masks the info types most relevant to APAC
+adapter builds an inline configuration that replaces the info types most relevant to APAC
 KYC: names, emails, phone numbers, passport numbers, card numbers, and a custom Singapore
 NRIC/FIN detector.
 
@@ -34,7 +34,19 @@ _DEFAULT_INFO_TYPES: tuple[str, ...] = (
 _SG_NRIC_INFO_TYPE = "SG_NRIC_FIN"
 _SG_NRIC_REGEX = r"[STFGM]\d{7}[A-Z]"
 
-_MASKING_CHAR = "#"
+# Tuned against false positives (runtime-control contract, 2026-09-24). A CDD case names
+# regulators, sanctions lists, screening vendors and corporate forms, and at POSSIBLE likelihood
+# DLP could take "Monetary Authority", "World-Check" or "Acme Holdings" for a person and mask
+# it. Three changes: only LIKELY findings are masked; a match is REPLACED with its info-type
+# name rather than a run of mask characters, so the text still reads as the case it describes;
+# and a PERSON_NAME finding containing this domain's own vocabulary is excluded.
+_MIN_LIKELIHOOD = "LIKELY"
+_DOMAIN_VOCABULARY_REGEX = (
+    r"(?i)\b(MAS|ACRA|FATF|OFAC|SDN|FinCEN|HKMA|FCA|AUSTRAC|Wolfsberg|Monetary Authority|"
+    r"United Nations|European Union|Notice|Recommendation|Guidelines?|World-Check|Refinitiv|"
+    r"Dow Jones|LexisNexis|Pte|Ltd|Limited|Holdings|LLC|Inc|Trust|Foundation|Bank|Group|"
+    r"Capital|PEP|UBO|CDD|EDD|KYC)\b"
+)
 
 
 class DlpRedactionAdapter:
@@ -83,10 +95,25 @@ class DlpRedactionAdapter:
                 {
                     "info_type": {"name": _SG_NRIC_INFO_TYPE},
                     "regex": {"pattern": _SG_NRIC_REGEX},
-                    "likelihood": "POSSIBLE",
+                    # The pattern is specific enough to be a finding in its own right; it must
+                    # clear the LIKELY floor below or no NRIC would ever be masked.
+                    "likelihood": "VERY_LIKELY",
                 }
             ],
-            "min_likelihood": "POSSIBLE",
+            "rule_set": [
+                {
+                    "info_types": [{"name": "PERSON_NAME"}],
+                    "rules": [
+                        {
+                            "exclusion_rule": {
+                                "regex": {"pattern": _DOMAIN_VOCABULARY_REGEX},
+                                "matching_type": "MATCHING_TYPE_PARTIAL_MATCH",
+                            }
+                        }
+                    ],
+                }
+            ],
+            "min_likelihood": _MIN_LIKELIHOOD,
             "include_quote": False,
         }
 
@@ -100,9 +127,9 @@ class DlpRedactionAdapter:
                 "transformations": [
                     {
                         "info_types": all_info_types,
-                        "primitive_transformation": {
-                            "character_mask_config": {"masking_character": _MASKING_CHAR}
-                        },
+                        # "[PERSON_NAME]" rather than "####": irreversible, and the text
+                        # still reads as the case it describes.
+                        "primitive_transformation": {"replace_with_info_type_config": {}},
                     }
                 ]
             }

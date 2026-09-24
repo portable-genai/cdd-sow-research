@@ -491,6 +491,35 @@ variable "compliance_advisory_url" {
   }
 }
 
+variable "human_review_url" {
+  description = "The human-review-console base URL every dossier, pKYC re-score and UBO resolution is routed to (rule R8), set as HUMAN_REVIEW_URL. Required with the production edge while review routing is on: the gcp profile refuses to boot without it."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = !var.production_edge_enabled || !var.review_routing_enabled || can(regex("^https://", var.human_review_url))
+    error_message = "production_edge_enabled with review_routing_enabled requires human_review_url, an https URL (rule R8): the service refuses to boot with routing on and no console named. Name one, or set review_routing_enabled = false."
+  }
+}
+
+variable "guardrail_enabled" {
+  description = "Switch the input and output guardrail (CDD_GUARDRAIL). A cheap runtime control: on in the reference, reversible, so it takes a default."
+  type        = bool
+  default     = true
+}
+
+variable "pii_redaction_enabled" {
+  description = "Switch PII redaction (CDD_PII_REDACTION). A cheap runtime control: on in the reference, reversible, so it takes a default."
+  type        = bool
+  default     = true
+}
+
+variable "review_routing_enabled" {
+  description = "Switch review routing to the human-review-console (CDD_REVIEW_ROUTING). A cheap runtime control: on in the reference, reversible, so it takes a default. Off needs no human_review_url."
+  type        = bool
+  default     = true
+}
+
 variable "compliance_advisory_iap_audience" {
   description = "The IAP OAuth client id the portal edge accepts as a bearer audience, <number>-<id>.apps.googleusercontent.com. NOT the backend-service path IAP compares its own inbound assertion against, which is refused as a bearer audience."
   type        = string

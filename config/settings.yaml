@@ -491,7 +491,7 @@ adapters:
   # Rule R8: a dossier always requires human review, so it is ROUTED to the human-review-console Human-Review &
   # Maker-Checker Console (via the shared review-kit), never terminated in a local boolean.
   # local = enqueue to an in-memory outbox so the routing path runs offline; gcp/platform = submit
-  # over S2S to human-review-console's service intake (CDD_HRZ7_URL); onprem = sovereign-console placeholder.
+  # over S2S to human-review-console's service intake (HUMAN_REVIEW_URL); onprem = sovereign-console placeholder.
   review_router:
     gcp: cdd_sow_research.adapters.gcp.review_router:PlatformReviewRouter
     platform: cdd_sow_research.adapters.gcp.review_router:PlatformReviewRouter

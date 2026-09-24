@@ -12,6 +12,17 @@ from cdd_sow_research.config import (
     Settings,
 )
 
+
+@pytest.fixture(autouse=True)
+def _managed_deployment_names_its_console(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A managed process with review routing on refuses to boot without a console.
+
+    These tests load the managed profile to exercise identity and channel selection, not
+    routing, so they name a console the way any managed deployment must.
+    """
+    monkeypatch.setenv("HUMAN_REVIEW_URL", "https://review.example.test")
+
+
 CONFIG = "config/settings.yaml"
 _SELECTORS = (
     "CDD_PROFILE",

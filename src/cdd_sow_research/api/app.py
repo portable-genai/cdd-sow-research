@@ -62,6 +62,7 @@ from hex_service_kit.web import add_loopback_exposure_guard
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from ..config import (
+    GUARDRAIL_ENV,
     UNCONSENTED_IDENTITY_MODE,
     Settings,
     build_container,
@@ -98,6 +99,7 @@ from .citation_continuation import (
     router as citation_continuation_router,
 )
 from .csrf import enforce_cookie_csrf
+from .disclosure import disclose
 from .schemas import (
     AddEvidenceRequest,
     AdverseMediaRequest,
@@ -741,6 +743,7 @@ def assess_cdd(
     request: CddRequest,
     principal: CddWritePrincipal,
     service: Annotated[CddService, Depends(deps.get_cdd_service)],
+    routing: deps.RequestReviewRouter = None,
 ) -> JSONResponse | CddCaseResponse:
     """Build a full cited CDD dossier for a subject and its KYC documents."""
     # Object-level authorization: the case ACL principal is granted server-side from
@@ -780,14 +783,17 @@ def assess_cdd(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 content={"detail": "citation continuation ledger is unavailable"},
             )
-    return CddCaseResponse.from_domain(case, continuation_ids)
+    return disclose(CddCaseResponse.from_domain(case, continuation_ids), routing=routing)
 
 
 def _dossier_digest(dossier: CddCaseResponse) -> str:
     # ``compliance`` joined the wire after dossiers had already been exported. An absent answer
     # stays out of the digest so every earlier export still verifies; a present one is inside
     # it, so the answer cannot be rewritten in transit.
-    exclude = {"compliance"} if dossier.compliance is None else None
+    # ``review_routing`` says what happened to ONE request's hand-off to the review console. It
+    # is not a claim of the dossier, and it joined the wire after dossiers had been exported, so
+    # it never enters the digest.
+    exclude = {"review_routing"} | ({"compliance"} if dossier.compliance is None else set())
     encoded = json.dumps(
         dossier.model_dump(mode="json", exclude=exclude),
         sort_keys=True,
@@ -1013,6 +1019,7 @@ def run_perpetual_kyc(
     request: PerpetualKycRequest,
     principal: CddWritePrincipal,
     service: Annotated[PerpetualKycService, Depends(deps.get_perpetual_kyc_service)],
+    routing: deps.RequestReviewRouter = None,
 ) -> JSONResponse | PerpetualKycResponse:
     """Run one perpetual-KYC cycle: detect change, re-score, queue for human review.
 
@@ -1045,7 +1052,7 @@ def run_perpetual_kyc(
         )
     except CaseAccessDeniedError as exc:
         return _denied_response(exc)
-    return PerpetualKycResponse.from_domain(assessment)
+    return disclose(PerpetualKycResponse.from_domain(assessment), routing=routing)
 
 
 @api_router.get(
@@ -1085,6 +1092,7 @@ def resolve_ubo_graph(
     request: UboGraphRequest,
     principal: CddWritePrincipal,
     service: Annotated[UboGraphService, Depends(deps.get_ubo_graph_service)],
+    routing: deps.RequestReviewRouter = None,
 ) -> JSONResponse | UboGraphResponse:
     """Resolve a subject's cross-jurisdiction beneficial-ownership structure.
 
@@ -1109,7 +1117,7 @@ def resolve_ubo_graph(
         )
     subject = replace(request.subject.to_domain(), tenant=principal.tenant)
     resolution = service.resolve(subject, actor=principal.actor, as_of=as_of)
-    return UboGraphResponse.from_domain(resolution)
+    return disclose(UboGraphResponse.from_domain(resolution), routing=routing)
 
 
 @api_router.get(
@@ -1456,6 +1464,24 @@ def _capability_manifest(settings: Settings) -> CapabilityManifestModel:
             reason=f"channel: {settings.channel_mode}",
         ),
     ]
+    if not settings.controls.guardrail:
+        # The switch wins over every profile: a deployment that turned the guardrail off does
+        # not screen anything, whatever template or gateway it names, and says so here rather
+        # than reporting the configuration it is not using.
+        items = [
+            _capability(
+                name=item.name,
+                available=False,
+                mode="disabled",
+                assurance="unavailable",
+                provider=item.provider,
+                reason=f"guardrail switched off in this deployment ({GUARDRAIL_ENV}=false)",
+                required_for_production=item.required_for_production,
+            )
+            if item.name == "model-armor"
+            else item
+            for item in items
+        ]
     # production_ready is NOT recomputed here: the kit manifest derives it from the
     # very capabilities just built, so the served flag and the rule behind it cannot
     # disagree. It used to be written out a second time, right above this line.

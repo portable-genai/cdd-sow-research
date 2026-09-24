@@ -97,12 +97,21 @@ worm_locked = false
 # embed_signing_key_version          = "projects/PROJECT/locations/asia-southeast1/keyRings/cdd-sow-agent-ring/cryptoKeys/cdd-sow-agent-cmek-embed-signing/cryptoKeyVersions/1"
 # edge_min_instances                = 2
 # edge_max_instances                = 10
+# Rule R8: the human-review-console every escalation is routed to. Required with the edge
+# while review routing is on, because the service refuses to boot without it.
+# human_review_url = "https://review.fictional-bank.example"
 # additional_secret_env = {
 #   CDD_EMBED_TOKEN_PUBLIC_KEY = {
 #     secret_id = "doc1-embed-token-public-key"
 #     version   = "3"
 #   }
 # }
+
+# Cheap runtime controls stay on in the reference; say so rather than inheriting the default.
+# review_routing_enabled = false runs without routing and needs no human_review_url.
+guardrail_enabled      = true
+pii_redaction_enabled  = true
+review_routing_enabled = true
 
 # =========================================================================== #
 # (C) SECOND INSTANCE / SECOND ENTERPRISE: repeatable rollout.                #
