@@ -53,7 +53,14 @@ _ACTOR_SIG_HEADER = "X-Cdd-Actor-Sig"
 # message); the callers import it from this module unchanged. It checks the scheme and the host
 # and leaves any path prefix intact, which is what lets a caller name one app mounted behind a
 # shared edge instead of a whole host.
-__all__ = ["SIGNING_KEY_ENV", "TOKEN_ENV", "headers", "service_origin", "validate_base_url"]
+__all__ = [
+    "SIGNING_KEY_ENV",
+    "TOKEN_ENV",
+    "fetch_id_token",
+    "headers",
+    "service_origin",
+    "validate_base_url",
+]
 
 
 def headers(
@@ -79,7 +86,7 @@ def headers(
     )
     managed = getattr(settings, "profile", "") in {"gcp", "platform"}
     if managed and base_url.startswith("https://") and "Authorization" not in result:
-        result["Authorization"] = f"Bearer {_fetch_id_token(audience or service_origin(base_url))}"
+        result["Authorization"] = f"Bearer {fetch_id_token(audience or service_origin(base_url))}"
     return result
 
 
@@ -89,8 +96,14 @@ def service_origin(base_url: str) -> str:
     return f"{parsed.scheme}://{parsed.netloc}"
 
 
-def _fetch_id_token(audience: str) -> str:
-    from google.auth.transport.requests import Request
-    from google.oauth2.id_token import fetch_id_token
+def fetch_id_token(audience: str) -> str:
+    """Mint a Google-signed ID token for ``audience`` with this process's workload identity.
 
-    return fetch_id_token(Request(), audience)
+    The one minting helper in this repo: the platform adapters use it through :func:`headers`,
+    and the managed review router uses it as the per-submission bearer for a console behind the
+    portal's IAP edge. The imports are lazy so the offline profiles never need ``google-auth``.
+    """
+    from google.auth.transport.requests import Request
+    from google.oauth2 import id_token
+
+    return str(id_token.fetch_id_token(Request(), audience))

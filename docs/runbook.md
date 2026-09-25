@@ -200,6 +200,15 @@ with any control off logs one warning at startup naming each. Terraform states t
   reports `review_routing: "off"` so the user is told the item is not queued. Unsetting
   `HUMAN_REVIEW_URL` does NOT pause anything: under `gcp` or `platform` with routing on, the
   process refuses to boot without it.
+- **The console hand-off under `gcp` goes through the portal's IAP edge.** `HUMAN_REVIEW_URL` is
+  the console's edge path (`https://<edge-host>/apps/human-review-console/api`) and
+  `HUMAN_REVIEW_IAP_AUDIENCE` is the IAP OAuth client id that edge accepts (the same value as
+  `RSK_COMPLIANCE_IAP_AUDIENCE`; Terraform sets both from `compliance_advisory_iap_audience`).
+  The router mints a fresh ID token for that audience with the service's workload identity on
+  every submission, instead of sending `CDD_S2S_TOKEN`, and the console authenticates this
+  service from the IAP assertion the portal forwards. Routing on under `gcp` refuses at boot
+  unless BOTH are set, and refuses a backend-service path (`/projects/.../backendServices/...`)
+  as the audience. Unset elsewhere, the router keeps the static `CDD_S2S_TOKEN` bearer.
 - **A failed hand-off does not fail the request.** The response carries
   `review_routing: "failed"`, the failure is logged at WARNING with the exception type, and the
   console says the item is not queued for review.
@@ -217,5 +226,7 @@ with any control off logs one warning at startup naming each. Terraform states t
 | `POST /v1/perpetual-kyc` returns 403 for a valid analyst | The stored baseline belongs to another tenant, or the caller holds no case-access role | Expected and correct: monitoring history is tenant-isolated. Check the caller's tenant and entitlements, never widen the record ACL |
 | The perpetual-KYC queue is empty for everyone | The caller carries no tenant tag (the listing fails closed), or `monitoring_store` is bound to the `onprem` placeholder | Confirm the identity supplies a tenant; confirm `CDD_PROFILE` and the `monitoring_store` binding |
 | Every perpetual-KYC signal looks `new` on every run | Baselines are not persisting: the store is not durable across replicas or restarts | On `gcp`/`platform` confirm the Firestore database and the `pkyc_baselines` / `pkyc_assessments` collections; `local` is in-process by design and resets with the process |
-| A pKYC assessment or UBO resolution shows `routed_to_hrz7: false` | The response's `review_routing` says which: `failed` means `human-review-console` was unreachable when the cycle ran (logged at WARNING with the exception type); `off` means `CDD_REVIEW_ROUTING` is switched off | The assessment is retained and still requires human review. For `failed`, restore the console or `CDD_S2S_TOKEN`; the local router flushes its outbox on the next route or restart. For `off`, route it by hand or switch routing back on |
-| The revision refuses to start naming `HUMAN_REVIEW_URL` | Review routing is on under `gcp`/`platform` and no console is named | Set `HUMAN_REVIEW_URL` to the `human-review-console` base URL, or state `CDD_REVIEW_ROUTING=off` to run without routing |
+| A pKYC assessment or UBO resolution shows `routed_to_hrz7: false` | The response's `review_routing` says which: `failed` means `human-review-console` was unreachable when the cycle ran (logged at WARNING with the exception type); `off` means `CDD_REVIEW_ROUTING` is switched off | The assessment is retained and still requires human review. For `failed`, restore the console, or its credential (`HUMAN_REVIEW_IAP_AUDIENCE` under `gcp`, `CDD_S2S_TOKEN` elsewhere); the local router flushes its outbox on the next route or restart. For `off`, route it by hand or switch routing back on |
+| The revision refuses to start naming `HUMAN_REVIEW_URL` | Review routing is on under `platform` and no console is named | Set `HUMAN_REVIEW_URL` to the `human-review-console` base URL, or state `CDD_REVIEW_ROUTING=off` to run without routing |
+| The revision refuses to start naming `HUMAN_REVIEW_URL` and `HUMAN_REVIEW_IAP_AUDIENCE` | Review routing is on under `gcp` and either the console's edge path or the IAP edge audience is missing (the message lists which) | Set both, or state `CDD_REVIEW_ROUTING=off` to run without routing |
+| Every hand-off reports `review_routing: "failed"` with a 401 or 403 from the edge | `HUMAN_REVIEW_IAP_AUDIENCE` is not the edge's IAP OAuth client id, or this service account is not in the console's `REVIEW_IAP_SERVICE_CALLERS_JSON` allowlist | Set the client id (never the backend-service path); ask the console's operator to allowlist this service account |

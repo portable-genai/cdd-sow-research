@@ -349,6 +349,15 @@ REVIEW_ROUTING_ENV = "CDD_REVIEW_ROUTING"
 #: Required at boot under a managed profile while review routing is on, so a missing console
 #: is a named refusal rather than a hand-off that fails on every escalation.
 HUMAN_REVIEW_URL_ENV = "HUMAN_REVIEW_URL"
+#: The bearer audience the portal's IAP edge accepts for the console hand-off: the IAP OAuth
+#: client id. Under ``gcp`` the console is an embedded app behind that edge, so
+#: ``HUMAN_REVIEW_URL`` is its edge path (``https://<edge-host>/apps/human-review-console/api``)
+#: and the router mints a fresh ID token for this audience per submission. Read in three states:
+#: unset keeps the static ``CDD_S2S_TOKEN`` bearer, emptied refuses, a value is minted for.
+HUMAN_REVIEW_IAP_AUDIENCE_ENV = "HUMAN_REVIEW_IAP_AUDIENCE"
+#: The managed profile whose console is reached through the portal's IAP edge, and so the one
+#: profile under which review routing needs the audience as well as the URL.
+IAP_EDGE_PROFILE = "gcp"
 
 _log = logging.getLogger(__name__)
 
@@ -1820,7 +1829,9 @@ def _refuse_unconfigured_controls(settings: Settings) -> None:
     if settings.profile not in MANAGED_PROFILES:
         return
     controls = settings.controls
-    if controls.review_routing and optional_setting(HUMAN_REVIEW_URL_ENV) is None:
+    if controls.review_routing and settings.profile == IAP_EDGE_PROFILE:
+        _refuse_routing_without_the_edge(settings.profile)
+    elif controls.review_routing and optional_setting(HUMAN_REVIEW_URL_ENV) is None:
         raise ConfiguredEmptyError(
             f"Review routing is on under profile {settings.profile!r} but {HUMAN_REVIEW_URL_ENV} "
             f"is not set. Name the human-review-console base URL, or set "
@@ -1836,6 +1847,51 @@ def _refuse_unconfigured_controls(settings: Settings) -> None:
             f"The guardrail is on under profile {settings.profile!r} but no Model Armor "
             f"template is configured. Name one, or set {GUARDRAIL_ENV}=off."
         )
+
+
+def _refuse_routing_without_the_edge(profile: str) -> None:
+    """Under the IAP-fronted profile, routing needs the console's edge path AND the audience.
+
+    The console is reached through the portal's IAP edge, which accepts only an ID token minted
+    for the IAP OAuth client id. A URL with no audience would send the static bearer the edge
+    refuses, and an audience with no URL names nowhere to send it, so both are required and the
+    refusal names both, whichever is missing.
+    """
+    url = optional_setting(HUMAN_REVIEW_URL_ENV)
+    audience = optional_setting(HUMAN_REVIEW_IAP_AUDIENCE_ENV)
+    missing = [
+        name
+        for name, value in ((HUMAN_REVIEW_URL_ENV, url), (HUMAN_REVIEW_IAP_AUDIENCE_ENV, audience))
+        if value is None
+    ]
+    if missing:
+        raise ConfiguredEmptyError(
+            f"Review routing is on under profile {profile!r}, which reaches the "
+            f"human-review-console through the portal's IAP edge, so it needs both "
+            f"{HUMAN_REVIEW_URL_ENV} (the console's edge path) and "
+            f"{HUMAN_REVIEW_IAP_AUDIENCE_ENV} (the IAP OAuth client id); not set: "
+            f"{', '.join(missing)}. Name both, or set {REVIEW_ROUTING_ENV}=off to run without "
+            "routing."
+        )
+    iap_audience_or_refuse(HUMAN_REVIEW_IAP_AUDIENCE_ENV, audience or "")
+
+
+def iap_audience_or_refuse(name: str, value: str) -> str:
+    """Refuse the one wrong IAP bearer audience an operator is most likely to paste.
+
+    IAP compares its OWN assertion against the backend-service path
+    (``/projects/<n>/global/backendServices/<id>``), and that path is NOT a bearer audience: a
+    token minted for it is refused at the edge, and this process only ever sees the refusal,
+    never the reason. The two values live side by side in a deployment record, so catching the
+    mix-up here is the difference between a named configuration error and an unexplained 401.
+    """
+    if value.startswith("/projects/") or "/backendServices/" in value:
+        raise ValueError(
+            f"{name} must be the IAP OAuth client id, not the backend-service path "
+            f"{value!r}: IAP compares that path against its own assertion and refuses it as a "
+            "bearer audience."
+        )
+    return value
 
 
 def instantiate(dotted: str, settings: Settings) -> Any:

@@ -35,6 +35,7 @@ from cdd_sow_research.api.app import _capability_manifest, app, assess_cdd
 from cdd_sow_research.api.schemas import CddCaseResponse, CddRequest, SubjectModel
 from cdd_sow_research.config import (
     GUARDRAIL_ENV,
+    HUMAN_REVIEW_IAP_AUDIENCE_ENV,
     HUMAN_REVIEW_URL_ENV,
     PII_REDACTION_ENV,
     REVIEW_ROUTING_ENV,
@@ -49,11 +50,18 @@ from cdd_sow_research.envread import ConfiguredEmptyError
 
 CONFIG = "config/settings.yaml"
 _SWITCHES = (GUARDRAIL_ENV, PII_REDACTION_ENV, REVIEW_ROUTING_ENV)
+#: The IAP OAuth client id a gcp deployment names beside its console's edge path.
+_EDGE_AUDIENCE = "1234567890-fictionaledgeclient.apps.googleusercontent.com"
 
 
 @pytest.fixture(autouse=True)
 def _clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in (*_SWITCHES, HUMAN_REVIEW_URL_ENV, "CDD_MODEL_ARMOR_TEMPLATE"):
+    for name in (
+        *_SWITCHES,
+        HUMAN_REVIEW_URL_ENV,
+        HUMAN_REVIEW_IAP_AUDIENCE_ENV,
+        "CDD_MODEL_ARMOR_TEMPLATE",
+    ):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("CDD_PROFILE", "local")
     warn_switched_off.cache_clear()
@@ -145,6 +153,7 @@ def test_routing_on_without_a_console_refuses_at_boot(
 def test_routing_on_under_gcp_with_a_console_loads(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CDD_PROFILE", "gcp")
     monkeypatch.setenv(HUMAN_REVIEW_URL_ENV, "https://review.example.test")
+    monkeypatch.setenv(HUMAN_REVIEW_IAP_AUDIENCE_ENV, _EDGE_AUDIENCE)
     assert Settings.load(CONFIG).controls.review_routing is True
 
 
@@ -161,6 +170,7 @@ def test_the_local_profile_needs_no_console() -> None:
 def test_model_armor_on_with_no_template_refuses_at_boot(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CDD_PROFILE", "gcp")
     monkeypatch.setenv(HUMAN_REVIEW_URL_ENV, "https://review.example.test")
+    monkeypatch.setenv(HUMAN_REVIEW_IAP_AUDIENCE_ENV, _EDGE_AUDIENCE)
     reviewed = Path(CONFIG).read_text(encoding="utf-8")
     line = next(x for x in reviewed.splitlines() if x.lstrip().startswith("template_id:"))
     no_template = reviewed.replace(line, '  template_id: ""').encode("utf-8")
@@ -414,6 +424,7 @@ def _model_armor_row(monkeypatch: pytest.MonkeyPatch, controls: ControlSwitches)
     monkeypatch.setenv("CDD_PROFILE", "gcp")
     monkeypatch.setenv("CDD_CHANNEL_PROFILE", "standalone")
     monkeypatch.setenv(HUMAN_REVIEW_URL_ENV, "https://review.example.test")
+    monkeypatch.setenv(HUMAN_REVIEW_IAP_AUDIENCE_ENV, _EDGE_AUDIENCE)
     settings = dataclasses.replace(Settings.load(CONFIG), controls=controls)
     rows = {row.name: row for row in _capability_manifest(settings).capabilities}
     return rows["model-armor"]

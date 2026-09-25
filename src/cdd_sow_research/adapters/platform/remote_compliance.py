@@ -37,7 +37,7 @@ from __future__ import annotations
 
 import httpx
 
-from ...config import Settings
+from ...config import Settings, iap_audience_or_refuse
 from ...domain.errors import CddError
 from ...domain.models import Citation, ComplianceAnswer, SourceType
 from ...envread import optional_setting, required_setting, setting_or_default
@@ -147,21 +147,12 @@ class RemoteComplianceAdapter:
 
 
 def _audience_or_refuse(value: str) -> str:
-    """Refuse the one wrong audience an operator is most likely to paste.
+    """Refuse a backend-service path pasted where the IAP OAuth client id belongs.
 
-    IAP compares its OWN assertion against the backend-service path
-    (``/projects/<n>/global/backendServices/<id>``), and that path is NOT a bearer audience: a
-    token minted for it is refused at the edge, and this process only ever sees the refusal,
-    never the reason. The two values live side by side in a deployment record, so catching the
-    mix-up here is the difference between a named configuration error and an unexplained 401.
+    The rule is shared with the review router's audience, so it lives in
+    :func:`cdd_sow_research.config.iap_audience_or_refuse`; this names this adapter's variable.
     """
-    if value.startswith("/projects/") or "/backendServices/" in value:
-        raise ValueError(
-            f"{AUDIENCE_ENV} must be the IAP OAuth client id, not the backend-service path "
-            f"{value!r}: IAP compares that path against its own assertion and refuses it as a "
-            "bearer audience."
-        )
-    return value
+    return iap_audience_or_refuse(AUDIENCE_ENV, value)
 
 
 def _resolve_read_seconds() -> float:

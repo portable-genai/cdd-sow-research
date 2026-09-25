@@ -14,7 +14,7 @@ def test_managed_platform_headers_mint_audience_bound_id_token(
         audiences.append(audience)
         return "fresh-id-token"
 
-    monkeypatch.setattr(_s2s, "_fetch_id_token", mint)
+    monkeypatch.setattr(_s2s, "fetch_id_token", mint)
     headers = _s2s.headers(
         settings=Settings(profile="platform"),
         base_url="https://quality.example.test",
