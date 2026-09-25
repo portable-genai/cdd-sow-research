@@ -97,9 +97,11 @@ worm_locked = false
 # embed_signing_key_version          = "projects/PROJECT/locations/asia-southeast1/keyRings/cdd-sow-agent-ring/cryptoKeys/cdd-sow-agent-cmek-embed-signing/cryptoKeyVersions/1"
 # edge_min_instances                = 2
 # edge_max_instances                = 10
-# Rule R8: the human-review-console every escalation is routed to. Required with the edge
-# while review routing is on, because the service refuses to boot without it.
-# human_review_url = "https://review.fictional-bank.example"
+# Rule R8: the human-review-console every escalation is routed to, at its portal edge path.
+# Required with the edge while review routing is on, because the service refuses to boot
+# without it. The hand-off mints its bearer for compliance_advisory_iap_audience (the same
+# edge), set as HUMAN_REVIEW_IAP_AUDIENCE.
+# human_review_url = "https://rm.fictional-bank.example/apps/human-review-console/api"
 # additional_secret_env = {
 #   CDD_EMBED_TOKEN_PUBLIC_KEY = {
 #     secret_id = "doc1-embed-token-public-key"

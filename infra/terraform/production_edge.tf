@@ -141,6 +141,13 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "HUMAN_REVIEW_URL"
         value = var.human_review_url
       }
+      # The console is an embedded app behind the same portal IAP edge as compliance-advisory,
+      # and that edge has one IAP OAuth client, so the hand-off's bearer audience is the same
+      # client id. The gcp profile refuses to boot with routing on and no audience named.
+      env {
+        name  = "HUMAN_REVIEW_IAP_AUDIENCE"
+        value = var.compliance_advisory_iap_audience
+      }
       # The cheap runtime controls, stated rather than inherited: each is on in the reference,
       # and off is a deployment choice the service logs at startup.
       env {

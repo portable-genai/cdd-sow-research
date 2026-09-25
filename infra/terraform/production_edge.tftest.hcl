@@ -85,6 +85,11 @@ run "named_edge_contract" {
   }
 
   assert {
+    condition     = one([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "HUMAN_REVIEW_IAP_AUDIENCE"]) == "1234567890-fictionaledgeclient.apps.googleusercontent.com"
+    error_message = "The API must mint its human-review-console bearer for the same IAP edge audience, or the gcp profile refuses to boot with routing on."
+  }
+
+  assert {
     condition     = one([for item in google_cloud_run_v2_service.api[0].template[0].containers[0].env : item.value if item.name == "GOOGLE_CLOUD_PROJECT"]) == "fictional-doc1-production"
     error_message = "The API project must come from the applied infrastructure, not a settings default."
   }

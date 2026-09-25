@@ -189,7 +189,7 @@ def _record_minted(monkeypatch: pytest.MonkeyPatch) -> list[str]:
         audiences.append(audience)
         return "id-token"
 
-    monkeypatch.setattr(_s2s, "_fetch_id_token", _fetch)
+    monkeypatch.setattr(_s2s, "fetch_id_token", _fetch)
     return audiences
 
 

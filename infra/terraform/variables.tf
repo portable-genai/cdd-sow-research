@@ -492,7 +492,7 @@ variable "compliance_advisory_url" {
 }
 
 variable "human_review_url" {
-  description = "The human-review-console base URL every dossier, pKYC re-score and UBO resolution is routed to (rule R8), set as HUMAN_REVIEW_URL. Required with the production edge while review routing is on: the gcp profile refuses to boot without it."
+  description = "The human-review-console base URL every dossier, pKYC re-score and UBO resolution is routed to (rule R8), set as HUMAN_REVIEW_URL: its portal edge path, https://<edge-host>/apps/human-review-console/api. Required with the production edge while review routing is on: the gcp profile refuses to boot without it."
   type        = string
   default     = ""
 
@@ -521,7 +521,7 @@ variable "review_routing_enabled" {
 }
 
 variable "compliance_advisory_iap_audience" {
-  description = "The IAP OAuth client id the portal edge accepts as a bearer audience, <number>-<id>.apps.googleusercontent.com. NOT the backend-service path IAP compares its own inbound assertion against, which is refused as a bearer audience."
+  description = "The IAP OAuth client id the portal edge accepts as a bearer audience, <number>-<id>.apps.googleusercontent.com, set as RSK_COMPLIANCE_IAP_AUDIENCE and, because human-review-console sits behind the same edge, as HUMAN_REVIEW_IAP_AUDIENCE. NOT the backend-service path IAP compares its own inbound assertion against, which is refused as a bearer audience."
   type        = string
   default     = ""
 
