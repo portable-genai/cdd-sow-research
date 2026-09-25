@@ -3,18 +3,10 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { health } from "../lib/api";
-
-// Provenance the banner states on every page (org decision, 2026-08-30): where the
-// runtime sits (GCP or this machine) and which model answers (Gemini, or the
-// deterministic offline stub). Values come from /v1/healthz; nothing here guesses.
-function provenance(runtime: string, model: string): string {
-  const where = runtime === "gcp" ? "running on GCP" : "running locally";
-  return `${where} · model ${model}`;
-}
+import { ModelPills } from "./ModelPills";
 
 export function AppChrome({ children }: { children: ReactNode }) {
   const [region, setRegion] = useState("runtime");
-  const [origin, setOrigin] = useState<string | null>(null);
   const pathname = usePathname();
   const embedded =
     pathname === "/embed" ||
@@ -27,7 +19,6 @@ export function AppChrome({ children }: { children: ReactNode }) {
       .then((status) => {
         if (cancelled) return;
         setRegion(status.region);
-        setOrigin(provenance(status.runtime, status.generator_model));
       })
       .catch(() => {
         // Startup/auth failures are rendered by AgentConsole. Keep this chrome neutral
@@ -37,21 +28,18 @@ export function AppChrome({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, []);
-  const banner = origin ? (
-    <p className="border-b border-ink-200 bg-ink-50 px-4 py-1 text-xs text-ink-600">
-      {origin}
-    </p>
-  ) : null;
+  // The model pills sit in the CHROME, so every page, embedded ones included, carries them: an
+  // embed is exactly where a viewer has least context about which model answered.
   if (embedded)
     return (
       <>
-        {banner}
+        <ModelPills />
         <main className="p-4">{children}</main>
       </>
     );
   return (
     <>
-      {banner}
+      <ModelPills />
       <header className="border-b border-ink-200 bg-white">
         <div className="mx-auto max-w-4xl px-6 py-4">
           <h1 className="text-lg font-semibold text-ink-900">

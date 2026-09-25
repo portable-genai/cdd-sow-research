@@ -138,6 +138,9 @@ class RiskRatingService:
             user_content=user,
             model=None,
             response_schema=_RISK_SCHEMA,
+            # Pinned: the passages the model names become rating.citations, which the paired
+            # demonstration compares. The rationale prose rides along on the same call.
+            temperature=0.0,
         )
         response = self._llm.generate(request)
         g.maybe_record_usage(self._tracer, response)

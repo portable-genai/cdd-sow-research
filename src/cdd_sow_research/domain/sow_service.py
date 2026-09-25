@@ -95,6 +95,9 @@ class SourceOfWealthService:
             user_content=user,
             model=None,  # adapter default => reasoning model gemini-3.5-flash
             response_schema=_SOW_SCHEMA,
+            # Pinned: the sources, their value bands and the citations are extracted here and
+            # compared by the paired demonstration.
+            temperature=0.0,
         )
         response = self._llm.generate(request)
         g.maybe_record_usage(self._tracer, response)
@@ -191,6 +194,9 @@ class SourceOfWealthService:
             ),
             model=None,
             response_schema=_CRITIQUE_SCHEMA,
+            # Free: a judge of the narrative. Its confidence only ever LOWERS the prior, and
+            # sow.confidence is exempt from the paired comparison.
+            temperature=None,
         )
         try:
             response = self._llm.generate(request)

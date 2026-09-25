@@ -44,15 +44,23 @@ export class AuthenticatedTransport {
   private accessToken = "";
   private identityMode = "";
   private onSignal?: (signal: TransportSignal) => void;
-  private readonly fetchImpl: typeof fetch;
+  // `undefined` means "the global `fetch` as it is AT CALL TIME", not as it was when this module
+  // loaded. The model pills read the answer headers through one `window.fetch` wrapper installed
+  // on mount (`lib/answer-provenance.mjs`), and a transport that captured `fetch` at import would
+  // go around it, leaving the pill on the configured model forever.
+  private readonly fetchImpl: typeof fetch | undefined;
   private readonly csrfTokens = new Map<string, string>();
 
   constructor(
     options: TransportOptions = {},
-    fetchImpl: typeof fetch = fetch,
+    fetchImpl?: typeof fetch,
   ) {
     this.fetchImpl = fetchImpl;
     this.configure(options);
+  }
+
+  private fetch(): typeof fetch {
+    return this.fetchImpl ?? globalThis.fetch;
   }
 
   configure(options: TransportOptions): void {
@@ -92,7 +100,7 @@ export class AuthenticatedTransport {
     const existing = this.csrfTokens.get(key);
     if (existing) return existing;
     const query = new URLSearchParams({ method, path });
-    const response = await this.fetchImpl.call(
+    const response = await this.fetch().call(
       globalThis,
       `${CANONICAL_API_BASE}/auth/csrf?${query.toString()}`,
       {
@@ -150,7 +158,7 @@ export class AuthenticatedTransport {
     if (csrfProtected) {
       headers.set("X-CSRF-Token", await this.csrfToken(method, path));
     }
-    const response = await this.fetchImpl.call(
+    const response = await this.fetch().call(
       globalThis,
       `${CANONICAL_API_BASE}${path}`,
       {

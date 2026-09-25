@@ -122,7 +122,11 @@ class LlmRequest:
     system_instruction: str | None = None
     model: str | None = None  # None => adapter default from config
     thinking: ThinkingLevel = ThinkingLevel.MEDIUM
-    temperature: float = 0.0  # omitted at a call site means this value; it must not sample
+    # Sampling is decided PER CALL (owner decision, 2026-09-23): a call whose output is extracted,
+    # classified, scored or compared passes 0.0; drafting, narration and judging leave it None,
+    # and the adapter then OMITS the parameter rather than sending a value (Opus 5 / Fable 5
+    # reject temperature outright, so "free" cannot mean 1.0).
+    temperature: float | None = None
     max_output_tokens: int = 4096
     response_schema: dict | None = None  # JSON schema for structured output
 

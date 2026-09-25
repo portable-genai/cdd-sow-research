@@ -1072,9 +1072,10 @@ class UboGraphResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str = "ok"
     profile: str = "local"
-    # Provenance the UI banner states on every page: where the runtime sits and which
-    # model answers. Derived server-side so the UI never guesses (org decision,
-    # 2026-08-30: every UI names its runtime and its model).
+    # What the console's model pill shows before an answer arrives: where the runtime sits
+    # (the pill's title) and which model the bound generator calls. Derived server-side so the
+    # UI never guesses. Once a request is answered the pill names the model that ANSWERED,
+    # from the `X-Answered-By` response header instead.
     runtime: str = "local"  # "gcp" | "local"
     generator_model: str = "deterministic-offline-stub"
     region: str = "asia-southeast1"
