@@ -12,7 +12,7 @@ domain models, the ports, and the orchestration services, never on a concrete ad
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from hex_service_kit.capabilities import Capability, CapabilityManifest
 from pydantic import BaseModel, Field
@@ -31,6 +31,8 @@ from .citation_ids import citation_identifier_from_url
 #: console accepted it), ``failed`` (the hand-off failed and the item is NOT in the console),
 #: ``off`` (routing is switched off in this deployment) and ``not_required``.
 ReviewRoutingValue = Literal["routed", "failed", "off", "not_required"]
+#: The wire spelling of :class:`~cdd_sow_research.domain.models.ComplianceUnavailableReason`.
+ComplianceUnavailableReasonValue = Literal["not_configured", "no_answer"]
 
 
 class CitationModel(BaseModel):
@@ -504,6 +506,22 @@ class ComplianceAnswerModel(BaseModel):
         )
 
 
+class ComplianceUnavailableModel(BaseModel):
+    """Why the dossier carries no compliance answer (mirror of ComplianceUnavailable).
+
+    ``reason`` is the typed state a client branches on; ``detail`` is the same fact in plain
+    words for a reviewer, fixed per reason.
+    """
+
+    reason: ComplianceUnavailableReasonValue
+    detail: str
+
+    @classmethod
+    def from_domain(cls, unavailable: m.ComplianceUnavailable) -> ComplianceUnavailableModel:
+        reason = cast(ComplianceUnavailableReasonValue, unavailable.reason.value)
+        return cls(reason=reason, detail=unavailable.detail)
+
+
 class CddCaseResponse(BaseModel):
     """The full CDD dossier (mirror of CDDCase)."""
 
@@ -518,6 +536,9 @@ class CddCaseResponse(BaseModel):
     screening: ScreeningResultModel | None = None
     # None = no compliance answer came back; an object = what compliance-advisory answered.
     compliance: ComplianceAnswerModel | None = None
+    # Set exactly when ``compliance`` is null on a dossier this service assembled: the typed
+    # reason there is no answer. Null on an answered dossier and on one exported before it.
+    compliance_unavailable: ComplianceUnavailableModel | None = None
     requires_human_review: bool = True
     generated_at: str = ""
     #: What happened to the human-review hand-off for THIS response. A transport fact about
@@ -559,6 +580,11 @@ class CddCaseResponse(BaseModel):
             compliance=(
                 ComplianceAnswerModel.from_domain(case.compliance, continuation_ids)
                 if case.compliance is not None
+                else None
+            ),
+            compliance_unavailable=(
+                ComplianceUnavailableModel.from_domain(case.compliance_unavailable)
+                if case.compliance_unavailable is not None
                 else None
             ),
             requires_human_review=case.requires_human_review,

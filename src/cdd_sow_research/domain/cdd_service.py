@@ -40,13 +40,15 @@ from dataclasses import replace
 from typing import Any
 
 from . import _grounded as g
-from .errors import GuardrailBlockedError, RetrievalEmptyError
+from .errors import ComplianceNotConfiguredError, GuardrailBlockedError, RetrievalEmptyError
 from .models import (
     AuditEvent,
     CaseInput,
     CDDCase,
     Citation,
     ComplianceAnswer,
+    ComplianceUnavailable,
+    ComplianceUnavailableReason,
     Decision,
     Direction,
     GuardrailVerdict,
@@ -256,9 +258,9 @@ class CddService:
             )
 
         # 8) Ask compliance-advisory which regulatory CDD/AML expectations apply. Advisory: an
-        #    unanswered check leaves the dossier's compliance field null, never a failure.
+        #    unanswered check leaves the answer null and says why, never a failure.
         with self._segment("cdd.compliance_check", actor):
-            compliance = self._compliance_check(subject, rating, actor)
+            compliance, compliance_unavailable = self._compliance_check(subject, rating, actor)
 
         # 9) Assemble the dossier.
         case = CDDCase(
@@ -270,6 +272,7 @@ class CddService:
             ownership=ownership,
             screening=screening,
             compliance=compliance,
+            compliance_unavailable=compliance_unavailable,
             requires_human_review=self._review.requires_review(),
         )
 
@@ -430,19 +433,27 @@ class CddService:
 
     def _compliance_check(
         self, subject: Any, rating: RiskRating, actor: str
-    ) -> ComplianceAnswer | None:
+    ) -> tuple[ComplianceAnswer | None, ComplianceUnavailable | None]:
         """Ask compliance-advisory which regulatory CDD/AML expectations apply to this rating.
 
-        Best-effort and advisory. A failure leaves the dossier's ``compliance`` null and says
-        why in the log: a check that fails in silence is how the deployment answered every
-        dossier from a stand-in without anyone seeing it.
+        Best-effort and advisory, and never silent. Exactly one half of the pair is set: the
+        answer, or the stated reason there is none, which the dossier carries to the reviewer.
+        A failure also says why in the log: a check that fails in silence is how the deployment
+        answered every dossier from a stand-in without anyone seeing it.
         """
         question = (
             f"For a {subject.type.value} customer in {subject.jurisdiction or 'an unknown'} "
             f"jurisdiction rated {rating.band.value} risk, what CDD/AML expectations apply?"
         )
         try:
-            return self._compliance.check(question, actor)
+            return self._compliance.check(question, actor), None
+        except ComplianceNotConfiguredError as exc:
+            _LOG.warning(
+                "compliance check NOT CONFIGURED for subject %s: %s",
+                getattr(subject, "id", "?"),
+                exc,
+            )
+            return None, ComplianceUnavailable(ComplianceUnavailableReason.NOT_CONFIGURED)
         except Exception as exc:  # noqa: BLE001 - the check is advisory, never fatal here
             _LOG.error(
                 "compliance check FAILED for subject %s and the dossier will report "
@@ -451,7 +462,7 @@ class CddService:
                 type(exc).__name__,
                 exc,
             )
-            return None
+            return None, ComplianceUnavailable(ComplianceUnavailableReason.NO_ANSWER)
 
     # ------------------------------------------------------------------ #
     # Helpers

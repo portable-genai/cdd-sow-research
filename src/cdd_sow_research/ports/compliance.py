@@ -4,6 +4,9 @@
 `compliance-advisory`, the grounded compliance assistant. Every networked profile binds the thin
 HTTP client to its ``/ask`` endpoint (``adapters/platform/remote_compliance.py``, env
 ``RSK_COMPLIANCE_URL``); the offline gate answers in-process; the on-prem placeholder raises.
+A client that was never told which service to ask (a laptop run only) raises
+:class:`~cdd_sow_research.domain.errors.ComplianceNotConfiguredError`; the dossier records every
+failure as a typed ``ComplianceUnavailable`` rather than an answer.
 """
 
 from __future__ import annotations

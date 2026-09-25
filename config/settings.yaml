@@ -457,8 +457,9 @@ adapters:
     live: cdd_sow_research.adapters.gcp.ownership_graph:GroundedOwnershipGraphAdapter
     onprem: cdd_sow_research.adapters.onprem.ownership_graph:OnPremOwnershipGraphAdapter
   compliance:
-    # Every networked profile asks compliance-advisory's /ask, named by RSK_COMPLIANCE_URL (required,
-    # no default). Only the offline gate answers in-process.
+    # Every networked profile asks compliance-advisory's /ask, named by RSK_COMPLIANCE_URL (no
+    # default; required under gcp/platform, while a live laptop run starts without it and each
+    # dossier reports the check not configured). Only the offline gate answers in-process.
     gcp: cdd_sow_research.adapters.platform.remote_compliance:RemoteComplianceAdapter
     platform: cdd_sow_research.adapters.platform.remote_compliance:RemoteComplianceAdapter
     local: cdd_sow_research.adapters.local.compliance:LocalComplianceClientAdapter

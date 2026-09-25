@@ -28,6 +28,7 @@ from cdd_sow_research.adapters.platform.remote_compliance import (
 )
 from cdd_sow_research.api.app import create_app
 from cdd_sow_research.config import Settings
+from cdd_sow_research.domain.errors import ComplianceNotConfiguredError
 from cdd_sow_research.domain.models import SourceType
 from cdd_sow_research.envread import ConfiguredEmptyError
 
@@ -71,8 +72,15 @@ _ANSWER = {
 }
 
 
+#: The profiles whose missing address refuses the boot. ``live`` is the laptop run, which starts
+#: without its sibling and says so on every dossier instead (owner rule, 2026-09-23).
+MANAGED_PROFILES = ("gcp", "platform")
+
+
 def _settings(profile: str) -> Settings:
-    return replace(Settings.load(CONFIG_PATH), profile=profile)
+    # Named deliberately, as a launcher names it: the laptop leniency is withheld from a run
+    # nobody chose a profile for, so the tests must not inherit that from the environment.
+    return replace(Settings.load(CONFIG_PATH), profile=profile, profile_explicit=True)
 
 
 def _bindings() -> dict[str, str]:
@@ -112,14 +120,38 @@ def test_the_offline_gate_keeps_its_in_process_answer() -> None:
 # --------------------------------------------------------------------------------------- #
 # Three states for the service URL, and no default to fall back on
 # --------------------------------------------------------------------------------------- #
-@pytest.mark.parametrize("profile", NETWORKED_PROFILES)
+@pytest.mark.parametrize("profile", MANAGED_PROFILES)
 def test_an_unnamed_compliance_service_refuses_to_construct(
     profile: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A networked profile names the service it asks; it never inherits a localhost guess."""
+    """A managed profile names the service it asks; it never inherits a localhost guess."""
     monkeypatch.delenv(URL_ENV, raising=False)
     with pytest.raises(ConfiguredEmptyError, match=URL_ENV):
         RemoteComplianceAdapter(_settings(profile))
+
+
+def test_a_laptop_run_without_the_service_constructs_and_asks_nobody(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The laptop never refuses to start because a sibling is absent, and never guesses one:
+    the client it builds raises the typed NOT CONFIGURED error, which the dossier records."""
+    monkeypatch.delenv(URL_ENV, raising=False)
+    adapter = RemoteComplianceAdapter(_settings("live"))
+
+    with respx.mock(assert_all_called=False) as mock:
+        with pytest.raises(ComplianceNotConfiguredError, match=URL_ENV):
+            adapter.check("q", actor="a")
+        assert not mock.calls, "an unnamed service was dialled anyway"
+
+
+def test_an_unchosen_live_profile_gets_no_laptop_leniency(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The leniency is a relaxation, so it keys off a profile somebody NAMED."""
+    monkeypatch.delenv(URL_ENV, raising=False)
+    unchosen = replace(_settings("live"), profile_explicit=False)
+    with pytest.raises(ConfiguredEmptyError, match=URL_ENV):
+        RemoteComplianceAdapter(unchosen)
 
 
 @pytest.mark.parametrize("profile", NETWORKED_PROFILES)
@@ -330,21 +362,55 @@ def test_the_laptop_call_carries_no_token_at_all(monkeypatch: pytest.MonkeyPatch
 # --------------------------------------------------------------------------------------- #
 # Refused at boot, not on the first dossier
 # --------------------------------------------------------------------------------------- #
-def test_a_networked_process_without_the_service_refuses_to_start(
+def test_a_deployment_without_the_service_refuses_to_start(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Bound at startup, so a deployment that never named the service fails its revision and
     says which variable, instead of answering every assessment with a 500."""
     monkeypatch.delenv(URL_ENV, raising=False)
-    # A startable live process in every other respect, so the refusal is this one.
+    monkeypatch.setenv(AUDIENCE_ENV, EDGE_AUDIENCE)
+    # A startable managed process in every other respect, so the refusal is this one.
     monkeypatch.setenv("CDD_IDENTITY_PROFILE", "local-persona")
     monkeypatch.setenv("CDD_CHANNEL_PROFILE", "standalone")
+    settings = replace(_settings("gcp"), project_id="fictional-doc1-production")
 
     with (
         pytest.raises(RuntimeError, match=URL_ENV),
-        TestClient(create_app(_settings("live")), client=("127.0.0.1", 50000)),
+        TestClient(create_app(settings), client=("127.0.0.1", 50000)),
     ):
         pass
+
+
+def test_a_laptop_process_without_the_service_starts_and_says_so(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The live flagship starts with no compliance-advisory named, and the capability manifest
+    reports the leg unavailable before anyone runs a dossier."""
+    monkeypatch.delenv(URL_ENV, raising=False)
+    monkeypatch.setenv("CDD_IDENTITY_PROFILE", "local-persona")
+    monkeypatch.setenv("CDD_CHANNEL_PROFILE", "standalone")
+
+    with TestClient(create_app(_settings("live")), client=("127.0.0.1", 50000)) as client:
+        manifest = client.get("/v1/capabilities").json()
+
+    rows = {row["name"]: row for row in manifest["capabilities"]}
+    assert rows["compliance-check"]["available"] is False
+    assert URL_ENV in rows["compliance-check"]["reason"]
+
+
+def test_a_laptop_process_whose_sibling_is_down_starts(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Named but down: nothing is dialled at boot, so the process starts and the leg is only
+    found unanswered when a dossier asks (see test_the_dossier_carries_its_compliance_answer)."""
+    monkeypatch.setenv(URL_ENV, "http://127.0.0.1:9")
+    monkeypatch.setenv("CDD_IDENTITY_PROFILE", "local-persona")
+    monkeypatch.setenv("CDD_CHANNEL_PROFILE", "standalone")
+
+    with TestClient(create_app(_settings("live")), client=("127.0.0.1", 50000)) as client:
+        manifest = client.get("/v1/capabilities").json()
+
+    rows = {row["name"]: row for row in manifest["capabilities"]}
+    assert rows["compliance-check"]["available"] is True
+    assert rows["compliance-check"]["provider"] == "compliance-advisory"
 
 
 def test_a_deployment_without_the_audience_refuses_to_start(

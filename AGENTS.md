@@ -85,6 +85,12 @@ evidence for P-02.
   research. The compliance check asks a running `compliance-advisory`, as the deployment
   does, but on loopback and with no IAP in front of it, so no token goes on that hop.
   Deliberately no local model (org decision, 2026-08-30).
+- **The laptop run (`local`, `live`) never refuses to start** because a sibling is down or
+  the audit ledger objects to a reset (owner rule, 2026-09-23). `live` with
+  `RSK_COMPLIANCE_URL` unset starts and each dossier says `compliance_unavailable:
+  not_configured`, or `no_answer` when the service is down. A damaged, unwitnessed or
+  rolled-back local audit store is renamed `*.set-aside-<timestamp>` (never deleted) and a
+  fresh chain starts. Both leniencies need the profile NAMED; managed profiles keep refusing.
 - `platform`: thin HTTP delegates where sibling contracts exist, plus managed adapters
   for vertical-owned capabilities. Priority 1 makes every reuse explicit.
 - `onprem`: `NotImplementedError` placeholder stubs that still satisfy every Protocol
