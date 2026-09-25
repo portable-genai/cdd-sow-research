@@ -141,6 +141,24 @@ export interface ScreeningResult {
   screened_at: string;
 }
 
+/** What compliance-advisory answered (mirror of ComplianceAnswerModel). Never an outcome. */
+export interface ComplianceAnswer {
+  question: string;
+  answer: string;
+  citations: Citation[];
+  requires_human_review: boolean;
+  confidence: number;
+}
+
+/** Why a dossier carries no compliance answer (mirror of ComplianceUnavailableModel). */
+export type ComplianceUnavailableReason = "not_configured" | "no_answer";
+
+export interface ComplianceUnavailable {
+  reason: ComplianceUnavailableReason;
+  /** The same fact in plain words, fixed per reason by the server. */
+  detail: string;
+}
+
 /** What happened to the human-review hand-off for one response (rule R8). */
 export type ReviewRouting = "routed" | "failed" | "off" | "not_required";
 
@@ -154,6 +172,10 @@ export interface CddCase {
   ownership?: OwnershipSummary | null;
   /** null/absent = not screened; empty alerts = screened and clear. */
   screening?: ScreeningResult | null;
+  /** null/absent = no answer came back; see compliance_unavailable for why. */
+  compliance?: ComplianceAnswer | null;
+  /** Set exactly when compliance is null on a dossier this build assembled. */
+  compliance_unavailable?: ComplianceUnavailable | null;
   requires_human_review: boolean;
   generated_at: string;
   /** Absent on a dossier reloaded from an export: the hand-off belongs to the request. */

@@ -26,9 +26,14 @@ from cdd_sow_research.domain.models import AuditEvent, Citation, Decision, Sourc
 from cdd_sow_research.domain.serialization import audit_event_from_jsonable, to_jsonable
 
 
-def _adapter(path: str = ":memory:") -> LocalAppendOnlyAuditAdapter:
+def _adapter(path: str = ":memory:", *, laptop: bool = True) -> LocalAppendOnlyAuditAdapter:
+    # ``laptop=False`` is a run nobody chose a profile for: it binds this adapter but gets no
+    # laptop leniency, so a store it cannot trust is refused rather than set aside.
     return LocalAppendOnlyAuditAdapter(
-        Settings(local=LocalSettings(db_path=":memory:", audit_path=path))
+        Settings(
+            local=LocalSettings(db_path=":memory:", audit_path=path),
+            profile_explicit=laptop,
+        )
     )
 
 
@@ -225,7 +230,9 @@ def test_legacy_pre_chain_rows_are_counted_and_the_trail_is_not_reported_intact(
     conn.commit()
     conn.close()
 
-    audit = _adapter(str(db))
+    # Outside the laptop posture: a laptop run sets such a store aside instead
+    # (tests/unit/test_laptop_audit_set_aside.py), which would leave nothing here to report.
+    audit = _adapter(str(db), laptop=False)
     audit.record(_event(1))
     report = audit.verify_chain()
     assert not report.ok

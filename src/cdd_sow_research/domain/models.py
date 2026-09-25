@@ -663,6 +663,46 @@ class ComplianceAnswer:
     confidence: float = 0.0
 
 
+class ComplianceUnavailableReason(enum.StrEnum):
+    """Why the compliance leg did not answer a dossier. A state, never a canned answer."""
+
+    #: This run named no `compliance-advisory` to ask. Only a laptop run starts like this; a
+    #: managed profile refuses to boot without the address.
+    NOT_CONFIGURED = "not_configured"
+    #: `compliance-advisory` was asked and no answer came back: it was down, timed out, refused
+    #: or answered with something unusable.
+    NO_ANSWER = "no_answer"
+
+
+#: What the dossier says for each reason, in plain words. Fixed per reason rather than carried
+#: from the exception, so nothing about the caller's network or the receiver's error body leaves
+#: in the response; the log says the specifics.
+COMPLIANCE_UNAVAILABLE_DETAIL: dict[ComplianceUnavailableReason, str] = {
+    ComplianceUnavailableReason.NOT_CONFIGURED: (
+        "Not checked: this run was started without a compliance-advisory service to ask."
+    ),
+    ComplianceUnavailableReason.NO_ANSWER: (
+        "Not checked: compliance-advisory was asked but did not answer (it may be down)."
+    ),
+}
+
+
+@dataclass(frozen=True, slots=True)
+class ComplianceUnavailable:
+    """The compliance leg did not answer this dossier, and why.
+
+    Exactly one of ``CDDCase.compliance`` and ``CDDCase.compliance_unavailable`` is set on a
+    dossier this service assembles: an answer, or a stated reason there is none. The regulatory
+    check is advisory, so its absence never blocks a dossier, but it is never silent either.
+    """
+
+    reason: ComplianceUnavailableReason
+
+    @property
+    def detail(self) -> str:
+        return COMPLIANCE_UNAVAILABLE_DETAIL[self.reason]
+
+
 @dataclass(frozen=True, slots=True)
 class CDDCase:
     """A single CDD dossier bundling all four cited, audited artifacts.
@@ -692,6 +732,9 @@ class CDDCase:
     # or ungrounded), which is distinct from an answer: the console must not render the first
     # as the second.
     compliance: ComplianceAnswer | None = None
+    # Why there is no compliance answer, when there is none. None on a dossier that was
+    # answered, and on one assembled before this field existed.
+    compliance_unavailable: ComplianceUnavailable | None = None
     requires_human_review: bool = True
     generated_at: datetime = field(default_factory=utcnow)
 

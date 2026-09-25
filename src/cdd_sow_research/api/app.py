@@ -244,10 +244,12 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     container = (
         build_container(settings) if configured_settings is not None else deps.get_container()
     )
-    # Bound at boot rather than on the first dossier: a networked profile that never named
+    # Bound at boot rather than on the first dossier: a managed profile that never named
     # RSK_COMPLIANCE_URL, or named the wrong IAP audience in RSK_COMPLIANCE_IAP_AUDIENCE,
     # refuses to start and says which variable, instead of answering every assessment with a
-    # 500 or collecting 401s from an edge that cannot explain itself.
+    # 500 or collecting 401s from an edge that cannot explain itself. A laptop run that named
+    # no address starts, and the binding logs that the compliance leg is NOT CONFIGURED; one
+    # whose compliance-advisory is down starts too, since nothing is dialled here.
     try:
         _ = container.compliance
     except (ConfiguredEmptyError, ValueError) as exc:
@@ -793,7 +795,13 @@ def _dossier_digest(dossier: CddCaseResponse) -> str:
     # ``review_routing`` says what happened to ONE request's hand-off to the review console. It
     # is not a claim of the dossier, and it joined the wire after dossiers had been exported, so
     # it never enters the digest.
-    exclude = {"review_routing"} | ({"compliance"} if dossier.compliance is None else set())
+    # ``compliance_unavailable`` joined the wire later still, on the same rule: absent stays out
+    # so earlier exports verify, present is inside so the stated reason cannot be rewritten.
+    exclude = (
+        {"review_routing"}
+        | ({"compliance"} if dossier.compliance is None else set())
+        | ({"compliance_unavailable"} if dossier.compliance_unavailable is None else set())
+    )
     encoded = json.dumps(
         dossier.model_dump(mode="json", exclude=exclude),
         sort_keys=True,
@@ -1359,6 +1367,59 @@ def _capability(
     )
 
 
+def _compliance_capability(settings: Settings) -> Capability:
+    """Where each dossier's regulatory check is answered, and whether it can be.
+
+    Advisory, so never required for production: the rating is settled before the question is
+    asked. It is still stated, because a laptop ``live`` run may start with no
+    compliance-advisory to ask, and the console says so before anyone runs a dossier rather
+    than after.
+    """
+    name, provider = "compliance-check", "compliance-advisory"
+    if settings.profile == "local":
+        return _capability(
+            name=name,
+            available=True,
+            mode="local",
+            assurance="demo-only",
+            provider="in-process conservative stand-in",
+            reason="the offline profile answers without asking compliance-advisory",
+        )
+    if settings.profile == "onprem":
+        return _capability(
+            name=name,
+            available=False,
+            mode="disabled",
+            assurance="unavailable",
+            provider=provider,
+            reason="production replacement is not configured",
+        )
+    if settings.laptop_run:
+        # Lazy: the adapter module owns the one read of its address variable.
+        from ..adapters.platform.remote_compliance import URL_ENV, address_named
+
+        if not address_named():
+            return _capability(
+                name=name,
+                available=False,
+                mode="disabled",
+                assurance="unavailable",
+                provider=provider,
+                reason=(
+                    f"{URL_ENV} is not set: this run started without compliance-advisory, so "
+                    "every dossier reports the check as not configured"
+                ),
+            )
+    return _capability(
+        name=name,
+        available=True,
+        mode="external",
+        assurance="demo-only" if settings.profile == "live" else "not-attested",
+        provider=provider,
+        reason="a dossier whose question goes unanswered reports the check as not answered",
+    )
+
+
 def _capability_manifest(settings: Settings) -> CapabilityManifestModel:
     demo_only = settings.profile in {"local", "live"}
     managed = settings.profile in {"gcp", "platform"}
@@ -1463,6 +1524,7 @@ def _capability_manifest(settings: Settings) -> CapabilityManifestModel:
             provider="portable Next.js micro-frontend",
             reason=f"channel: {settings.channel_mode}",
         ),
+        _compliance_capability(settings),
     ]
     if not settings.controls.guardrail:
         # The switch wins over every profile: a deployment that turned the guardrail off does

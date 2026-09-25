@@ -49,6 +49,10 @@ _LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 RUNTIME_PROFILES = frozenset({"local", "live", "gcp", "platform", "onprem"})
 #: Profiles whose adapters bind real Google Cloud SDKs and therefore need a real project.
 MANAGED_PROFILES = frozenset({"gcp", "platform"})
+#: The laptop run. Owner rule (2026-09-23): it never refuses to start because a sibling service
+#: is down or because audit-integrity machinery objects to a reset. Read through
+#: :attr:`Settings.laptop_run`, which also requires the profile to have been NAMED.
+LAPTOP_PROFILES = frozenset({"local", "live"})
 #: The project id `config/settings.yaml` documents as a placeholder. Correct on a laptop, and a
 #: defect in any profile that calls a cloud API.
 PLACEHOLDER_PROJECT_ID = "your-gcp-project"
@@ -1209,6 +1213,18 @@ class Settings:
                 "live never infers local-persona or a managed identity"
             )
         return inferred
+
+    @property
+    def laptop_run(self) -> bool:
+        """Is this a deliberately chosen laptop run (``local`` or ``live``)?
+
+        The laptop leniencies key off this: a sibling service that is down or unnamed is
+        reported unavailable rather than refusing the boot, and a damaged, unwitnessed or
+        rolled-back local audit store is set aside rather than refused. Both are relaxations,
+        so an UNSET ``CDD_PROFILE`` gets neither, for the same reason it does not get the
+        identity relaxation: absent a choice, the stricter posture holds.
+        """
+        return self.profile in LAPTOP_PROFILES and self.profile_explicit
 
     @property
     def identity_mode_explicit(self) -> bool:

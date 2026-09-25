@@ -14,17 +14,22 @@ import dataclasses
 import hashlib
 import json
 import logging
+import socket
 
 from fastapi.responses import JSONResponse
 from tests.fixtures import sample_cases
 
+from cdd_sow_research.adapters.platform.remote_compliance import RemoteComplianceAdapter
 from cdd_sow_research.api.app import export_portable_dossier, import_portable_dossier
 from cdd_sow_research.api.schemas import CddCaseResponse, PortableDossierArtifact
+from cdd_sow_research.config import Settings
 from cdd_sow_research.domain.identity import Principal
 from cdd_sow_research.domain.models import (
     CDDCase,
     Citation,
     ComplianceAnswer,
+    ComplianceUnavailable,
+    ComplianceUnavailableReason,
     Direction,
     SourceType,
 )
@@ -95,8 +100,67 @@ def test_an_unanswered_check_is_null_and_says_why(cdd_service, caplog) -> None:
         case = cdd_service.assess(sample_cases.SAMPLE_CASE_INPUT, actor=ACTOR)
 
     assert case.compliance is None
+    assert case.compliance_unavailable == ComplianceUnavailable(
+        ComplianceUnavailableReason.NO_ANSWER
+    )
     messages = [record.getMessage() for record in caplog.records]
     assert any("NOT CHECKED" in m and "refused the connection" in m for m in messages), messages
+
+
+def test_an_answered_dossier_states_no_unavailability(cdd_service) -> None:
+    case = cdd_service.assess(sample_cases.SAMPLE_CASE_INPUT, actor=ACTOR)
+
+    assert case.compliance is not None
+    assert case.compliance_unavailable is None
+
+
+# --------------------------------------------------------------------------------------- #
+# The laptop run: the sibling unnamed, or named and down (owner rule, 2026-09-23)
+# --------------------------------------------------------------------------------------- #
+def _live_settings() -> Settings:
+    return dataclasses.replace(
+        Settings.load("config/settings.yaml"), profile="live", profile_explicit=True
+    )
+
+
+def _closed_loopback_port() -> int:
+    """A loopback port nothing listens on, so the connection is refused at once."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", 0))
+        return int(probe.getsockname()[1])
+
+
+def test_a_laptop_run_with_no_compliance_service_completes_as_not_configured(
+    cdd_service, monkeypatch
+) -> None:
+    monkeypatch.delenv("RSK_COMPLIANCE_URL", raising=False)
+    cdd_service._compliance = RemoteComplianceAdapter(_live_settings())
+
+    case = cdd_service.assess(sample_cases.SAMPLE_CASE_INPUT, actor=ACTOR)
+
+    assert case.compliance is None
+    assert case.compliance_unavailable is not None
+    assert case.compliance_unavailable.reason is ComplianceUnavailableReason.NOT_CONFIGURED
+    wire = CddCaseResponse.from_domain(case).model_dump(mode="json")
+    assert wire["compliance"] is None
+    assert wire["compliance_unavailable"]["reason"] == "not_configured"
+    assert "without a compliance-advisory" in wire["compliance_unavailable"]["detail"]
+
+
+def test_a_laptop_run_whose_compliance_service_is_down_completes_as_no_answer(
+    cdd_service, monkeypatch
+) -> None:
+    monkeypatch.setenv("RSK_COMPLIANCE_URL", f"http://127.0.0.1:{_closed_loopback_port()}")
+    cdd_service._compliance = RemoteComplianceAdapter(_live_settings())
+
+    case = cdd_service.assess(sample_cases.SAMPLE_CASE_INPUT, actor=ACTOR)
+
+    assert case.compliance is None
+    wire = CddCaseResponse.from_domain(case).model_dump(mode="json")
+    assert wire["compliance_unavailable"]["reason"] == "no_answer"
+    assert "did not answer" in wire["compliance_unavailable"]["detail"]
+    # Fixed per reason: the receiver's address never leaves in the response.
+    assert "127.0.0.1" not in json.dumps(wire["compliance_unavailable"])
 
 
 def test_the_answer_passes_the_output_screen(cdd_service, guardrail) -> None:
@@ -164,6 +228,7 @@ def test_a_dossier_exported_before_the_field_existed_still_reloads(cdd_service) 
     )
     payload = CddCaseResponse.from_domain(case).model_dump(mode="json")
     del payload["compliance"]
+    del payload["compliance_unavailable"]
     # Nor did ``review_routing``, which joined the wire later still.
     del payload["review_routing"]
     artifact = PortableDossierArtifact.model_validate(
@@ -192,6 +257,32 @@ def test_a_rewritten_compliance_answer_is_refused(cdd_service) -> None:
         update={
             "compliance": dossier.compliance.model_copy(
                 update={"answer": "No due diligence is required."}
+            )
+        }
+    )
+    response = import_portable_dossier(
+        artifact.model_copy(update={"dossier": rewritten}), _principal()
+    )
+
+    assert isinstance(response, JSONResponse)
+    assert response.status_code == 422
+
+
+def test_a_rewritten_unavailability_reason_is_refused(cdd_service) -> None:
+    """A stated reason is inside the digest too, so "not configured" cannot become "no answer"."""
+    cdd_service._compliance = _Unreachable()
+    dossier = CddCaseResponse.from_domain(
+        cdd_service.assess(sample_cases.SAMPLE_CASE_INPUT, actor=ACTOR)
+    )
+    assert dossier.compliance_unavailable is not None
+    artifact = export_portable_dossier(dossier, _principal())
+    assert isinstance(artifact, PortableDossierArtifact)
+    assert isinstance(import_portable_dossier(artifact, _principal()), CddCaseResponse)
+
+    rewritten = dossier.model_copy(
+        update={
+            "compliance_unavailable": dossier.compliance_unavailable.model_copy(
+                update={"reason": "not_configured"}
             )
         }
     )

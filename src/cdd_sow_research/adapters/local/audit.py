@@ -14,6 +14,18 @@ copying. This adapter keeps this repo's ``Settings``-driven path resolution, the
 Records serialise with the domain ``to_jsonable``-equivalent inside the package, so a stored
 event round-trips through JSON exactly like the managed sink writes it, and
 ``audit_event_from_jsonable`` rehydrates an exported line back into a first-class ``AuditEvent``.
+
+**On a laptop run a store that cannot be trusted is set aside, not refused** (owner rule,
+2026-09-23: a demo reset is never refused by integrity machinery). When a deliberately named
+``local`` or ``live`` run first APPENDS to a store that is damaged, whose external anchor is
+missing, or that has been rolled back behind its anchor, the store and its anchor are renamed
+aside with :func:`hex_service_kit.audit.set_aside` (never deleted, so the old trail still
+verifies exactly as it did) and a fresh chain starts from genesis, with a warning naming where
+the old files went. A store SQLite cannot open at all is set aside when the adapter is built.
+Reading never sets anything aside, so ``cdd-sow audit verify`` still reports what it finds.
+Every other posture keeps refusing, because there the store is evidence rather than a demo's
+scratch state. A store AHEAD of a verified anchor is none of those three: it is the one-commit
+crash window the idempotent redelivery repairs, so it is left for that.
 """
 
 from __future__ import annotations
@@ -29,7 +41,13 @@ from importlib import import_module
 from pathlib import Path
 from typing import Any
 
-from hex_service_kit.audit import AuditChainError, ChainReport, HashChainedAuditLog
+from hex_service_kit.audit import (
+    AuditChainError,
+    ChainReport,
+    HashChainedAuditLog,
+    scan_chain_rows,
+    set_aside,
+)
 
 from ...config import Settings
 from ...domain.models import AuditEvent
@@ -42,6 +60,8 @@ _DEFAULT_AUDIT_PATH = _DEFAULT_DB_DIR / "audit.db"
 _IDEMPOTENCY_METADATA_KEY = "_audit_event_id"
 _PATH_LOCKS: dict[str, threading.RLock] = {}
 _PATH_LOCKS_GUARD = threading.Lock()
+#: The SQLite sidecars that belong to a store and move aside with it.
+_SQLITE_SIDECARS = ("-wal", "-shm", "-journal")
 
 
 def _path_lock(path: str) -> threading.RLock:
@@ -71,10 +91,42 @@ class LocalAppendOnlyAuditAdapter:
             if path not in ("", ":memory:") and not path.startswith("file:")
             else None
         )
-        anchor = optional_setting("CDD_LOCAL_AUDIT_ANCHOR") or ""
+        self._anchor = optional_setting("CDD_LOCAL_AUDIT_ANCHOR") or ""
+        #: Laptop only, and only for a store on disk: the first append checks the store once
+        #: and sets aside one nobody could append to. Reading never does, so ``cdd-sow audit
+        #: verify`` on a laptop still reports exactly what is wrong with the store it finds.
+        self._laptop_reset_pending = settings.laptop_run and self._writer_lock_path is not None
         with self._exclusive_writer():
-            self._log = HashChainedAuditLog(path, anchor_path=anchor)
-            self._initialize_idempotency_index()
+            try:
+                self._open()
+            except sqlite3.DatabaseError as exc:
+                if not self._laptop_reset_pending:
+                    raise
+                # Not a store this engine can open at all, so there is nothing to inspect
+                # through it either: set it aside now rather than refuse the boot.
+                _set_aside_store(path, self._anchor, f"is unreadable ({exc})")
+                self._open()
+
+    def _open(self) -> None:
+        self._log = HashChainedAuditLog(self._path, anchor_path=self._anchor)
+        self._initialize_idempotency_index()
+
+    def _reset_before_first_append(self) -> None:
+        """Laptop only: set aside a damaged, unwitnessed or rolled-back store, once.
+
+        Runs under the writer lock at the first append of this adapter's life, which is where
+        the store used to refuse. Divergence that appears LATER in a running process is not a
+        reset and keeps refusing, as it always did.
+        """
+        if not self._laptop_reset_pending:
+            return
+        self._laptop_reset_pending = False
+        problem = _laptop_store_problem(self._path, self._anchor)
+        if not problem:
+            return
+        self._log._conn.close()
+        _set_aside_store(self._path, self._anchor, problem)
+        self._open()
 
     @property
     def _conn(self) -> Any:
@@ -87,6 +139,7 @@ class LocalAppendOnlyAuditAdapter:
     def record(self, event: AuditEvent) -> None:
         """Append one immutable, already-redacted audit record (no update / delete)."""
         with self._exclusive_writer():
+            self._reset_before_first_append()
             self._require_current_external_anchor()
             self._log.record(event)
 
@@ -99,6 +152,7 @@ class LocalAppendOnlyAuditAdapter:
             metadata={**event.metadata, _IDEMPOTENCY_METADATA_KEY: event_id},
         )
         with self._exclusive_writer():
+            self._reset_before_first_append()
             if self._has_idempotency_marker(event_id):
                 # ``HashChainedAuditLog.record`` commits SQLite before updating its
                 # external head anchor. A process can therefore die with the event and
@@ -342,6 +396,70 @@ class LocalAppendOnlyAuditAdapter:
                     yield
                 finally:
                     _unlock_file(lock_file)
+
+
+def _set_aside_store(path: str, anchor: str, problem: str) -> None:
+    """Move a laptop store, its SQLite sidecars and its anchor aside; never delete them."""
+    files = [path, *(path + suffix for suffix in _SQLITE_SIDECARS)]
+    # set_aside logs the warning, naming the reason and where every file went.
+    set_aside([*files, anchor] if anchor else files, reason=f"the store at {path} {problem}")
+
+
+def _laptop_store_problem(path: str, anchor: str) -> str:
+    """Why a laptop store cannot be appended to as it stands, or ``""`` when it can.
+
+    Three answers, the three a demo reset produces: the store is damaged or unreadable, its
+    anchor is missing (or unreadable) while the store holds records, or it has been rolled back
+    behind its anchor. The store is opened READ-ONLY, so looking changes nothing that is about
+    to be set aside, and the chain is scanned on its own so damage and divergence are told
+    apart. The anchor is then compared by hand so that a store AHEAD of a verified anchor, which
+    the redelivery repair owns, is not mistaken for a rollback.
+    """
+    store = Path(path).expanduser()
+    if not store.exists():
+        return ""
+    try:
+        conn = sqlite3.connect(f"{store.resolve().as_uri()}?mode=ro", uri=True)
+    except sqlite3.Error as exc:
+        return f"is unreadable ({exc})"
+    conn.row_factory = sqlite3.Row
+    try:
+        has_table = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'audit_log'"
+        ).fetchone()
+        if has_table is None:
+            return ""  # an empty database: nothing recorded, nothing to distrust
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(audit_log)")}
+        if not {"prev_hash", "entry_hash"} <= columns:
+            return "is damaged (its records were written with no chain hashes)"
+        rows = conn.execute(
+            "SELECT seq, event_json, prev_hash, entry_hash FROM audit_log ORDER BY seq ASC"
+        ).fetchall()
+    except sqlite3.Error as exc:
+        return f"is unreadable ({exc})"
+    finally:
+        conn.close()
+    scan = scan_chain_rows(rows, expected_prev="")
+    if not scan.ok:
+        return f"is damaged ({scan.detail})"
+    if not anchor:
+        return ""
+    anchor_file = Path(anchor)
+    if not anchor_file.exists():
+        return f"has records but its anchor {anchor} is missing" if rows else ""
+    try:
+        witnessed = json.loads(anchor_file.read_text(encoding="utf-8"))
+        anchor_seq, anchor_hash = witnessed["seq"], witnessed["entry_hash"]
+    except (OSError, KeyError, TypeError, ValueError) as exc:
+        return f"has an unreadable anchor {anchor} ({exc})"
+    hashes = {row["seq"]: row["entry_hash"] for row in rows}
+    if hashes.get(anchor_seq) != anchor_hash:
+        head_seq = rows[-1]["seq"] if rows else 0
+        return (
+            f"is rolled back behind its anchor (anchored seq {anchor_seq}, "
+            f"store head seq {head_seq})"
+        )
+    return ""
 
 
 def _lock_file(lock_file: Any) -> None:

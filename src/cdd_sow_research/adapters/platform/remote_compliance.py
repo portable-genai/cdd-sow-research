@@ -7,8 +7,16 @@ a domain :class:`ComplianceAnswer`, citations included.
 
 It is bound under ``gcp``, ``live`` and ``platform``: every profile other than the offline gate
 asks the real service. ``RSK_COMPLIANCE_URL`` names that service and is read in three states
-with no default. Unset and emptied both refuse at construction: a networked profile names the
-service it asks rather than inheriting a localhost guess.
+with no default. Under ``gcp`` and ``platform`` unset and emptied both refuse at construction,
+which the API binds at boot: a managed profile names the service it asks rather than inheriting
+a localhost guess, and a deployment that cannot check compliance does not start.
+
+**The laptop run starts without it** (owner rule, 2026-09-23: the laptop never refuses to start
+because a sibling is down). Under a deliberately named ``live`` profile an UNSET address builds
+a client that asks nobody: every dossier then records the compliance leg as NOT CONFIGURED, and
+one whose sibling is down records it as NO ANSWER, both as a typed state on the dossier rather
+than a canned answer. An EMPTIED address still refuses, because it is an expressed choice that
+names nothing and the three states stay distinct; so does a malformed one.
 
 **The deployed call goes through the portal's IAP edge, not to the sibling service.** Every
 route a deployed `compliance-advisory` answers on is an embedded app behind `journey-portal`:
@@ -35,10 +43,12 @@ loopback, which runs no IAP, so it sends no token at all.
 
 from __future__ import annotations
 
+import logging
+
 import httpx
 
 from ...config import Settings, iap_audience_or_refuse
-from ...domain.errors import CddError
+from ...domain.errors import CddError, ComplianceNotConfiguredError
 from ...domain.models import Citation, ComplianceAnswer, SourceType
 from ...envread import optional_setting, required_setting, setting_or_default
 from . import _s2s
@@ -63,6 +73,13 @@ TIMEOUT_ENV = "RSK_COMPLIANCE_TIMEOUT_SECONDS"
 _DEFAULT_READ_SECONDS = 120.0
 _CONNECT_SECONDS = 5.0
 
+_LOG = logging.getLogger(__name__)
+
+
+def address_named() -> bool:
+    """Has this run named a compliance-advisory address? Emptied refuses, as it does at boot."""
+    return optional_setting(URL_ENV) is not None
+
 
 class RemoteComplianceError(CddError):
     """Raised when compliance-advisory cannot be reached or answers with a non-2xx status."""
@@ -73,10 +90,20 @@ class RemoteComplianceAdapter:
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
-        self._base_url = _s2s.validate_base_url(
-            required_setting(URL_ENV),
-            service=type(self).__name__,
+        configured = optional_setting(URL_ENV) if settings.laptop_run else required_setting(URL_ENV)
+        #: ``None`` only on a laptop run that named no service: it asks nobody and says so.
+        self._base_url: str | None = (
+            None
+            if configured is None
+            else _s2s.validate_base_url(configured, service=type(self).__name__)
         )
+        if self._base_url is None:
+            _LOG.warning(
+                "%s is not set: this %s run starts without compliance-advisory, and every "
+                "dossier will report the compliance check as NOT CONFIGURED",
+                URL_ENV,
+                settings.profile,
+            )
         self._audience = self._resolve_audience(settings)
         self._timeout = httpx.Timeout(_resolve_read_seconds(), connect=_CONNECT_SECONDS)
 
@@ -102,6 +129,10 @@ class RemoteComplianceAdapter:
         caller and ignores any actor in the body, so putting one on the wire would only suggest
         that the receiver trusts it.
         """
+        if self._base_url is None:
+            raise ComplianceNotConfiguredError(
+                f"{URL_ENV} is not set, so this run has no compliance-advisory to ask"
+            )
         url = f"{self._base_url}/ask"
         payload = {"question": question, "filters": None}
         try:

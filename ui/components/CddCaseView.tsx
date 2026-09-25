@@ -1,6 +1,7 @@
 // Renders a full CDD dossier: source of wealth, risk rating, watchlist screening,
-// adverse media, ownership.
+// adverse media, ownership, and the advisory regulatory compliance check.
 
+import { complianceView } from "../lib/compliance-view";
 import type { CddCase } from "../lib/types";
 import { CitationList } from "./CitationCard";
 import { RiskBadge, SeverityPill } from "./RiskBadge";
@@ -8,6 +9,7 @@ import { Empty, Panel, ReviewBanner } from "./ui";
 
 export function CddCaseView({ caseData }: { caseData: CddCase }) {
   const { subject, sow, rating, adverse_media, ownership, screening } = caseData;
+  const compliance = complianceView(caseData);
   return (
     <div className="space-y-4">
       <ReviewBanner
@@ -142,6 +144,27 @@ export function CddCaseView({ caseData }: { caseData: CddCase }) {
               </li>
             ))}
           </ul>
+        )}
+      </Panel>
+
+      <Panel title="Regulatory compliance check">
+        {compliance.kind === "answered" ? (
+          <>
+            <p className="mb-1 text-xs text-ink-400">
+              Asked: {compliance.answer.question} Advisory only: it does not move the rating.
+            </p>
+            <p className="mb-3 min-w-0 break-words text-sm text-ink-800">
+              {compliance.answer.answer}
+            </p>
+            <CitationList citations={compliance.answer.citations} />
+          </>
+        ) : (
+          <p className="text-sm text-ink-700">
+            <span className="rounded bg-amber-100 px-1 text-xs font-semibold text-amber-800">
+              NOT CHECKED
+            </span>{" "}
+            {compliance.message}
+          </p>
         )}
       </Panel>
 

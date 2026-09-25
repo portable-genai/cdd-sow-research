@@ -223,10 +223,20 @@ required. The normative route, token, state-machine, and completion contracts li
   per-bundle thresholds); no bare metric names go on the wire, so `model-quality-gate`'s fail-closed
   unknown-metric rejection is never triggered by this client.
 - **`agent-observability`** (`OBSERVABILITY_URL`): `POST /v1/audit` (202).
-- **`compliance-advisory`** (`RSK_COMPLIANCE_URL`, required with no default): `POST /ask {question, filters}` ->
+- **`compliance-advisory`** (`RSK_COMPLIANCE_URL`, no default): `POST /ask {question, filters}` ->
   AnswerResponse `{question, answer, citations, requires_human_review, confidence}`. No actor is sent:
   the receiver resolves its own principal. Bound under `gcp`, `live` and `platform`; only `local`
-  answers in-process.
+  answers in-process. Under `gcp` and `platform` the variable is required and the process
+  refuses to start without it.
+  - **The dossier states why it carries no answer.** When the leg does not answer, `compliance`
+    is null and `compliance_unavailable` is `{reason, detail}`, with `reason` one of
+    `not_configured` (the run named no service) or `no_answer` (asked, and it was down, timed
+    out or refused); `detail` is fixed plain words per reason. Exactly one of the two fields is
+    set on a dossier this build assembles. The rating never depends on either.
+  - **The laptop run starts without it** (owner rule, 2026-09-23). Under a named `live` profile an
+    unset `RSK_COMPLIANCE_URL` starts the service, reports the `compliance-check` capability
+    unavailable and records every dossier as `not_configured`; a named service that is down
+    records `no_answer`. An emptied or malformed value still refuses at boot.
   - **The deployed call goes through `journey-portal`'s IAP edge, not to the sibling service.**
     A deployed `compliance-advisory` is an embedded app: its API accepts internal traffic only,
     only the portal's service account may invoke it, `cdd-sow-research` has no VPC egress, and

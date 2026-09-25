@@ -98,3 +98,12 @@ class CaseAccessDeniedError(CddError):
     Principal (see ``domain/entitlements.py``), never from a client-supplied field;
     a failed entitlement check maps to HTTP 403 at the API layer.
     """
+
+
+class ComplianceNotConfiguredError(CddError):
+    """Raised by a compliance client that was never told which service to ask.
+
+    Only a laptop run constructs such a client: it starts without the sibling rather than
+    refusing to boot, and every dossier then records the compliance leg as NOT CONFIGURED,
+    which is a different statement from "asked and got no answer".
+    """
