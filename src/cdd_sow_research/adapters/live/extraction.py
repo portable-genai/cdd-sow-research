@@ -4,7 +4,7 @@ Reads what an analyst actually uploads: PDFs (digital or scanned), page images, 
 plain text. The deterministic half runs on the operator's own machine; the model half
 is the Gemini API. This profile exists for customers who permit leaving the data
 centre, so a scanned page IS sent to Gemini to be read — that is a property of the
-profile, stated in the UI provenance banner, not something this adapter hides.
+profile, named by the console's model pill, not something this adapter hides.
 
 How a PDF is handled, page by page:
 
@@ -29,6 +29,8 @@ from __future__ import annotations
 
 import io
 import logging
+
+from hex_service_kit import provenance
 
 from ...config import Settings
 from ...domain.models import DocumentExtract, KycDocument
@@ -102,6 +104,7 @@ class GeminiPageTranscriber:
             )
         except Exception as exc:  # noqa: BLE001 - any SDK/transport failure is one outcome
             raise TranscriptionError(str(exc)) from exc
+        provenance.note_model(self._settings.models.triage)
         return getattr(response, "text", "") or ""
 
 

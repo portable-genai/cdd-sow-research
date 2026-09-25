@@ -16,6 +16,6 @@ model answers:
   (org decision, 2026-08-30).
 
 The profile therefore needs Application Default Credentials and a
-``GOOGLE_CLOUD_PROJECT``, and the UI provenance banner states that the runtime is local
-and the model is Gemini.
+``GOOGLE_CLOUD_PROJECT``. The console's model pill says the runtime is local and names the
+Gemini model that answered, with ``Search`` beside it when a grounded research call ran.
 """

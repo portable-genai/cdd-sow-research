@@ -447,8 +447,9 @@ Gemini the deployment runs.** The evidence index, the uploaded files and the aud
 live in local SQLite; extraction, drafting, risk rating and the adverse-media and
 corporate-registry web searches all call the Gemini API. There is deliberately no local
 model — this use case needs internet research, so it is only implemented for customers
-who permit leaving the data centre (org decision, 2026-08-30) — and the UI banner states
-on every page that the runtime is local and the model is Gemini.
+who permit leaving the data centre (org decision, 2026-08-30) — and the model pill at the top
+right of every page names the Gemini model that answered, with `Search` beside it when a
+grounded web search ran.
 
 ### 5.1 Setup
 

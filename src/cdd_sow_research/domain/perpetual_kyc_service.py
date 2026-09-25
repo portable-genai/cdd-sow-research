@@ -249,6 +249,8 @@ class PerpetualKycService:
                     None,
                     NARRATIVE_SCHEMA,
                     thinking=ThinkingLevel.LOW,
+                    # Free: prose over numbers the code already fixed; nothing reads it back.
+                    temperature=None,
                     max_output_tokens=512,
                 )
             )

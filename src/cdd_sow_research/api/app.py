@@ -58,7 +58,7 @@ from hex_service_kit.netdefaults import (
     InsecureBindError,
     resolve_bind_host,
 )
-from hex_service_kit.web import add_loopback_exposure_guard
+from hex_service_kit.web import add_loopback_exposure_guard, install_answer_provenance
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from ..config import (
@@ -507,6 +507,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         _DeploymentSecurityMiddleware,
         configured_settings=settings,
     )
+    # Which model answered, and whether it searched: the model adapters note it as they call
+    # (`hex_service_kit.provenance.note_model` / `note_search`) and this emits it as
+    # `X-Answered-By` / `X-Search-Used` on the same response. The console's pills read those two
+    # headers, so what a pill names is what answered, never what configuration says would. A
+    # request that noted nothing sends neither, and the pill keeps showing the configured
+    # `generator_model` from `/v1/healthz`.
+    install_answer_provenance(application)
     # Registered LAST, so it is the OUTERMOST middleware: an off-loopback caller is refused
     # before the deployment-security middleware (CORS, CSRF, limits, headers) and before any
     # route or dependency runs. Bound to the APP OBJECT, not to `main()`: the Dockerfile CMD
@@ -1326,15 +1333,16 @@ def capabilities() -> CapabilityManifestModel:
 def _generator_model(settings: Settings) -> str:
     """The model that writes dossier narratives under the active profile.
 
-    ``live`` names the same Gemini model as the managed profiles because it IS the same
-    model: the profile differs by runtime, not by generator (org decision, 2026-08-30).
-    ``local`` is the deterministic test stub and says so; a banner that called it a
-    model would be claiming inference that never happens.
+    The console's model pill shows this until an answer arrives, then the model that ANSWERED
+    (``X-Answered-By``, noted by the adapter itself), so it must be the model the bound adapter
+    calls: the same :attr:`ModelSettings.reasoning_model` resolver the Gemini adapter reads,
+    hard-reasoning opt-in included. ``live`` names the same Gemini model as the managed
+    profiles because it IS the same model: the profile differs by runtime, not by generator
+    (org decision, 2026-08-30). ``local`` is the deterministic stub and says so; a pill that
+    called it a model would be claiming inference that never happens.
     """
     if settings.profile in {"gcp", "platform", "live"}:
-        if settings.models.use_hard_reasoning and settings.models.hard_reasoning:
-            return settings.models.hard_reasoning
-        return settings.models.reasoning
+        return settings.models.reasoning_model
     if settings.profile == "local":
         return "deterministic-offline-stub"
     return "not-configured"

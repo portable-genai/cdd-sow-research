@@ -14,6 +14,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from hex_service_kit import provenance
+
 from ...config import Settings
 from ...domain._grounded import parse_json_object
 from ...domain.models import (
@@ -105,6 +107,9 @@ class GeminiAdverseMediaAdapter:
                 tools=[types.Tool(google_search=types.GoogleSearch())],
             ),
         )
+        # Google Search grounding was attached to THIS call, so the answer searched.
+        provenance.note_model(self._models.triage)
+        provenance.note_search()
         findings = self._parse(getattr(response, "text", "") or "")[:max_results]
         return AdverseMediaScreening(
             subject_name=subject_name,

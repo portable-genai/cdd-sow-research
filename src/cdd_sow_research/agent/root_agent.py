@@ -88,8 +88,10 @@ def build_root_agent(settings: Settings | None = None) -> LlmAgent:
     if sub_agent is not None:
         tools.append(AgentTool(agent=sub_agent))
 
+    # No temperature: the root agent drafts the dossier's prose, so sampling is left free and the
+    # parameter is omitted (owner decision, 2026-09-23). The calls whose output is compared pin
+    # 0.0 in their own adapters.
     generate_content_config = types.GenerateContentConfig(
-        temperature=0.2,
         thinking_config=types.ThinkingConfig(thinking_budget=-1),
     )
 

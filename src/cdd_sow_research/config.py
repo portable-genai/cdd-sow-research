@@ -313,6 +313,19 @@ class ModelSettings:
     hard_reasoning: str = "gemini-3.5-flash"
     use_hard_reasoning: bool = False
 
+    @property
+    def reasoning_model(self) -> str:
+        """The model reasoning-tier calls go to, honouring the hard-reasoning opt-in.
+
+        ONE resolver, read by both the managed LLM adapter (the model it calls) and
+        ``/v1/healthz`` (the ``generator_model`` the console's pill shows before an answer
+        arrives). Two copies of this condition are how a flag comes to move the pill but not
+        the model that answers.
+        """
+        if self.use_hard_reasoning and self.hard_reasoning:
+            return self.hard_reasoning
+        return self.reasoning
+
 
 @dataclass(frozen=True)
 class DocumentAiSettings:

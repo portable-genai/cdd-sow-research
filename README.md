@@ -222,7 +222,9 @@ buy (org decision, 2026-08-30).
 
 Custody stays on the machine; generation is the same Gemini model the deployment runs,
 which is what lets the F4 laptop/deployment pair compare runtimes rather than models.
-The UI states this on every page: running locally or on GCP, and which model answers.
+Two small pills at the top right of every page say so: the model that answered the last
+request (its title says whether the runtime is local or GCP), and `Search` when that answer
+used `google_search` grounding.
 Every port is bound explicitly for this profile in
 [`config/settings.yaml`](config/settings.yaml), so reading down the `live:` column shows
 exactly where each capability runs.

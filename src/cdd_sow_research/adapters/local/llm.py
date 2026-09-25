@@ -21,6 +21,8 @@ import json
 import re
 from typing import Any
 
+from hex_service_kit import provenance
+
 from ...config import Settings
 from ...domain.models import (
     LlmRequest,
@@ -49,6 +51,9 @@ class LocalDeterministicLLMAdapter:
 
     REASONING_MODEL = "gemini-3.5-flash"
     TRIAGE_MODEL = "gemini-3.5-flash"
+    #: What this adapter NOTES as the model that answered, and what ``/v1/healthz`` reports as
+    #: ``generator_model`` under ``local``: no model runs here, so the pill must not name one.
+    STUB_MODEL = "deterministic-offline-stub"
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
@@ -59,6 +64,7 @@ class LocalDeterministicLLMAdapter:
     # LLMPort
     # ------------------------------------------------------------------ #
     def generate(self, request: LlmRequest) -> LlmResponse:
+        provenance.note_model(self.STUB_MODEL)
         source_ids = self._source_ids_from_request(request)
         body = self._body_for_schema(
             request.response_schema, source_ids, self._user_content(request)
@@ -73,6 +79,7 @@ class LocalDeterministicLLMAdapter:
 
     def classify(self, text: str, labels: list[str]) -> str:
         # Deterministic triage: first label (the services only use this for routing).
+        provenance.note_model(self.STUB_MODEL)
         return labels[0] if labels else ""
 
     # ------------------------------------------------------------------ #

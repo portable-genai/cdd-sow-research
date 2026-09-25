@@ -1,8 +1,9 @@
-"""The provenance the UI banner states, derived server-side and never guessed.
+"""What the console's model pill shows before an answer arrives, derived server-side.
 
-Every page names where the runtime sits and which model answers (org decision,
-2026-08-30). The UI reads both from ``/v1/healthz``; these tests hold the derivation so
-a banner claim is a property of the configuration, not of the frontend.
+Every page names where the runtime sits and which model answers (org decision, 2026-08-30;
+pills since 2026-09-23). Until a request is answered the pill reads both from ``/v1/healthz``;
+these tests hold that derivation so the claim is a property of the configuration, not of the
+frontend. What ANSWERED is pinned in ``test_answer_provenance.py``.
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from cdd_sow_research.config import Settings
 
 
 def test_the_local_profile_names_its_stub_not_a_model() -> None:
-    """A banner that called the deterministic stub a model would claim inference
+    """A pill that called the deterministic stub a model would claim inference
     that never happens."""
 
     assert _generator_model(Settings(profile="local")) == "deterministic-offline-stub"
