@@ -170,6 +170,16 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "GCP_REGION"
         value = var.region
       }
+      # Where spans go: the agent-observability collector, which deletes GenAI content before
+      # any Google sink. The gcp tracer refuses to build without it (decision D1).
+      env {
+        name  = "OTEL_EXPORTER_OTLP_ENDPOINT"
+        value = var.otlp_endpoint
+      }
+      env {
+        name  = "OTEL_EXPORTER_OTLP_AUDIENCE"
+        value = var.otlp_endpoint
+      }
       env {
         name  = "CDD_FIRESTORE_DB"
         value = google_firestore_database.sow_cases.name

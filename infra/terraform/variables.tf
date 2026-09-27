@@ -434,6 +434,25 @@ variable "deployment_stage" {
   }
 }
 
+variable "otlp_endpoint" {
+  description = <<-EOT
+    The agent-observability OpenTelemetry collector (that stack's `otlp_endpoint` output), set on
+    the standalone API as OTEL_EXPORTER_OTLP_ENDPOINT and as OTEL_EXPORTER_OTLP_AUDIENCE, the
+    audience of the ID token each export carries. Required when production_edge_enabled: under
+    CDD_PROFILE=gcp the tracer refuses to build without it, because there is no direct Cloud
+    Trace path to fall back to (decision D1). The API's runtime account must also be listed in
+    the collector's otel_caller_service_accounts. The portal-embedded API receives the same
+    two variables from journey-portal instead.
+  EOT
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = !var.production_edge_enabled || can(regex("^https://[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$", var.otlp_endpoint))
+    error_message = "production_edge_enabled requires otlp_endpoint, the agent-observability collector's exact https origin: the gcp tracer refuses to build without it."
+  }
+}
+
 variable "production_edge_enabled" {
   description = "Provision the named cdd-sow-research UI/API edge. Requires immutable images, domain and manifest secret."
   type        = bool
@@ -599,6 +618,8 @@ variable "additional_secret_env" {
         "CDD_PROFILE",
         "GOOGLE_CLOUD_PROJECT",
         "GCP_REGION",
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "OTEL_EXPORTER_OTLP_AUDIENCE",
         "CDD_REGION",
         "CDD_FIRESTORE_DB",
         "CDD_KMS_KEY",

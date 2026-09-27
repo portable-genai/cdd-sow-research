@@ -17,7 +17,7 @@
 #
 # tag -> commit, and `tests/unit/test_lockfile_pins.py` proves each line against the tag
 # `pyproject.toml` names and against every other lockfile:
-#   hex-service-kit  v0.0.10 = 0e71fc776e3a1813f51545352984741f0e3850ee
+#   hex-service-kit  v0.0.11 = ec2d724512c4d21c70600a895715e4340908282d
 #   agent-eval-kit   v0.0.3 = da2fbc9ae7c5f85175686710724430e0dd6351e2
 #   review-kit       v0.0.2 = dec72b6437fef1f011e6660734dfd3ff23767a9e
 a2a-sdk==1.1.2
@@ -132,9 +132,9 @@ google-api-core==2.34.0
     #   google-cloud-modelarmor
     #   google-cloud-resource-manager
     #   google-cloud-storage
-    #   google-cloud-trace
 google-auth==2.58.0
     # via
+    #   cdd-sow-research (pyproject.toml)
     #   google-adk
     #   google-api-core
     #   google-cloud-aiplatform
@@ -150,7 +150,6 @@ google-auth==2.58.0
     #   google-cloud-modelarmor
     #   google-cloud-resource-manager
     #   google-cloud-storage
-    #   google-cloud-trace
     #   google-genai
 google-cloud-aiplatform==2.1.0
     # via cdd-sow-research (pyproject.toml)
@@ -187,8 +186,6 @@ google-cloud-resource-manager==1.18.0
     # via google-cloud-aiplatform
 google-cloud-storage==3.14.1
     # via google-cloud-aiplatform
-google-cloud-trace==1.20.0
-    # via opentelemetry-exporter-gcp-trace
 google-crc32c==1.8.0
     # via
     #   google-cloud-storage
@@ -209,7 +206,6 @@ googleapis-common-protos==1.75.3
     #   google-cloud-audit-log
     #   grpc-google-iam-v1
     #   grpcio-status
-    #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
 graphviz==0.21
     # via google-adk
@@ -231,11 +227,9 @@ grpcio==1.83.1
     #   google-cloud-logging
     #   google-cloud-modelarmor
     #   google-cloud-resource-manager
-    #   google-cloud-trace
     #   googleapis-common-protos
     #   grpc-google-iam-v1
     #   grpcio-status
-    #   opentelemetry-exporter-otlp-proto-grpc
 grpcio-status==1.83.1
     # via google-api-core
 h11==0.16.0
@@ -243,7 +237,7 @@ h11==0.16.0
     #   httpcore
     #   httpcore2
     #   uvicorn
-hex-service-kit @ git+https://github.com/portable-genai/hex-service-kit@0e71fc776e3a1813f51545352984741f0e3850ee
+hex-service-kit @ git+https://github.com/portable-genai/hex-service-kit@ec2d724512c4d21c70600a895715e4340908282d
     # via cdd-sow-research (pyproject.toml)
 hf-xet==1.6.0 ; platform_machine == 'AMD64' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
     # via huggingface-hub
@@ -329,45 +323,30 @@ opentelemetry-api==1.42.1
     #   google-cloud-logging
     #   mcp
     #   opentelemetry-exporter-gcp-logging
-    #   opentelemetry-exporter-gcp-trace
-    #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
     #   opentelemetry-resourcedetector-gcp
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
 opentelemetry-exporter-gcp-logging==1.15.0a0
     # via google-cloud-aiplatform
-opentelemetry-exporter-gcp-trace==1.15.0
-    # via cdd-sow-research (pyproject.toml)
-opentelemetry-exporter-otlp==1.42.1
-    # via cdd-sow-research (pyproject.toml)
 opentelemetry-exporter-otlp-proto-common==1.42.1
-    # via
-    #   opentelemetry-exporter-otlp-proto-grpc
-    #   opentelemetry-exporter-otlp-proto-http
-opentelemetry-exporter-otlp-proto-grpc==1.42.1
-    # via opentelemetry-exporter-otlp
+    # via opentelemetry-exporter-otlp-proto-http
 opentelemetry-exporter-otlp-proto-http==1.42.1
     # via
+    #   cdd-sow-research (pyproject.toml)
     #   google-cloud-aiplatform
-    #   opentelemetry-exporter-otlp
 opentelemetry-proto==1.42.1
     # via
     #   opentelemetry-exporter-otlp-proto-common
-    #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
 opentelemetry-resourcedetector-gcp==1.14.0
-    # via
-    #   opentelemetry-exporter-gcp-logging
-    #   opentelemetry-exporter-gcp-trace
+    # via opentelemetry-exporter-gcp-logging
 opentelemetry-sdk==1.42.1
     # via
     #   cdd-sow-research (pyproject.toml)
     #   google-adk
     #   google-cloud-aiplatform
     #   opentelemetry-exporter-gcp-logging
-    #   opentelemetry-exporter-gcp-trace
-    #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
     #   opentelemetry-resourcedetector-gcp
 opentelemetry-semantic-conventions==0.63b1
@@ -398,7 +377,6 @@ proto-plus==1.28.4
     #   google-cloud-logging
     #   google-cloud-modelarmor
     #   google-cloud-resource-manager
-    #   google-cloud-trace
 protobuf==6.33.6
     # via
     #   a2a-sdk
@@ -414,7 +392,6 @@ protobuf==6.33.6
     #   google-cloud-logging
     #   google-cloud-modelarmor
     #   google-cloud-resource-manager
-    #   google-cloud-trace
     #   googleapis-common-protos
     #   grpc-google-iam-v1
     #   grpcio-status
@@ -565,8 +542,6 @@ typing-extensions==4.16.0
     #   openai
     #   opentelemetry-api
     #   opentelemetry-exporter-gcp-logging
-    #   opentelemetry-exporter-gcp-trace
-    #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
