@@ -81,6 +81,7 @@ worm_locked = false
 #
 # deployment_stage                = "production-edge"
 # production_edge_enabled          = true
+# otlp_endpoint                    = "https://otel-collector-REPLACE.a.run.app"  # agent-observability otlp_endpoint output
 # api_image                         = "asia-southeast1-docker.pkg.dev/your-project/doc1/doc1-api@sha256:REPLACE"
 # ui_image                          = "asia-southeast1-docker.pkg.dev/your-project/doc1/doc1-ui@sha256:REPLACE"
 # agent_domain                      = "doc1.bank.example"

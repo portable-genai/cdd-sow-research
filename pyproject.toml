@@ -18,7 +18,7 @@ dependencies = [
   # Shared commons, pinned by tag; no build-time coupling. Public repos, so CI
   # installs them with zero credentials. hex-service-kit: identity / S2S / fail-closed defaults /
   # WORM audit. agent-eval-kit: the promotion-gate client the platform eval adapter uses.
-  "hex-service-kit @ git+https://github.com/portable-genai/hex-service-kit@v0.0.10",
+  "hex-service-kit @ git+https://github.com/portable-genai/hex-service-kit@v0.0.11",
   "agent-eval-kit @ git+https://github.com/portable-genai/agent-eval-kit@v0.0.3",
   # review-kit: the producer half of rule R8 (route a requires_human_review escalation to the
   # human-review-console the same way from every producer). Public, pinned by tag, zero-cred.
@@ -54,10 +54,14 @@ gcp = [
   "google-cloud-logging>=3.11",
   "google-cloud-firestore>=2.21",
   "google-cloud-kms>=3.5",
-  "opentelemetry-sdk>=1.27",
-  "opentelemetry-exporter-gcp-trace>=1.7",
-  "opentelemetry-exporter-otlp>=1.27",  # platform tracer -> agent-observability OTel collector (OTLP)
+  # The commons tracer (hex_service_kit.tracing) exports OTLP to the agent-observability
+  # collector. Its `otel` extra is spelled out rather than named: that extra floors
+  # opentelemetry-sdk at 1.44, above the <=1.42.1 ceiling google-adk declares, so the two
+  # cannot resolve together.
+  "opentelemetry-sdk>=1.39",
+  "opentelemetry-exporter-otlp-proto-http>=1.39",
   "requests>=2.31",  # authenticated OTLP/HTTP session for a private Cloud Run collector
+  "google-auth>=2.30",
   "a2a-sdk[http-server]>=1.1",
   "mcp>=2.1",
 ]

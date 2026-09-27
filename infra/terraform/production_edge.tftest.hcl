@@ -5,6 +5,9 @@ mock_provider "google-beta" {}
 # the service refuses to boot without one. The run that switches routing off overrides it.
 variables {
   human_review_url = "https://review.fictional-bank.example"
+  # Every edge below exports spans through a collector, as a managed deployment must: the gcp
+  # tracer refuses to build without one. The run that omits it overrides this.
+  otlp_endpoint = "https://otel-collector.fictional-bank.example"
 }
 
 run "named_edge_contract" {
@@ -42,6 +45,14 @@ run "named_edge_contract" {
   assert {
     condition     = google_cloud_run_v2_service.api[0].ingress == "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
     error_message = "API must reject direct public Cloud Run ingress."
+  }
+
+  assert {
+    condition = (
+      { for env in google_cloud_run_v2_service.api[0].template[0].containers[0].env : env.name => env.value }["OTEL_EXPORTER_OTLP_ENDPOINT"] == "https://otel-collector.fictional-bank.example" &&
+      { for env in google_cloud_run_v2_service.api[0].template[0].containers[0].env : env.name => env.value }["OTEL_EXPORTER_OTLP_AUDIENCE"] == "https://otel-collector.fictional-bank.example"
+    )
+    error_message = "The API must be told the collector and the token audience, or its gcp tracer refuses to build."
   }
 
   assert {
@@ -782,4 +793,41 @@ run "reject_an_edge_routing_to_no_console" {
   }
 
   expect_failures = [var.human_review_url]
+}
+
+# Decision D1: the gcp tracer exports only through the agent-observability collector and refuses
+# to build without one, so an edge that names none is refused at plan rather than at first span.
+run "reject_an_edge_without_a_collector" {
+  command = plan
+
+  variables {
+    cmek_enabled                         = true
+    project_id                           = "fictional-doc1-production"
+    docai_location                       = "us"
+    enable_org_policies                  = false
+    enable_vpc_sc                        = false
+    worm_locked                          = false
+    deployment_stage                     = "production-edge"
+    production_edge_enabled              = true
+    otlp_endpoint                        = ""
+    compliance_advisory_url              = "https://rm.fictional-bank.example/apps/compliance-advisory/api"
+    compliance_advisory_iap_audience     = "1234567890-fictionaledgeclient.apps.googleusercontent.com"
+    api_image                            = "asia-southeast1-docker.pkg.dev/fictional/doc1/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    ui_image                             = "asia-southeast1-docker.pkg.dev/fictional/doc1/ui@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    agent_domain                         = "doc1.fictional-bank.example"
+    installation_manifest_secret_id      = "doc1-installations"
+    installation_manifest_secret_version = "7"
+    runtime_settings_secret_id           = "doc1-runtime-settings"
+    runtime_settings_secret_version      = "4"
+    production_manifest_version          = "test-v1"
+    production_manifest_sha256           = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    production_settings_sha256           = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    alert_notification_channels          = ["projects/fictional-doc1-production/notificationChannels/123"]
+    production_identity_mode             = "embedded-grant"
+    enable_embed_signing_key             = true
+    embed_signing_key_version            = "projects/fictional-doc1-production/locations/asia-southeast1/keyRings/cdd-sow-agent-ring/cryptoKeys/cdd-sow-agent-cmek-embed-signing/cryptoKeyVersions/1"
+    edge_min_instances                   = 2
+    edge_max_instances                   = 4
+  }
+  expect_failures = [var.otlp_endpoint]
 }

@@ -57,7 +57,7 @@ One hardening was considered and **deliberately not taken**: HSM-backed CMEK. Th
 | **P-08 Data-access logging** | Reads are audited | Met | `logging_worm.tf` `google_project_iam_audit_config` enables DATA_READ, DATA_WRITE, ADMIN_READ |
 | **P-08 Detection** | Security events are surfaced, not just stored | Met where enabled | `monitoring.tf` log-based metrics + alert policies (guardrail blocks, SA-key creation, VPC-SC denials, CMEK changes) when `posture_alerts_enabled = true`; the reference deployment declines them |
 | **P-04 / R1 PII redaction** | Scrub PII before model, index, audit, span | Met | `dlp.tf` inspect + deidentify templates (PERSON_NAME, EMAIL, PHONE, PASSPORT, CREDIT_CARD, IBAN, custom SG NRIC/FIN), `include_quote = false` |
-| **P-04 Content-free tracing** | No prompt/response text in spans | Met | `adapters/gcp/cloud_trace_tracer.py` sets only structural attributes |
+| **P-04 Content-free tracing** | No prompt/response text in spans | Met | `adapters/gcp/tracer.py` (the commons `build_tracer`) sets only structural attributes and token counts, and exports only through the agent-observability collector, which deletes GenAI content attributes |
 | **R1 Guardrail** | Screen input and output | Met | `model_armor.tf` prompt-injection/jailbreak, malicious URI, RAI filters |
 | **P-01 Managed-first / minimal surface** | Enable only what is used | Met | `apis.tf` enables exactly the pinned-stack services (plus Monitoring for the alerts); preview model OFF by default |
 | **P-06 Least privilege / key hygiene** | Scoped identities, no exportable keys | Met | `iam.tf` scoped app + runtime SAs; `sanctions_sync.tf` separate sync + scheduler SAs; `org_policy.tf` disables SA key creation |

@@ -122,7 +122,7 @@ to siblings.
 | 9 | `PIIRedactionPort` | PII redaction (`agent-guardrail-gateway`, R1) | `gcp.dlp_redaction` | `local.redaction` (regex) | `platform.remote_redaction` | `onprem.redaction` |
 | 10 | `AuditSinkPort` | WORM audit (`agent-observability`, R2) | `gcp.cloud_logging_audit` | `local.audit` (hash-chained append-only SQLite) | `platform.remote_audit` | `onprem.audit` |
 | 11 | `ReviewRouterPort` | Maker-checker routing (`human-review-console`, R8) | `gcp.review_router` | `local.review_router` | `gcp.review_router` (reused) | `onprem.review_router` |
-| 12 | `ObservabilityTracerPort` | Tracing + FinOps | `gcp.cloud_trace_tracer` | `local.tracer` (no-op) | `platform.otlp_tracer` (OTLP to the `agent-observability` collector, Cloud Trace fallback) | `onprem.tracer` |
+| 12 | `ObservabilityTracerPort` | Tracing + FinOps | `gcp.tracer` (the commons `build_tracer`: OTLP to the `agent-observability` collector only, no Cloud Trace fallback) | `local.tracer` (no-op) | `gcp.tracer` (the same adapter) | `onprem.tracer` |
 | 13 | `EvaluationGatePort` | Eval gate (`model-quality-gate`, R5) | `gcp.genai_eval` | `local.evaluation` (offline gate) | `platform.remote_evaluation` | `onprem.evaluation` |
 | 14 | `AgentRegistryPort` | A2A registry (`agent-registry`, R4) | `gcp.a2a_registry` | `local.registry_agent` (in-process) | `platform.remote_registry` | `onprem.registry_agent` |
 | 15 | `ToolCatalogPort` | Governed MCP tools (`agent-registry`) | `gcp.mcp_tool_catalog` | `local.tool_catalog` (in-process) | n/a (no `agent-registry` tools contract) | `onprem.tool_catalog` |

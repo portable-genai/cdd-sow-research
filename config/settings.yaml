@@ -504,8 +504,8 @@ adapters:
   # OTEL_EXPORTER_OTLP_ENDPOINT is set, else falls back to Cloud Trace (an intentional,
   # documented default, not a silent gcp fallback). No /v1/spans HTTP client exists.
   tracer:
-    gcp: cdd_sow_research.adapters.gcp.cloud_trace_tracer:CloudTraceTracerAdapter
-    platform: cdd_sow_research.adapters.platform.otlp_tracer:OtlpTracerAdapter
+    gcp: cdd_sow_research.adapters.gcp.tracer:CloudTracerAdapter
+    platform: cdd_sow_research.adapters.gcp.tracer:CloudTracerAdapter
     local: cdd_sow_research.adapters.local.tracer:LocalNoopTracerAdapter
     live: cdd_sow_research.adapters.local.tracer:LocalNoopTracerAdapter
     onprem: cdd_sow_research.adapters.onprem.tracer:OnPremTracerAdapter
