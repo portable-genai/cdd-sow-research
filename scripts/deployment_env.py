@@ -129,6 +129,9 @@ SUPPORT_ONLY_REQUIRED = (
     "DOC1_CLOUD_RUN_DELETION_PROTECTION",
     "DOC1_MODEL_ARMOR_FULL_CAPABILITIES",
     "DOC1_POSTURE_ALERTS_ENABLED",
+    # Added 2026-09-27 with the perimeter's Model Armor ingress rule. Absent, the runner would
+    # plan the rule away and the dry-run log would go on recording every guardrail call.
+    "DOC1_MODEL_ARMOR_CALLER_SERVICE_ACCOUNTS",
 )
 
 # Support keys whose value may legitimately be EMPTY. An empty serving-identity list is not an
@@ -141,6 +144,8 @@ SUPPORT_MAY_BE_EMPTY = frozenset(
     {
         "DOC1_DOCUMENT_WRITER_SERVICE_ACCOUNTS",
         "DOC1_ADDITIONAL_SERVING_SERVICE_ACCOUNTS",
+        # Empty is also a decision: no runtime identity outside the perimeter calls Model Armor.
+        "DOC1_MODEL_ARMOR_CALLER_SERVICE_ACCOUNTS",
     }
 )
 
@@ -1402,6 +1407,9 @@ def terraform_environment(values: dict[str, str]) -> dict[str, str]:
                     "DOC1_MODEL_ARMOR_FULL_CAPABILITIES"
                 ].lower(),
                 "TF_VAR_posture_alerts_enabled": values["DOC1_POSTURE_ALERTS_ENABLED"].lower(),
+                "TF_VAR_model_armor_caller_service_accounts": _json_list(
+                    values["DOC1_MODEL_ARMOR_CALLER_SERVICE_ACCOUNTS"]
+                ),
             }
         )
     if edge_enabled:

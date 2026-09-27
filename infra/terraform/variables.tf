@@ -282,6 +282,34 @@ variable "operator_members" {
   default     = []
 }
 
+variable "model_armor_caller_service_accounts" {
+  description = <<-EOT
+    Runtime service-account emails whose Model Armor calls the perimeter admits, through an
+    ingress rule scoped to modelarmor.googleapis.com and nothing else.
+
+    In a shared project every app's runtime identity screens against its own template in this
+    project, and a Cloud Run service reaches the API from outside any VPC network, so the
+    perimeter sees no matching access level. Without this rule the dry-run log records every
+    sanitize call as NO_MATCHING_ACCESS_LEVEL, and enforcing the perimeter would block every
+    guardrail in the project. The rule is an ingress rule rather than membership of the
+    operator access level because an access level admits its members to every restricted
+    service; these identities need exactly one.
+
+    Empty (the default) means no rule, which is right for an app deployed on its own whose
+    serving identity sits inside the perimeter's network.
+  EOT
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for email in var.model_armor_caller_service_accounts :
+      can(regex("^[a-z0-9-]+@[a-z0-9-]+\\.iam\\.gserviceaccount\\.com$", email))
+    ])
+    error_message = "each model_armor_caller_service_accounts entry must be a service-account email."
+  }
+}
+
 variable "allowed_policy_member_domains" {
   description = <<-EOT
     Customer/directory ids (e.g. "C0xxxxxxx") permitted by the domain-restricted-sharing

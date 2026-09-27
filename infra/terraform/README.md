@@ -53,6 +53,7 @@ Policy (`org_policy.tf`, gated by `enable_org_policies`), and the VPC-SC perimet
 | `access_policy_id` | string | `""` | Required when `enable_vpc_sc = true` (cross-validated at plan time). `gcloud access-context-manager policies create --organization=ORG_ID --title="sg-residency"` |
 | `vpc_sc_enforce` | bool | `false` | Flip to `true` after a dry-run soak with operators added. |
 | `operator_members` | list(string) | `[]` | Identities allowed through the perimeter from outside. |
+| `model_armor_caller_service_accounts` | list(string) | `[]` | Runtime service accounts whose Model Armor calls the perimeter admits, through one ingress rule scoped to `modelarmor.googleapis.com`, in dry-run and when enforced. Name every app identity in a shared project that screens against a template here, or enforcing the perimeter blocks every guardrail. |
 | `allowed_policy_member_domains` | list(string) | `[]` | Domain-restricted sharing ids; empty skips that policy. |
 | `cmek_enabled` | bool | `false` | Create the key ring and key and bind every store, log bucket and revision to it. Off by default: a ring can never be deleted and a keyed log bucket can never drop its key. Set true before the first apply of a deployment that needs customer-held keys. |
 | `posture_alerts_enabled` | bool | `false` | Create the four security metrics and alert policies. Off by default: every metric-based condition is billed and a reference deployment pages nobody. |
