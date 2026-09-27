@@ -75,7 +75,9 @@ class RemoteGuardrailAdapter:
             for item in (body.get("findings") or ())
         )
         return GuardrailVerdict(
-            allowed=bool(body.get("allowed", False)),
+            # Only a literal JSON ``true`` allows. ``bool()`` would admit the string "false",
+            # a non-empty list, or any other truthy value a misbehaving gateway sends.
+            allowed=body.get("allowed") is True,
             direction=direction,
             findings=findings,
             sanitized_text=body.get("sanitized_text"),

@@ -409,6 +409,8 @@ class ControlSwitches:
 class ModelArmorSettings:
     template_id: str = "cdd-sow-guardrail"
     host: str = f"modelarmor.{DEFAULT_GCP_REGION}.rep.googleapis.com"
+    #: The deadline on every sanitize call. A timeout raises, so the screen fails CLOSED.
+    timeout_seconds: float = 10.0
 
 
 @dataclass(frozen=True)
