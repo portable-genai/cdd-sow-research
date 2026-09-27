@@ -1267,6 +1267,9 @@ def _support_values() -> dict[str, str]:
             "DOC1_OPERATOR_MEMBERS": "user:approved-operator@reviewed-bank.internal",
             "DOC1_ADDITIONAL_SERVING_SERVICE_ACCOUNTS": "serving@reviewed-bank.internal",
             "DOC1_DOCUMENT_WRITER_SERVICE_ACCOUNTS": "",
+            "DOC1_MODEL_ARMOR_CALLER_SERVICE_ACCOUNTS": (
+                "serving@reviewed-bank.internal,sibling@reviewed-bank.internal"
+            ),
         }
     )
     return values
@@ -1298,6 +1301,19 @@ def test_embedded_support_defers_the_edge_and_maps_the_project_shaping_half() ->
     assert mapped["TF_VAR_posture_alerts_enabled"] == "false"
     # An empty list is a STATEMENT, not an omission.
     assert mapped["TF_VAR_document_writer_service_accounts"] == "[]"
+    # The perimeter's Model Armor ingress rule names every caller, the host's siblings included.
+    assert mapped["TF_VAR_model_armor_caller_service_accounts"] == (
+        '["serving@reviewed-bank.internal", "sibling@reviewed-bank.internal"]'
+    )
+
+
+def test_embedded_support_accepts_no_model_armor_callers_as_a_decision() -> None:
+    values = _support_values()
+    values["DOC1_MODEL_ARMOR_CALLER_SERVICE_ACCOUNTS"] = ""
+
+    assert deployment_env.validate_environment(values, require_ready=True) == []
+    mapped = deployment_env.terraform_environment(values)
+    assert mapped["TF_VAR_model_armor_caller_service_accounts"] == "[]"
 
 
 def test_embedded_support_refuses_a_missing_project_shaping_input() -> None:

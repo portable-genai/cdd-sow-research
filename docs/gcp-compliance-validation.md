@@ -87,7 +87,9 @@ One hardening was considered and **deliberately not taken**: HSM-backed CMEK. Th
   for the app) together. If the region is not in `allowed_regions`, `terraform plan` fails;
   extend the allowlist only after confirming stack availability and residency obligations.
 - **Roll out VPC-SC in two steps.** Apply with `vpc_sc_enforce = false` (dry-run), watch the
-  `vpc_sc_denials` alert, add operators to `operator_members`, then set `vpc_sc_enforce = true`.
+  `vpc_sc_denials` alert, add operators to `operator_members`, name every runtime identity
+  that calls Model Armor in `model_armor_caller_service_accounts`, and set
+  `vpc_sc_enforce = true` only once the dry-run log holds no `modelarmor` violation.
 - **Wire a notification channel.** Set `alert_notification_channels` so the security alert
   policies actually notify; without it they are created but notify nowhere.
 - **Org Policy needs `roles/orgpolicy.policyAdmin`** on the project for the apply identity.
