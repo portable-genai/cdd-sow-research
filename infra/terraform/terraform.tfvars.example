@@ -143,3 +143,8 @@ review_routing_enabled = true
 # blocked in practice (destroy/recreate to change modes). Also set CDD_STANDALONE=false on
 # the service.
 # standalone = false
+
+# Rule R1: the Model Armor guardrail template (model_armor.tf). The malicious-URI
+# filter and multi-language detection are regional, and a region that does not serve
+# them refuses the WHOLE template, so the capabilities are stated, never inherited.
+model_armor_full_capabilities = false # asia-southeast1 refuses the malicious-URI filter; state true in a region that serves it
