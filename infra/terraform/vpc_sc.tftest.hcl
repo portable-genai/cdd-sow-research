@@ -15,6 +15,12 @@ variables {
     "journey-a-app-one@fictional-doc1-production.iam.gserviceaccount.com",
     "journey-a-app-two@fictional-doc1-production.iam.gserviceaccount.com",
   ]
+  # Slice 7 turned these reversible controls off by default on 2026-10-02. The runs in this
+  # file were written under the old default, so the file states it; a run that sets one
+  # explicitly still overrides it.
+  firestore_pitr_enabled              = true
+  firestore_delete_protection_enabled = true
+  cloud_run_deletion_protection       = true
 }
 
 run "dry_run_admits_the_callers_model_armor_calls_only" {
