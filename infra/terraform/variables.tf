@@ -891,13 +891,16 @@ variable "docai_kms_location" {
 
 variable "model_armor_full_capabilities" {
   type        = bool
-  default     = true
+  default     = false
   description = <<-EOT
-    Keep the Model Armor filters that not every region serves: the malicious-URI filter and
-    multi-language detection. Default true. asia-southeast1 refuses template creation with
-    both enabled ("does not support the requested capabilities", 2026-08-29), so a
-    deployment there declines them here — a stated narrowing of the guardrail, disclosed in
-    the deployment record, never a silent regional downgrade.
+    Whether the guardrail template (model_armor.tf) asks for the capabilities that are not
+    served in every region: the malicious-URI filter and multi-language detection.
+
+    False by default, under the 2026-09-23 posture rule: a control that is not irreversible
+    defaults off in code, and terraform.tfvars.example carries the production form. A region
+    that serves both states true. asia-southeast1 serves neither, and Model Armor does not
+    degrade -- it refuses the whole template with CAPABILITY_NOT_SUPPORTED -- so a deployment
+    there keeps false and discloses the narrowed guardrail.
   EOT
 }
 
