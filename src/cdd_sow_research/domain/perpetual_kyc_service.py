@@ -17,7 +17,9 @@ Every consequential value is arithmetic the engine performed and an auditor can 
 The service never blocks, freezes or downgrades a relationship: it queues an explainable
 review. A narration, screening, media, registry or routing failure degrades gracefully
 (the deterministic assessment still stands) except for a store failure, which is fatal:
-losing the baseline would make unchanged facts look new on the next run.
+losing the baseline would make unchanged facts look new on the next run. The narration's
+prompt is guardrail-screened INPUT before the model sees it and its text OUTPUT before it
+is returned; a block is audited BLOCKED and raised, as in the dossier pipeline.
 
 Pure domain code: talks only to ports and models, no Google Cloud / ADK imports.
 """
@@ -31,10 +33,12 @@ from typing import Any
 from . import _grounded as g
 from .adverse_media_service import AdverseMediaService
 from .entitlements import case_tags
+from .errors import GuardrailBlockedError
 from .models import (
     AdverseMediaFinding,
     AuditEvent,
     Decision,
+    Direction,
     MonitoringAssessment,
     OwnershipSummary,
     PerpetualKycAssessment,
@@ -70,6 +74,7 @@ class PerpetualKycService:
         review_router: Any,
         audit: Any,
         tracer: Any,
+        guardrail: Any,
         redaction: Any | None = None,
         llm: Any | None = None,
         engine: PerpetualKycEngine | None = None,
@@ -83,6 +88,7 @@ class PerpetualKycService:
         self._review_router = review_router
         self._audit = audit
         self._tracer = tracer
+        self._guardrail = guardrail
         self._redaction = redaction
         self._llm = llm
         self._engine = engine or PerpetualKycEngine()
@@ -101,6 +107,7 @@ class PerpetualKycService:
         review_router: Any,
         audit: Any,
         tracer: Any,
+        guardrail: Any,
         redaction: Any | None = None,
         llm: Any | None = None,
     ) -> PerpetualKycService:
@@ -113,6 +120,7 @@ class PerpetualKycService:
             review_router=review_router,
             audit=audit,
             tracer=tracer,
+            guardrail=guardrail,
             redaction=redaction,
             llm=llm,
             engine=PerpetualKycEngine.from_policy(policy.perpetual_kyc),
@@ -156,7 +164,7 @@ class PerpetualKycService:
                 acl=case_tags(subject.id, subject.tenant),
             )
             if narrate:
-                assessment = self._narrate(assessment)
+                assessment = self._narrate(assessment, actor=actor)
 
             routed = self._route(assessment, maker=actor)
             assessment = _with_routed_flag(assessment, routed)
@@ -231,7 +239,7 @@ class PerpetualKycService:
     # ------------------------------------------------------------------ #
     # Narration: prose only, after redaction, over numbers the code already fixed
     # ------------------------------------------------------------------ #
-    def _narrate(self, assessment: PerpetualKycAssessment) -> PerpetualKycAssessment:
+    def _narrate(self, assessment: PerpetualKycAssessment, *, actor: str) -> PerpetualKycAssessment:
         if self._llm is None:
             return assessment
         facts = self._facts(assessment)
@@ -241,6 +249,10 @@ class PerpetualKycService:
             except Exception:  # noqa: BLE001 - never send un-redacted text to a model
                 _LOG.warning("perpetual-KYC redaction failed; narration skipped")
                 return assessment
+        # The facts restate third-party text (adverse-media headlines, registry owner names,
+        # watchlist entries), so they are screened before they reach the model.
+        if not self._guard(facts, Direction.INPUT, assessment, actor=actor, prompt=facts):
+            return assessment
         try:
             response = self._llm.generate(
                 g.build_llm_request(
@@ -265,9 +277,60 @@ class PerpetualKycService:
         text = payload.get("narrative")
         if not isinstance(text, str) or not text.strip():
             return assessment
+        narrative = text.strip()[:_MAX_NARRATIVE_CHARS]
+        # Model-written text leaves in the response, so it is screened before it is returned.
+        if not self._guard(narrative, Direction.OUTPUT, assessment, actor=actor, prompt=facts):
+            return assessment
         from dataclasses import replace
 
-        return replace(assessment, narrative=text.strip()[:_MAX_NARRATIVE_CHARS])
+        return replace(assessment, narrative=narrative)
+
+    def _guard(
+        self,
+        text: str,
+        direction: Direction,
+        assessment: PerpetualKycAssessment,
+        *,
+        actor: str,
+        prompt: str,
+    ) -> bool:
+        """Screen narration text; a block is audited BLOCKED and raised (as ``CddService``).
+
+        Returns False when the screen itself is unavailable: narration is then skipped (the
+        deterministic assessment still stands), so no unscreened text reaches the model or
+        the response.
+        """
+        try:
+            verdict = self._guardrail.screen(text, direction)
+        except Exception:  # noqa: BLE001 - an unscreened narration is dropped, never returned
+            _LOG.warning(
+                "perpetual-KYC guardrail unavailable for %s; narration skipped",
+                assessment.subject_id,
+            )
+            return False
+        if verdict.allowed:
+            return True
+        try:
+            self._audit.record(
+                AuditEvent(
+                    action="perpetual_kyc.rescore",
+                    actor=actor,
+                    decision=Decision.BLOCKED,
+                    redacted_prompt=prompt,
+                    redacted_response="",
+                    metadata={
+                        "subject_id": assessment.subject_id,
+                        "as_of": assessment.as_of,
+                        "direction": direction.value,
+                        "requires_human_review": "true",
+                    },
+                )
+            )
+        except Exception:  # noqa: BLE001 - audit failure must not mask the block
+            _LOG.exception("perpetual-KYC blocked-audit write failed for %s", assessment.subject_id)
+        raise GuardrailBlockedError(
+            verdict.reason or "perpetual-KYC narration blocked by guardrail"
+        )
 
     @staticmethod
     def _facts(assessment: PerpetualKycAssessment) -> str:

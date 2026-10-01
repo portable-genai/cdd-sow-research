@@ -125,6 +125,7 @@ def build_perpetual_kyc_service(
         review_router=review_router or container.review_router,
         audit=container.audit,
         tracer=container.tracer,
+        guardrail=container.guardrail,
         redaction=container.redaction,
         llm=container.llm,
     )
@@ -150,6 +151,7 @@ def build_ubo_graph_service(container: Container, *, review_router: Any = None) 
         review_router=review_router or container.review_router,
         audit=container.audit,
         tracer=container.tracer,
+        guardrail=container.guardrail,
         redaction=container.redaction,
         llm=container.llm,
     )

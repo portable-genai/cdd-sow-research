@@ -75,6 +75,7 @@ def wiring() -> Iterator[tuple[TestClient, _RecordingRouter, _RecordingAudit]]:
         review_router=router,
         audit=audit,
         tracer=container.tracer,
+        guardrail=container.guardrail,
         redaction=container.redaction,
         llm=container.llm,
     )

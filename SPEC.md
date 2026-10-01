@@ -337,7 +337,10 @@ PERSISTING or CLEARED against the stored baseline; the new score is
 (`policy.perpetual_kyc` in `config/settings.yaml`), never a constant in the engine. The
 first run for a subject *establishes* the baseline rather than treating a standing picture
 as change. **The LLM produces no number here**; it is handed the finished, redacted figures
-and returns a schema-validated narrative that is discarded if it does not match.
+and returns a schema-validated narrative that is discarded if it does not match. Those figures
+restate third-party text (headlines, registry names), so the prompt is `guardrail.screen(INPUT)`
+before the model sees it and the narrative `guardrail.screen(OUTPUT)` before it is returned; a
+block is audited BLOCKED and raised, and an unavailable screen skips the narration.
 
 **The explainable review queue.** The engine derives a `ReviewQueueItem` deterministically:
 priority (hard signals first, then the re-scored total), an SLA date from policy, the
@@ -404,6 +407,9 @@ lawful corporate structure there is. The flags raise a deterministic opacity sco
 per distinct kind and clamped to `[0, 1]`, which sets the review severity. **The LLM
 produces no node, edge, percentage or verdict here**; it is handed the finished, redacted
 resolution and returns a schema-validated narrative that is discarded if it does not match.
+The prompt (registry party names, control reasons) is `guardrail.screen(INPUT)` before the model
+sees it and the narrative `guardrail.screen(OUTPUT)` before it is returned; a block is audited
+BLOCKED and raised, and an unavailable screen skips the narration.
 
 **No store port.** A resolution is a pure function of the registry layers plus policy, so
 it is recomputable rather than stateful. Persisting it would create a second, staler answer
