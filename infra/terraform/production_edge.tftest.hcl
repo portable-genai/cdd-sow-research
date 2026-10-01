@@ -8,6 +8,11 @@ variables {
   # Every edge below exports spans through a collector, as a managed deployment must: the gcp
   # tracer refuses to build without one. The run that omits it overrides this.
   otlp_endpoint = "https://otel-collector.fictional-bank.example"
+  # Slice 7 turned these reversible controls off by default on 2026-10-01. The runs in this
+  # file were written under the old default, so the file states it; a run that sets one
+  # explicitly still overrides it. posture_defaults.tftest.hcl pins the new default.
+  enable_vpc_sc       = true
+  enable_org_policies = true
 }
 
 run "named_edge_contract" {

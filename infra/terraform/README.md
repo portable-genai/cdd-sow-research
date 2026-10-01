@@ -90,7 +90,7 @@ worm_locked         = false
 
 ```hcl
 project_id       = "your-project"
-access_policy_id = "111111111111" # required because enable_vpc_sc defaults to true
+access_policy_id = "111111111111" # required when enable_vpc_sc = true
 # region / allowed_regions / operator_members / alert_notification_channels /
 # allowed_policy_member_domains / retention_days / sanctions_sync_image as needed
 ```
