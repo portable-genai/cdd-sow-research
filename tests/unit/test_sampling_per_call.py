@@ -110,6 +110,7 @@ def _narration_requests() -> dict[str, LlmRequest]:
         review_router=_Router(),
         audit=FakeAudit(),
         tracer=container.tracer,
+        guardrail=container.guardrail,
         redaction=container.redaction,
         llm=llm,
     ).resolve(_subject(), actor="tester", as_of=date(2026, 8, 7))
@@ -122,6 +123,7 @@ def _narration_requests() -> dict[str, LlmRequest]:
         review_router=_Router(),
         audit=FakeAudit(),
         tracer=container.tracer,
+        guardrail=container.guardrail,
         redaction=container.redaction,
         llm=llm,
     ).run(_subject(), actor="tester", principals=("tenant:demo-bank",), as_of=date(2026, 8, 5))

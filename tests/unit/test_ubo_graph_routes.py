@@ -90,6 +90,7 @@ def _service(
         review_router=router,
         audit=audit,
         tracer=container.tracer,
+        guardrail=container.guardrail,
         redaction=container.redaction,
         llm=container.llm,
     )
@@ -298,6 +299,7 @@ def test_a_failed_narration_is_discarded_not_rendered():
         review_router=router,
         audit=audit,
         tracer=container.tracer,
+        guardrail=container.guardrail,
         redaction=container.redaction,
         llm=_BadLlm(),
     )

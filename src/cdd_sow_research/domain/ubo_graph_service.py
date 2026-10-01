@@ -11,7 +11,9 @@ existing CDD lifecycle, in the same five moves the perpetual-KYC orchestrator ma
    arithmetic, the control ladder, the nominee/shell indicators and the opacity score);
 3. optionally ask the LLM to NARRATE that finished resolution, after redaction, with
    every number already fixed: the narrative is prose about a structure the model did not
-   resolve, schema-validated and discarded on failure;
+   resolve, schema-validated and discarded on failure, its prompt guardrail-screened
+   INPUT and its text OUTPUT (a block is audited BLOCKED and raised, as in the dossier
+   pipeline);
 4. route the resolution to human-review-console for maker-checker disposition (rule R8); and
 5. write the already-redacted WORM audit record.
 
@@ -36,9 +38,11 @@ from typing import Any
 
 from . import _grounded as g
 from .entitlements import case_tags
+from .errors import GuardrailBlockedError
 from .models import (
     AuditEvent,
     Decision,
+    Direction,
     OwnershipGraph,
     OwnershipSummary,
     RegistryHop,
@@ -69,6 +73,7 @@ class UboGraphService:
         review_router: Any,
         audit: Any,
         tracer: Any,
+        guardrail: Any,
         redaction: Any | None = None,
         llm: Any | None = None,
         engine: UboGraphEngine | None = None,
@@ -77,6 +82,7 @@ class UboGraphService:
         self._review_router = review_router
         self._audit = audit
         self._tracer = tracer
+        self._guardrail = guardrail
         self._redaction = redaction
         self._llm = llm
         self._engine = engine or UboGraphEngine()
@@ -90,6 +96,7 @@ class UboGraphService:
         review_router: Any,
         audit: Any,
         tracer: Any,
+        guardrail: Any,
         redaction: Any | None = None,
         llm: Any | None = None,
     ) -> UboGraphService:
@@ -99,6 +106,7 @@ class UboGraphService:
             review_router=review_router,
             audit=audit,
             tracer=tracer,
+            guardrail=guardrail,
             redaction=redaction,
             llm=llm,
             engine=UboGraphEngine.from_policy(policy.ubo_graph, policy.country_risk),
@@ -127,7 +135,7 @@ class UboGraphService:
                 acl=case_tags(subject.id, subject.tenant),
             )
             if narrate:
-                resolution = self._narrate(resolution)
+                resolution = self._narrate(resolution, actor=actor)
 
             routed = self._route(resolution, maker=actor)
             resolution = _with_routed_flag(resolution, routed)
@@ -174,7 +182,7 @@ class UboGraphService:
     # ------------------------------------------------------------------ #
     # Narration: prose only, after redaction, over a structure already resolved
     # ------------------------------------------------------------------ #
-    def _narrate(self, resolution: UboResolution) -> UboResolution:
+    def _narrate(self, resolution: UboResolution, *, actor: str) -> UboResolution:
         if self._llm is None:
             return resolution
         facts = self._facts(resolution)
@@ -184,6 +192,10 @@ class UboGraphService:
             except Exception:  # noqa: BLE001 - never send un-redacted text to a model
                 _LOG.warning("UBO-graph redaction failed; narration skipped")
                 return resolution
+        # The facts restate third-party registry text (party names, control reasons), so
+        # they are screened before they reach the model.
+        if not self._guard(facts, Direction.INPUT, resolution, actor=actor, prompt=facts):
+            return resolution
         try:
             response = self._llm.generate(
                 g.build_llm_request(
@@ -207,9 +219,58 @@ class UboGraphService:
         text = payload.get("narrative")
         if not isinstance(text, str) or not text.strip():
             return resolution
+        narrative = text.strip()[:_MAX_NARRATIVE_CHARS]
+        # Model-written text leaves in the response, so it is screened before it is returned.
+        if not self._guard(narrative, Direction.OUTPUT, resolution, actor=actor, prompt=facts):
+            return resolution
         from dataclasses import replace
 
-        return replace(resolution, narrative=text.strip()[:_MAX_NARRATIVE_CHARS])
+        return replace(resolution, narrative=narrative)
+
+    def _guard(
+        self,
+        text: str,
+        direction: Direction,
+        resolution: UboResolution,
+        *,
+        actor: str,
+        prompt: str,
+    ) -> bool:
+        """Screen narration text; a block is audited BLOCKED and raised (as ``CddService``).
+
+        Returns False when the screen itself is unavailable: narration is then skipped (the
+        deterministic resolution still stands), so no unscreened text reaches the model or
+        the response.
+        """
+        try:
+            verdict = self._guardrail.screen(text, direction)
+        except Exception:  # noqa: BLE001 - an unscreened narration is dropped, never returned
+            _LOG.warning(
+                "UBO-graph guardrail unavailable for %s; narration skipped",
+                resolution.subject_id,
+            )
+            return False
+        if verdict.allowed:
+            return True
+        try:
+            self._audit.record(
+                AuditEvent(
+                    action="ubo_graph.resolve",
+                    actor=actor,
+                    decision=Decision.BLOCKED,
+                    redacted_prompt=prompt,
+                    redacted_response="",
+                    metadata={
+                        "subject_id": resolution.subject_id,
+                        "as_of": resolution.as_of,
+                        "direction": direction.value,
+                        "requires_human_review": "true",
+                    },
+                )
+            )
+        except Exception:  # noqa: BLE001 - audit failure must not mask the block
+            _LOG.exception("UBO-graph blocked-audit write failed for %s", resolution.subject_id)
+        raise GuardrailBlockedError(verdict.reason or "UBO-graph narration blocked by guardrail")
 
     @staticmethod
     def _facts(resolution: UboResolution) -> str:

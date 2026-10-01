@@ -1067,6 +1067,12 @@ def run_perpetual_kyc(
         )
     except CaseAccessDeniedError as exc:
         return _denied_response(exc)
+    except GuardrailBlockedError as exc:
+        return _blocked_response(
+            "This perpetual-KYC cycle was blocked by the safety guardrail and routed for "
+            "human review.",
+            str(exc),
+        )
     return disclose(PerpetualKycResponse.from_domain(assessment), routing=routing)
 
 
@@ -1131,7 +1137,14 @@ def resolve_ubo_graph(
             content={"detail": "as_of must be an ISO date (YYYY-MM-DD)"},
         )
     subject = replace(request.subject.to_domain(), tenant=principal.tenant)
-    resolution = service.resolve(subject, actor=principal.actor, as_of=as_of)
+    try:
+        resolution = service.resolve(subject, actor=principal.actor, as_of=as_of)
+    except GuardrailBlockedError as exc:
+        return _blocked_response(
+            "This UBO-graph resolution was blocked by the safety guardrail and routed for "
+            "human review.",
+            str(exc),
+        )
     return disclose(UboGraphResponse.from_domain(resolution), routing=routing)
 
 
