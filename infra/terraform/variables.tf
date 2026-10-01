@@ -856,7 +856,7 @@ variable "knowledge_base_search_tier" {
 
 variable "firestore_pitr_enabled" {
   type        = bool
-  default     = true
+  default     = false
   description = <<-EOT
     Point-in-time recovery on the case store. Default true.
 
@@ -865,12 +865,15 @@ variable "firestore_pitr_enabled" {
     until it runs. A reference stack that has declined the WORM lock to stay destroyable is
     entitled to decline this too, and to say so here rather than pay for a guarantee it does
     not evidence. A stack holding real customer material keeps the default.
+
+    Off by default since 2026-10-02 (slice 7 of the posture rule: a control that is not
+    irreversible defaults off in code); terraform.tfvars.example states the production form.
   EOT
 }
 
 variable "firestore_delete_protection_enabled" {
   type        = bool
-  default     = true
+  default     = false
   description = <<-EOT
     Firestore delete protection on the case store. Default true.
 
@@ -878,6 +881,9 @@ variable "firestore_delete_protection_enabled" {
     production stack and contradictory in a reference one that has already recorded, in its own
     tfvars, that it must stay replaceable and destroyable while the deployment is being worked
     out. Declining it is how a deployment stops holding two opposite postures at once.
+
+    Off by default since 2026-10-02 (slice 7 of the posture rule: a control that is not
+    irreversible defaults off in code); terraform.tfvars.example states the production form.
   EOT
 }
 
@@ -909,7 +915,7 @@ variable "model_armor_full_capabilities" {
 
 variable "cloud_run_deletion_protection" {
   type        = bool
-  default     = true
+  default     = false
   description = <<-EOT
     Deletion protection on the production-edge Cloud Run services. Default true.
 
@@ -917,6 +923,9 @@ variable "cloud_run_deletion_protection" {
     even plan. The protection is right for a production stack; a reference stack that records
     itself as replaceable must be able to decline it in tfvars like every other destroy guard
     here (firestore_delete_protection_enabled, worm_locked).
+
+    Off by default since 2026-10-02 (slice 7 of the posture rule: a control that is not
+    irreversible defaults off in code); terraform.tfvars.example states the production form.
   EOT
 }
 
